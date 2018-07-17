@@ -1,0 +1,120 @@
+[[@xxmSession,DataLank,fCommon]][[!var
+qr,qr1:TQueryResult;
+s,c,c1:string;
+id:integer;
+]][[
+if Session.UserID=0 then Context.Redirect('.',true);
+Context.Include('dHead.xxmi');
+
+id:=Context['id'].AsInteger;
+if id=0 then
+ begin
+
+  <<div style="position:fixed;top:0;right:1.2em;background-color:gold;padding:4pt;user-select:none;">
+  <b>Feeds</b><br />
+  <a href="New.xxm">Add...</a><br />
+  <a href="OPML.xxm">OPML...</a><br />
+  <a href="Logoff.xxm">Logoff...</a><br />
+  <hr />
+  <a href=".">Back...</a><br />
+  </div>>
+
+  qr:=TQueryResult.Create(Session.Connection,
+    'select S.*, F.name, F.url'+
+    ', (select count(*) from Post P where P.feed_id=F.id) as PostCount'+
+    ', (select count(*) from UserPost X inner join Post P on P.id=X.post_id where P.feed_id=F.id and X.user_id=S.user_id) as UnreadCount'+
+    ' from Subscription S'+
+    ' inner join Feed F on F.id=S.feed_id'+
+    ' where S.user_id=?'+
+    ' order by S.Category,S.id',[Session.UserID]);
+  try
+    c:='';
+    while qr.Read do
+     begin
+      c1:=qr.GetStr('category');
+      if c<>c1 then
+       begin
+        <<div>
+        <div class="catlink"><a>>=c1<</a></div>
+        </div>>
+        c:=c1;
+       end;
+      <<div class="post">
+      <div class="date">>=FormatDateTime('yyyy-mm-dd',qr.GetDate('created'))<</div>
+      [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+      <a href="?id=[[=qr['id']]]">"[[=qr['name']]]"&nbsp;<span style="color:#CCCCCC;">>=qr['url']<</span></a>
+      [[if qr.GetInt('PostCount')<>0 then begin]]
+      <a href=".?f=[[=qr['id']]]" style="color:#0000CC;">>=[qr['UnreadCount'],'/',qr['PostCount']]]]&nbsp;&rarr;</a>
+      [[end;]]
+      </div>>
+     end;
+  finally
+    qr.Free;
+  end;
+
+  <div style="margin-top:0.5em;">
+  <a href="New.xxm">Add...</a><br />
+  <a href=".">Back...</a><br />
+  </div>
+
+ end
+else
+ begin
+  
+  qr:=TQueryResult.Create(Session.Connection,
+    'select S.*, F.name, F.url from Subscription S'+
+    ' inner join Feed F on F.id=S.feed_id'+
+    ' where S.id=?'+
+    ' order by S.Category,S.id',[id]);
+  try
+    <<form method="post" action="Feed.xxm">
+    <input type="hidden" name="x" value="1" />
+    <input type="hidden" name="id" value="[[=id]]" />
+    <dl>
+    <dt>name</dt>
+    <dd>>=qr['name']<</dd>
+    <dt>URL</dt>
+    <dd>>=qr['url']]]&nbsp;<a href="[[=qr['url']]]" style="text-decoration:none;">&rarr;</a></dd>
+    <dt>since</dt>
+    <dd>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))<</dd>
+    <dt>category</dt>
+    <dd>
+      <select name="category">>
+      s:=qr.GetStr('category');
+      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from Subscription where user_id=?',[Session.UserID]);
+      try
+        while qr1.Read do
+         begin
+          <<option[[
+          if s=qr1.GetStr(0) then Context.SendHTML(' selected="1"');
+          ]]>>=qr1[0]<</option>>
+         end;
+      finally
+        qr1.Free;
+      end;
+      <<option value="---" style="color:#006600;">&rarr; new category</option>
+      </select>
+      <input type="text" name="categoryNew" />
+    </dd>
+    <dt>label text</dt>
+    <dd><input type="text" name="label" value="[[=qr['label']]]" /></dd>
+    <dt>label color</dt>
+    <dd>>#ColorPicker(qr.GetStr('color'))<</dd>
+   <dt>read width</dt>
+    <dd><input type="text" name="readwidth" value="[[=qr['readwidth']]]" /> M-width</dd>
+    </dl>
+    <p><input type="submit" value="Update" /></p>
+    </form>
+    <form method="post" action="Feed.xxm" onsubmit="return confirm('Are you sure to unsubscribe from this feed?');">
+    <input type="hidden" name="x" value="2" />
+    <input type="hidden" name="id" value="[[=id]]" />
+    <p style="border:2px solid red;"><input type="submit" value="Remove feed..." /></p>
+    </form>
+    <p><a href="?">back...</a></p>>
+  finally
+    qr.Free;
+  end;
+
+ end;
+    
+Context.Include('dFoot.xxmi');

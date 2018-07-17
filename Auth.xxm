@@ -1,0 +1,34 @@
+[[@xxmSession,DataLank,base64,sha3,Windows]][[!var
+verb:WideString;
+qr:TQueryResult;
+s:string;
+]][[
+verb:=Context.ContextString(csVerb);
+
+if verb<>'POST' then
+ begin
+  if Context['key'].Value=Session.Key then
+   begin
+    s:=base64encode(SHA3_224(Format('[feederAutoLogon]%d:%d:%d:%d:%d:%d[%s]',
+      [GetTickCount
+      ,GetCurrentThreadID
+      ,GetCurrentProcessID
+      ,integer(pointer(Self))
+      ,integer(pointer(Context))
+      ,Session.UserID
+      ,Session.ID
+      ])));
+    Session.Connection.Execute('update User set autologon=? where id=?',[s,Session.UserID]);
+    Context.SetCookie('feederAutoLogon',s,60*60*24*365,'','','',false,true);
+   end;
+  Context.Redirect('.',true);
+ end
+else
+  AuthSession(
+    Context['key'].Value,
+    Context['login'].Value,
+    Context['name'].Value,
+    Context['email'].Value
+  );
+
+Context.SendHTML('OK');

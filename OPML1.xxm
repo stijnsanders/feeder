@@ -1,0 +1,46 @@
+[[@xxmSession,DataLank]][[!var
+qr:TQueryResult;
+c,c1:string;
+]][[
+Context.ContentType:='application/xml';
+Context.AutoEncoding:=aeUtf8;
+Context.DispositionAttach('subscriptions.opml');
+
+<<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.1">
+  <head>
+    <title>Feeder - a simple feed reader</title>>
+    qr:=TQueryResult.Create(Session.Connection,'select * from User where id=?',[Session.UserID]);
+    try
+      <<ownerName>>=qr['name']<</ownerName>>
+      <<ownerEmail>>=qr['email']<</ownerEmail>>
+
+      //<dateCreated>Tue, 26 Jun 2018 20:44:13 GMT</dateCreated>
+      //<dateModified>Tue, 26 Jun 2018 20:44:13 GMT</dateModified>
+    finally
+      qr.Free;
+    end;
+  <</head>
+  <body>>
+    c:='';
+    qr:=TQueryResult.Create(Session.Connection,
+      'select S.*, F.url'+
+      ' from Subscription S'+
+      ' inner join Feed F on F.id=S.feed_id'+
+      ' where S.user_id=?'+
+      ' order by S.Category,S.id',[Session.UserID]);
+    while qr.Read do
+     begin
+      c1:=qr.GetStr('category');
+      if c<>c1 then
+       begin
+        if c<>'' then Context.SendHTML('</outline>');
+        c:=c1;
+        <<outline title="[[=c]]" text="[[=c]]">>
+       end;
+      <<outline type="rss" xmlUrl="[[=qr['url']]]"/>>
+     end;
+    if c<>'' then Context.SendHTML('</outline>');
+  <</body>
+</opml>
+

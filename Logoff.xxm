@@ -1,0 +1,4 @@
+[[@xxmSession]][[
+Context.SetCookie('feederAutoLogon','',0,'','','',false,true);
+Session.UserID:=0;//??Abandon?
+Context.Redirect('.',true);

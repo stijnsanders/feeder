@@ -1,0 +1,44 @@
+[[@DataLank,xxmSession]][[!var
+i,l,id,c:integer;
+s:string;
+qr:TQueryResult;
+]][[
+Context.ContentType:='text/plain';
+Session.Connection.BeginTrans;
+try
+  s:=Context.ContextString(csQueryString);//Context['p'].Value;
+  l:=Length(s);
+  c:=0;
+  i:=1;
+  while i<l do
+  begin
+    //assert s[i]='p'
+    inc(i);
+    id:=0;
+    while (i<=l) and (s[i]<>'p') do
+      begin
+      if s[i] in ['0'..'9'] then
+        id:=id*10+(byte(s[i]) and $F)
+      else
+        raise Exception.Create('invalid data');
+      inc(i);
+      end;
+    Session.Connection.Execute('delete from UserPost where user_id=? and post_id=?',[Session.UserID,id]);
+    inc(c);
+  end;
+  Session.Connection.CommitTrans;
+except
+  Session.Connection.RollbackTrans;
+  raise;
+end;
+
+//TODO: output new total unread
+
+]]OK:[[=c]]:[[
+
+qr:=TQueryResult.Create(Session.Connection,'select count(*) from UserPost where user_id=?',[Session.UserID]);
+try
+  Context.Send(qr.GetInt(0));
+finally
+  qr.Free;
+end;

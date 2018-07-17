@@ -1,0 +1,62 @@
+[[@DataLank,xxmSession,VBScript_RegExp_55_TLB,fCommon]][[!var
+qr:TQueryResult;
+id,rw:integer;
+s:string;
+rp1,rp2,rp3:IRegExp2;
+]][[
+Context.Include('dHead.xxmi');
+id:=Context['id'].AsInteger;
+qr:=TQueryResult.Create(Session.Connection,
+  'select P.*, S.label, S.color, S.readwidth'+
+  ' from Post P'+
+  ' inner join Subscription S on S.feed_id=P.feed_id and S.user_id=?'+
+  ' where P.id=?',[Session.UserID,id]);
+try
+  //TODO: sanitize HTML (either here or in eater
+  rw:=qr.GetInt('readwidth');
+  if rw=0 then s:='' else s:=' style="max-width:'+IntToStr(rw)+'em;"';
+  if rw<4 then rw:=32;
+  <<div style="padding-bottom:4pt;">
+  <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',qr.GetDate('pubdate'))]]">>=FormatDateTime('mm-dd hh:nn',qr.GetDate('pubdate'))<</div>
+  [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+  <b>>#qr['title']<</b>
+  </div>
+  <div[[#s]]>>
+
+  rp1:=CoRegExp.Create;
+  rp1.Pattern:='(<img[^>]+?)width=[^ >]+([^>]*?>)';
+  rp1.Global:=true;
+  rp1.IgnoreCase:=true;
+  rp2:=CoRegExp.Create;
+  rp2.Pattern:='(<img[^>]+?)height=[^ >]+([^>]*?>)';
+  rp2.Global:=true;
+  rp2.IgnoreCase:=true;
+  rp3:=CoRegExp.Create;
+  rp3.Pattern:='(<img)';
+  rp3.Global:=true;
+  rp3.IgnoreCase:=true;
+
+  Context.SendHTML(
+    rp3.Replace(
+    rp2.Replace(
+    rp1.Replace(
+      qr.GetStr('content')
+      ,'$1$2')//rp1
+      ,'$1$2')//rp2
+      ,'$1 style="width:60wv;max-width:'+IntToStr(rw-4)+'em;"')
+  );
+
+  <</div>
+  <div style="color:#9999AA;font-size:0.8em;margin-top:4pt;">>=qr['url']<</div>>
+finally
+  qr.Free;
+end;
+Context.Include('dFoot.xxmi');
+Session.Connection.BeginTrans;
+try
+  Session.Connection.Execute('delete from UserPost where user_id=? and post_id=?',[Session.UserID,id]);
+  Session.Connection.CommitTrans;
+except
+  Session.Connection.RollbackTrans;
+  raise;
+end;

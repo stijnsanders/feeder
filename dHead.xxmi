@@ -1,0 +1,30 @@
+[[@xxmSession]][[!var
+s:string;
+]][[
+
+if Session.UserID=0 then //if not Session.Authenticated then
+ begin
+  s:='/'+Context.ContextString(csLocalURL);
+  if (LowerCase(Copy(s,Length(s)-11,12))<>'/default.xxm') and (s<>'/') then
+    Context.Redirect('.',true);
+ end;
+
+<<!doctype html>
+<html>
+<head>
+<title>Feeder - RSS/Atom Feed Reader[[
+if Length(Values)<>0 then
+ begin
+  Context.SendHTML(' - ');
+  Context.Send(Values[0]);
+ end;
+<</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico" />
+<meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui" />
+<meta name="theme-color" content="#FFCC00" />
+<link href="https://fonts.googleapis.com/css?family=PT+Sans:400,700" rel="stylesheet">
+<link rel="stylesheet" type="text/css" href="feeder.css" />
+<script src="jquery-3.3.1.min.js"></script>
+[[if LowerCase(Context.ContextString(csLocalURL))='post.xxm' then begin <<base target="_blank">> end;]]
+</head>
+<body>

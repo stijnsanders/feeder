@@ -1,0 +1,142 @@
+[[@Classes,ActiveX,Variants,MSXML2_TLB,DataLank,xxmSession,fCommon]][[!var
+m:TStreamAdapter;
+d:DOMDocument60;
+
+const
+DefaultReadWidth=32;
+
+procedure DoOutlines(xl:IXMLDOMNodeList;const Group:string);
+var
+  x:IXMLDOMElement;
+  s,t:string;
+  qr:TQueryResult;
+  id,id1,i,j,l:integer;
+begin
+  x:=xl.nextNode as IXMLDOMElement;
+  while x<>nil do
+   begin
+    s:=VarToStr(x.getAttribute('xmlUrl'));
+    if s<>'' then
+     begin
+      Context.SendHTML('<p>'+HTMLEncode(s)+' ('+Group+')</p>');
+      Context.Flush;
+
+      t:='';//counter warning
+      qr:=TQueryResult.Create(Session.Connection,'select id, name from Feed where url=?',[s]);
+      try
+        if qr.EOF then id:=0 else
+         begin
+          id:=qr.GetInt(0);
+          t:=qr.GetStr(1);
+         end;
+      finally
+        qr.Free;
+      end;
+      if id=0 then
+       begin
+        t:=NameFromFeedURL(s);
+        id:=Session.Connection.Insert('Feed',['name',t,'url',s,'created',Now],'id');
+       end
+      else
+       begin
+        Session.Connection.Execute('insert into UserPost (user_id,post_id) select ?,id from Post where feed_id=? and pubDate>?',
+          [Session.UserID,id,Now-366.0]);
+       end;
+
+      qr:=TQueryResult.Create(Session.Connection,'select id from Subscription where user_id=? and feed_id=?',[Session.UserID,id]);
+      try
+        if qr.EOF then id1:=0 else id1:=qr.GetInt(0);
+      finally
+        qr.Free;
+      end;
+      if id1=0 then
+       begin
+        Session.Connection.Insert('Subscription',
+          ['user_id',Session.UserID
+          ,'feed_id',id
+          ,'label',t
+          ,'color',0//TODO
+          ,'category',Group
+          ,'readwidth',DefaultReadWidth//default
+          ,'created',Now
+          ],'id');
+       end
+      else
+       begin
+        //update category? (allow duplicates?)
+       end;
+
+      Context.SendHTML(['<p>',id,'</p>']);
+
+     end;
+
+    s:=VarToStr(x.getAttribute('title'));
+    if s='' then s:=Group else if Group<>'' then s:=Group+'\'+s;
+    DoOutlines(x.selectNodes('outline'),s);
+    x:=xl.nextNode as IXMLDOMElement;
+   end;
+end;
+
+]][[
+Context.Include('dHead.xxmi');
+
+case Context['x'].AsInteger of
+  0:
+   begin
+    <ul>
+    <li><a href="?x=1">import...</a></li>
+    <li><a href="?x=2">export...</a></li>
+    </ul>
+    <p><a href=".">back</a></p>
+   end;
+  1://import
+   begin
+    <form method="post" action="?" enctype="multipart/form-data">
+    <input type="hidden" name="x" value="3" />
+    <dl>
+    <dt>OPML file:</dt>
+    <dd><input type="file" name="f" /></dd>
+    </dl>
+    <p><input type="submit" value=" Upload " /></p>
+    </form>
+    <p><a href="?">back</a></p>
+   end;
+  2://export
+   begin
+    <<p><a href="OPML1.xxm">Click here do download your personal "subscriptions.opml"</p>>
+    <<p><a href="Feeds.xxm">back</a></p>>
+   end;
+  3://import upload
+   begin
+    m:=TStreamAdapter.Create(TMemoryStream.Create,soOwned);
+    try
+      (m as IUnknown)._AddRef;
+      (Context['f'] as IxxmParameterPostFile).SaveToStream(m);
+      m.Stream.Position:=0;
+      d:=CoDOMDocument60.Create;
+      d.async:=false;
+      if not d.load(m as IStream) then
+        raise Exception.Create(d.parseError.reason);
+      
+      Session.Connection.BeginTrans;
+      try
+        DoOutlines(d.documentElement.selectNodes('body/outline'),'');
+
+        Session.Connection.CommitTrans;
+      except
+        Session.Connection.RollbackTrans;
+        raise;
+      end;
+
+    finally
+      d:=nil;
+      //m.Free;
+      (m as IUnknown)._Release;
+    end;
+    <<p><a href=".">back</a></p>>
+   end;
+  else
+    raise Exception.Create('Unknown action');
+end;
+
+Context.Include('dFoot.xxmi');

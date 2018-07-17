@@ -1,0 +1,58 @@
+[[@xxmSession,DataLank]][[!var
+id,i,rw:integer;
+c,cat,lbl:string;
+]][[
+
+id:=Context['id'].AsInteger;
+case Context['x'].AsInteger of
+  1://update
+   begin
+    Session.Connection.BeginTrans;
+    try
+      lbl:=Context['label'].Value;
+      cat:=Context['category'].Value;
+      if cat='---' then cat:=Context['categoryNew'].Value;
+      try
+        c:=Context['color'].Value;
+        i:=StrToInt('$0'+c);
+        if i<$1000000 then
+          if Length(c)=3 then
+            c:=c[1]+c[1]+c[2]+c[2]+c[3]+c[3]
+          else
+            while Length(c)<6 do c:='0'+c
+        else
+          c:='0';
+      except
+        c:='';
+      end;
+      rw:=Context['readwidth'].AsInteger;
+      Session.Connection.Execute('update Subscription set'+
+        ' category=?,label=?,color=?,readwidth=?'+
+        ' where id=? and user_id=?',[cat,lbl,c,rw,id,Session.UserID]);
+      Session.Connection.CommitTrans;
+    except
+      Session.Connection.RollbackTrans;
+      raise;
+    end;
+    Context.Redirect('Feeds.xxm',true);
+   end;
+  2://remove
+   begin
+    Session.Connection.BeginTrans;
+    try
+      Session.Connection.Execute('delete from UserPost where id in'+
+        ' (select X.id from UserPost X'+
+        ' inner join Post P on P.id=X.post_id'+
+        ' inner join Subscription S on S.feed_id=P.feed_id and S.user_id=X.user_id'+
+        ' where X.user_id=? and P.feed_id=?)',[Session.UserID,id]);
+      Session.Connection.Execute('delete from Subscription where id=? and user_id=?',[id,Session.UserID]);
+      Session.Connection.CommitTrans;
+    except
+      Session.Connection.RollbackTrans;
+      raise;
+    end;
+    Context.Redirect('Feeds.xxm',true);
+   end
+  else
+    raise Exception.Create('Unknown action');
+end;
