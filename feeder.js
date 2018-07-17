@@ -3,8 +3,9 @@ function doResize(){
   x.width=window.innerWidth-x.offsetLeft*2;
   x.height=window.innerHeight-x.offsetTop*2.4;
 }
-function doPost(x){
-  if(window.event.ctrlKey||window.event.shiftKey)
+function doPost(x,event){
+  var e=(window.event||event);
+  if(e.ctrlKey||e.shiftKey)
     return true;
   else {
     document.body.style.overflow="hidden";

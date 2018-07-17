@@ -113,7 +113,7 @@ begin
     end;
    end
   else
-    raise Exception.Create('No session with that key "'+Key+'"');
+    raise Exception.Create('No session with that key "'+Key+'", please retry.');
 end;
 
 { TxxmSession }
