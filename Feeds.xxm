@@ -10,14 +10,20 @@ id:=Context['id'].AsInteger;
 if id=0 then
  begin
 
-  <<div style="position:fixed;top:0;right:1.2em;background-color:gold;padding:4pt;user-select:none;">
-  <b>Feeds</b><br />
-  <a href="New.xxm">Add...</a><br />
-  <a href="OPML.xxm">OPML...</a><br />
-  <a href="Logoff.xxm">Logoff...</a><br />
-  <hr />
-  <a href=".">Back...</a><br />
-  </div>>
+  <<div style="position:fixed;top:0;left:0em;background-color:gold;padding:4pt;user-select:none;">
+  <a href="."><img src="img_l.png" width="16" height="16" border="0" style="margin-bottom:-2pt;" alt="Back" /></a>
+  &nbsp;
+  <b>Feeds</b>:
+  &nbsp;<a href="New.xxm">Add</a>
+  &nbsp;<a href="OPML.xxm">OPML</a>
+  &nbsp;
+  |
+  &nbsp;
+  <a href="Logoff.xxm">Logoff</a>
+  </div>
+
+  <div style="height:1.5em;">&nbsp;</div>>
+
 
   qr:=TQueryResult.Create(Session.Connection,
     'select S.*, F.name, F.url'+
@@ -52,10 +58,8 @@ if id=0 then
     qr.Free;
   end;
 
-  <div style="margin-top:0.5em;">
-  <a href="New.xxm">Add...</a><br />
-  <a href=".">Back...</a><br />
-  </div>
+  <<div style="height:100vh;border-bottom:4px solid gold;"></div>>
+
 
  end
 else
@@ -101,7 +105,7 @@ else
     <dt>label color</dt>
     <dd>>#ColorPicker(qr.GetStr('color'))<</dd>
    <dt>read width</dt>
-    <dd><input type="text" name="readwidth" value="[[=qr['readwidth']]]" /> M-width</dd>
+    <dd><input type="text" name="readwidth" value="[[=qr['readwidth']]]" style="width:4em;" /> M-width</dd>
     </dl>
     <p><input type="submit" value="Update" /></p>
     </form>

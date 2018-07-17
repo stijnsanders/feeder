@@ -19,7 +19,7 @@ case Context['x'].AsInteger of
       <b>Attention:</b> URL to RSS/atom/RDF (//TODO: fetch feed URL from header &lt;link rel="?"&gt;)
       <br /><input type="text" name="url" style="width:80vw;" /></dd>
     <dt>name</dt>
-    <dd><input type="name" value="" /> (leave empty for default //TODO: from URL data)</dd>
+    <dd><input type="text" name="name" value="" /> (leave empty for default //TODO: from URL data)</dd>
     <dt>category</dt>
     <dd>
       <select name="category">>
@@ -41,7 +41,7 @@ case Context['x'].AsInteger of
     <dt>label color</dt>
     <dd>>#ColorPicker('CCCCCC')<</dd>
     <dt>read width</dt>
-    <dd><input type="text" name="readwidth" value="[[=integer(DefaultReadWidth)]]" /> M-width</dd>
+    <dd><input type="text" name="readwidth" value="[[=integer(DefaultReadWidth)]]" style="width:4em;" /> M-width</dd>
     </dl>
     </dl>
     <p><input type="submit" value="Add" /></p>
@@ -62,15 +62,15 @@ case Context['x'].AsInteger of
     qr:=TQueryResult.Create(Session.Connection,'select id, name from Feed where url=?',[s]);
     try
       if qr.EOF then id:=0 else
-        begin
+       begin
         id:=qr.GetInt(0);
-        if t='' then t:=qr.GetStr(1);
-        end;
+        t:=qr.GetStr(1);
+       end;
     finally
       qr.Free;
     end;
     if id=0 then
-      begin
+     begin
       if t='' then t:=NameFromFeedURL(s);
       id:=Session.Connection.Insert('Feed',['name',t,'url',s,'created',Now],'id');
       <<p>Feed added. Posts may not appear until first time the fetching schedule loaded current posts.</p>>

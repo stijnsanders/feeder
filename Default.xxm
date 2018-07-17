@@ -10,12 +10,14 @@ d1:TDateTime;
 if Session.UserID=0 then
  begin
   Context.Include('dHead.xxmi');
-  <<h1>feeder</h1>
+  <<h1 style="background-color:gold;">&nbsp;feeder</h1>
   <h2>a simple feed reader the way I like it</h2>
-  <h3>And I hope you do too</h3>
+  <h3>and I hope you do too</h3>
   <p>To authenticate, please login or register with <i>tx</i>:</p>
   <p><a href="/tx/Auth.xxm[[?'app','feeder','key',Session.Key]]" style="font-size:2em;font-weight:bold;font-style:italic;">tx...</a></p>
-  <hr />>
+  <p>More about feeder: <a href="https://github.com/stijnsanders/feeder">GitHub...</a></p>
+  <div style="border-bottom:4px solid gold;"></div>>
+
  end
 else
  begin
@@ -34,7 +36,7 @@ else
     qr.Free;
   end;
   <</span>
-  <a href="Feeds.xxm"><img src="img_c.png" width="16" height="16" border="0" alt="Feeds..." /></a>
+  &nbsp;<a href="Feeds.xxm"><img src="img_c.png" width="16" height="16" style="margin-bottom:-2pt;" border="0" alt="Feeds..." /></a>
   </div>
 
   <script src="feeder.js?v=3"></script>
@@ -50,6 +52,7 @@ else
   <script>
   window.open("about:blank","postview");
   document.body.onscroll=doScroll;
+  window.scrollTo(0,0);
   </script>>
   
   if cat='' then
@@ -134,7 +137,6 @@ else
 
   <<div style="height:100vh;border-bottom:4px solid gold;">
   //TODO: load more when scrolled down to here, for now <a href="?[[=Context.ContextString(csQueryString)]]">refresh!</a>
-  </div>
   </div>>
  end;
 
