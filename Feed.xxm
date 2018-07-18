@@ -1,13 +1,15 @@
 [[@xxmSession,DataLank]][[!var
 id,i,rw:integer;
 c,cat,lbl:string;
+db:TDataConnection;
 ]][[
 
 id:=Context['id'].AsInteger;
 case Context['x'].AsInteger of
   1://update
    begin
-    Session.Connection.BeginTrans;
+    db:=Session.Connection;
+    db.BeginTrans;
     try
       lbl:=Context['label'].Value;
       cat:=Context['category'].Value;
@@ -26,29 +28,30 @@ case Context['x'].AsInteger of
         c:='';
       end;
       rw:=Context['readwidth'].AsInteger;
-      Session.Connection.Execute('update Subscription set'+
+      db.Execute('update Subscription set'+
         ' category=?,label=?,color=?,readwidth=?'+
         ' where id=? and user_id=?',[cat,lbl,c,rw,id,Session.UserID]);
-      Session.Connection.CommitTrans;
+      db.CommitTrans;
     except
-      Session.Connection.RollbackTrans;
+      db.RollbackTrans;
       raise;
     end;
     Context.Redirect('Feeds.xxm',true);
    end;
   2://remove
    begin
-    Session.Connection.BeginTrans;
+    db:=Session.Connection;
+    db.BeginTrans;
     try
-      Session.Connection.Execute('delete from UserPost where id in'+
+      db.Execute('delete from UserPost where id in'+
         ' (select X.id from UserPost X'+
         ' inner join Post P on P.id=X.post_id'+
         ' inner join Subscription S on S.feed_id=P.feed_id and S.user_id=X.user_id'+
         ' where X.user_id=? and P.feed_id=?)',[Session.UserID,id]);
-      Session.Connection.Execute('delete from Subscription where id=? and user_id=?',[id,Session.UserID]);
-      Session.Connection.CommitTrans;
+      db.Execute('delete from Subscription where id=? and user_id=?',[id,Session.UserID]);
+      db.CommitTrans;
     except
-      Session.Connection.RollbackTrans;
+      db.RollbackTrans;
       raise;
     end;
     Context.Redirect('Feeds.xxm',true);

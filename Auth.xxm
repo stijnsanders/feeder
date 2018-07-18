@@ -1,7 +1,7 @@
-[[@xxmSession,DataLank,base64,sha3,Windows]][[!var
+[[@xxmSession,DataLank,base64,sha3,Windows,fCommon]][[!var
 verb:WideString;
-qr:TQueryResult;
 s:string;
+db:TDataConnection;
 ]][[
 verb:=Context.ContextString(csVerb);
 
@@ -18,8 +18,23 @@ if verb<>'POST' then
       ,Session.UserID
       ,Session.ID
       ])));
-    Session.Connection.Execute('update User set autologon=? where id=?',[s,Session.UserID]);
-    Context.SetCookie('feederAutoLogon',s,60*60*24*365,'','','',false,true);
+    db:=Session.Connection;
+    db.BeginTrans;
+    try
+      db.Insert('UserLogon',
+        ['user_id',Session.UserID
+        ,'key',s
+        ,'created',UtcNow
+        ,'last',UtcNow
+        ,'address',Context.ContextString(csRemoteAddress)
+        ,'useragent',Context.ContextString(csUserAgent)
+        ]);
+      Context.SetCookie('feederAutoLogon',s,60*60*24*365,'','','',false,true);
+      db.CommitTrans;
+    except
+      db.RollbackTrans;
+      raise;
+    end;
    end;
   Context.Redirect('.',true);
  end

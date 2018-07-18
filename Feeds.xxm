@@ -16,10 +16,10 @@ if id=0 then
   <b>Feeds</b>:
   &nbsp;<a href="New.xxm">Add</a>
   &nbsp;<a href="OPML.xxm">OPML</a>
+  &nbsp;<a href="Config.xxm"><img src="img_c.png" width="16" height="16" border="0" style="margin-bottom:-2pt;" alt="Settings..." /> Settings</a>
   &nbsp;
   |
-  &nbsp;
-  <a href="Logoff.xxm">Logoff</a>
+  &nbsp;<a href="Logoff.xxm">Logoff</a>
   </div>
 
   <div style="height:1.5em;">&nbsp;</div>>
@@ -46,7 +46,7 @@ if id=0 then
         c:=c1;
        end;
       <<div class="post">
-      <div class="date">>=FormatDateTime('yyyy-mm-dd',qr.GetDate('created'))<</div>
+      <div class="date">>=FormatDateTime('yyyy-mm-dd',qr.GetDate('created')+Session.TimeBias)<</div>
       [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
       <a href="?id=[[=qr['id']]]">"[[=qr['name']]]"&nbsp;<span style="color:#CCCCCC;">>=qr['url']<</span></a>
       [[if qr.GetInt('PostCount')<>0 then begin]]
@@ -80,7 +80,7 @@ else
     <dt>URL</dt>
     <dd>>=qr['url']]]&nbsp;<a href="[[=qr['url']]]" style="text-decoration:none;">&rarr;</a></dd>
     <dt>since</dt>
-    <dd>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))<</dd>
+    <dd>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created')+Session.TimeBias)<</dd>
     <dt>category</dt>
     <dd>
       <select name="category">>

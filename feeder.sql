@@ -23,8 +23,19 @@ id integer primary key autoincrement,
 login varchar(200) not null,
 name varchar(200) not null,
 email varchar(200) not null,
-autologon varchar(200) null,
+timezone int null,
 created datetime not null
+);
+
+create table UserLogon (
+id integer primary key autoincrement,
+user_id int not null,
+key varchar(200) not null,
+created datetime not null,
+last datetime not null,
+address varchar(50) not null,
+useragent varchar(200) not null,
+constraint FK_UserLogon_User foreign key (user_id) references User (id)
 );
 
 create table Subscription (

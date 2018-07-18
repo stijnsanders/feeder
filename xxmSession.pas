@@ -12,6 +12,7 @@ type
 
     Name:AnsiString;
     UserID:integer;
+    TimeBias:TDateTime;
 
     constructor Create(const ID: WideString; Context: IXxmContext);
 
@@ -35,7 +36,7 @@ threadvar
 
 implementation
 
-uses SysUtils, Windows, sha3, base64;
+uses SysUtils, Windows, sha3, base64, fCommon;
 
 var
   SessionStore:TStringList;
@@ -97,7 +98,7 @@ begin
           ['login',Login
           ,'name',Name
           ,'email',Email
-          ,'created',Now
+          ,'created',UtcNow
           ],'id');
        end
       else
@@ -122,6 +123,7 @@ constructor TXxmSession.Create(const ID: WideString; Context: IXxmContext);
 var
   qr:TQueryResult;
   s:string;
+  tz:integer;
 begin
   inherited Create;
   FID:=ID;
@@ -138,20 +140,36 @@ begin
   //default values
   Name:='';
   UserID:=0;
+  TimeBias:=0.0;
 
   s:=Context.Cookie['feederAutoLogon'];
   if s<>'' then
    begin
-    qr:=TQueryResult.Create(Connection,'select * from User where autologon=?',[s]);
+    Connection.BeginTrans;
     try
       //TODO: more checks? hash user-agent?
-      if qr.Read then
-       begin
-        Name:=qr.GetStr('name');
-        UserID:=qr.GetInt('id');
-       end;
-    finally
-      qr.Free;
+      qr:=TQueryResult.Create(Connection,'select U.*, L.id as LogonID from UserLogon L inner join User U on U.id=L.user_id',[s]);
+      try
+        if qr.Read then
+         begin
+          UserID:=qr.GetInt('id');
+          Name:=qr.GetStr('name');
+          //:=qr.GetStr('email');?
+          tz:=qr.GetInt('timezone');
+          TimeBias:=(tz div 100)/24.0+(tz mod 100)/1440.0;
+          Connection.Execute('update UserLogon set last=?,address=?,useragent=? where id=?',
+            [UtcNow
+            ,Context.ContextString(csRemoteAddress)
+            ,Context.ContextString(csUserAgent)
+            ,qr.GetInt('LogonID')]);
+         end;
+      finally
+        qr.Free;
+      end;
+      Connection.CommitTrans;
+    except
+      Connection.RollbackTrans;
+      raise;
     end;
    end;
 

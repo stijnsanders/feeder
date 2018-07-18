@@ -1,4 +1,15 @@
-[[@xxmSession]][[
+[[@xxmSession,DataLank]][[!var
+db:TDataConnection;
+]][[
+db:=Session.Connection;
+db.BeginTrans;
+try
+  db.Execute('delete from UserLogon where user_id=? and key=?',[Session.UserID,Context.Cookie['feederAutoLogon']]);
+  db.CommitTrans;
+except
+  db.RollbackTrans;
+  raise;
+end;
 Context.SetCookie('feederAutoLogon','',0,'','','',false,true);
 Session.UserID:=0;//??Abandon?
 Context.Redirect('.',true);

@@ -5,10 +5,11 @@ interface
 function NameFromFeedURL(const url:string):string;
 function ShowLabel(const Lbl,LblColor:string):string;
 function ColorPicker(const ValColor:string):string;
+function UtcNow:TDateTime;
 
 implementation
 
-uses SysUtils;
+uses Windows, SysUtils;
 
 function NameFromFeedURL(const url:string):string;
 var
@@ -139,6 +140,27 @@ begin
     inc(i,3);
    end;
   Result:=Result+'</select><script>doColorSelect(false);</script>';
+end;
+
+function UtcNow:TDateTime;
+var
+  st:TSystemTime;
+  tz:TTimeZoneInformation;
+  tx:cardinal;
+  bias:TDateTime;
+begin
+  GetLocalTime(st);
+  tx:=GetTimeZoneInformation(tz);
+  case tx of
+    0:bias:=tz.Bias/1440.0;
+    1:bias:=(tz.Bias+tz.StandardBias)/1440.0;
+    2:bias:=(tz.Bias+tz.DaylightBias)/1440.0;
+    else bias:=0.0;
+  end;
+  Result:=
+    EncodeDate(st.wYear,st.wMonth,st.wDay)+
+    EncodeTime(st.wHour,st.wMinute,st.wSecond,st.wMilliseconds)+
+    bias;
 end;
 
 end.

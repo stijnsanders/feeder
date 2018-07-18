@@ -1,6 +1,7 @@
 [[@Classes,ActiveX,Variants,MSXML2_TLB,DataLank,xxmSession,fCommon]][[!var
 m:TStreamAdapter;
 d:DOMDocument60;
+db:TDataConnection;
 
 const
 DefaultReadWidth=32;
@@ -21,8 +22,10 @@ begin
       Context.SendHTML('<p>'+HTMLEncode(s)+' ('+Group+')</p>');
       Context.Flush;
 
+      db:=Session.Connection;
+
       t:='';//counter warning
-      qr:=TQueryResult.Create(Session.Connection,'select id, name from Feed where url=?',[s]);
+      qr:=TQueryResult.Create(db,'select id, name from Feed where url=?',[s]);
       try
         if qr.EOF then id:=0 else
          begin
@@ -35,15 +38,15 @@ begin
       if id=0 then
        begin
         t:=NameFromFeedURL(s);
-        id:=Session.Connection.Insert('Feed',['name',t,'url',s,'created',Now],'id');
+        id:=db.Insert('Feed',['name',t,'url',s,'created',Now],'id');
        end
       else
        begin
-        Session.Connection.Execute('insert into UserPost (user_id,post_id) select ?,id from Post where feed_id=? and pubDate>?',
+        db.Execute('insert into UserPost (user_id,post_id) select ?,id from Post where feed_id=? and pubDate>?',
           [Session.UserID,id,Now-366.0]);
        end;
 
-      qr:=TQueryResult.Create(Session.Connection,'select id from Subscription where user_id=? and feed_id=?',[Session.UserID,id]);
+      qr:=TQueryResult.Create(db,'select id from Subscription where user_id=? and feed_id=?',[Session.UserID,id]);
       try
         if qr.EOF then id1:=0 else id1:=qr.GetInt(0);
       finally
@@ -51,7 +54,7 @@ begin
       end;
       if id1=0 then
        begin
-        Session.Connection.Insert('Subscription',
+        db.Insert('Subscription',
           ['user_id',Session.UserID
           ,'feed_id',id
           ,'label',t
@@ -118,13 +121,14 @@ case Context['x'].AsInteger of
       if not d.load(m as IStream) then
         raise Exception.Create(d.parseError.reason);
       
-      Session.Connection.BeginTrans;
+      db:=Session.Connection;
+      db.BeginTrans;
       try
         DoOutlines(d.documentElement.selectNodes('body/outline'),'');
 
-        Session.Connection.CommitTrans;
+        db.CommitTrans;
       except
-        Session.Connection.RollbackTrans;
+        db.RollbackTrans;
         raise;
       end;
 

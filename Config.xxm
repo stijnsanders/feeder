@@ -1,0 +1,104 @@
+[[@DataLank,xxmSession]][[!var
+db:TDataConnection;
+qr:TQueryResult;
+i,tz:integer;
+s,t:string;
+]][[
+
+Context.Include('dHead.xxmi');
+
+<<div style="position:fixed;top:0;left:0em;background-color:gold;padding:4pt;user-select:none;">
+<a href="Feeds.xxm"><img src="img_l.png" width="16" height="16" border="0" style="margin-bottom:-2pt;" alt="Back" /></a>
+&nbsp;
+<b>Settings</b>
+&nbsp;
+</div>
+
+<div style="height:1.5em;">&nbsp;</div>>
+
+db:=Session.Connection;
+case Context['x'].AsInteger of
+  0:
+   begin
+    qr:=TQueryResult.Create(db,'select * from User',[Session.UserID]);
+    try
+      tz:=qr.GetInt('timezone');
+      <<form method="post">
+      <input type="hidden" name="x" value="1" />
+      <dl>
+      <dt>time zone</dt>
+      <dd>
+      <select name="z1">>
+      for i:=-14 to +12 do
+      begin
+        if i<0 then s:='' else s:='+';
+        if i=tz div 100 then t:=' selected="1"' else t:='';
+        <<option[[#t]]>>=s+Format('%.2d',[i])<</option>>
+      end;
+      <</select>
+      :
+      <select name="z2">>
+      for i:=0 to 3 do
+      begin
+        if (i*15=tz mod 100) or (-i*15=tz mod 100) then t:=' selected="1"' else t:='';
+        <<option[[#t]]>>=Format('%.2d',[i*15])<</option>>
+      end;
+      <</select>
+      //TODO: full list, DST support
+      </dd>
+      <p><input type="submit" value=" Apply " /></p>
+      </form>>
+    finally
+      qr.Free;
+    end;
+    <<p><b>previous logins:</b></p>>
+    qr:=TQueryResult.Create(db,'select * from UserLogon where user_id=? order by last desc',[Session.UserID]);
+    try
+      while qr.Read do
+       begin
+        <<div class="post">
+        <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',qr.GetDate('last')+Session.TimeBias)<</div>
+        [[=qr['address']]]
+        "[[=qr['useragent']]]"
+        <a href="[[?'x',2,'id',qr['id']]]" style="color:#0000CC;">[revoke]</a>
+        </div>>
+       end;
+    finally
+      qr.Free;
+    end;
+   end;
+  1://update
+   begin
+    db.BeginTrans;
+    try
+      tz:=Context['z1'].AsInteger;
+      if tz<0 then tz:=tz*100-Context['z2'].AsInteger else tz:=tz*100+Context['z2'].AsInteger;
+      db.Execute('update User set timezone=? where id=?',
+        [tz
+        ,Session.UserID  
+        ]);
+      Session.TimeBias:=(tz div 100)/24.0+(tz mod 100)/1440.0;
+      db.CommitTrans;
+    except
+      db.RollbackTrans;
+      raise;
+    end;
+    <<p>Settings updated</p>>
+   end;
+  2://revoke
+   begin
+    db.BeginTrans;
+    try
+      db.Execute('delete from UserLogon where user_id=? and id=?',[Session.UserID,Context['id'].AsInteger]);
+      db.CommitTrans;
+    except
+      db.RollbackTrans;
+      raise;
+    end;
+    <<p>Auto-logon revoked</p>>
+   end;
+  //3:
+  else raise Exception.Create('Unknown action');
+end;
+
+Context.Include('dFoot.xxmi');

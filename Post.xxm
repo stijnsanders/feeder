@@ -3,10 +3,13 @@ qr:TQueryResult;
 id,rw:integer;
 s:string;
 rp1,rp2,rp3:IRegExp2;
+db:TDataConnection;
+d1:TDateTime;
 ]][[
 Context.Include('dHead.xxmi');
 id:=Context['id'].AsInteger;
-qr:=TQueryResult.Create(Session.Connection,
+db:=Session.Connection;
+qr:=TQueryResult.Create(db,
   'select P.*, S.label, S.color, S.readwidth'+
   ' from Post P'+
   ' inner join Subscription S on S.feed_id=P.feed_id and S.user_id=?'+
@@ -16,8 +19,9 @@ try
   rw:=qr.GetInt('readwidth');
   if rw=0 then s:='' else s:=' style="max-width:'+IntToStr(rw)+'em;"';
   if rw<4 then rw:=32;
+  d1:=qr.GetDate('pubdate')+Session.TimeBias;
   <<div style="padding-bottom:4pt;">
-  <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',qr.GetDate('pubdate'))]]">>=FormatDateTime('mm-dd hh:nn',qr.GetDate('pubdate'))<</div>
+  <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('mm-dd hh:nn',d1)<</div>
   [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
   <b>>#qr['title']<</b>
   </div>
@@ -52,11 +56,11 @@ finally
   qr.Free;
 end;
 Context.Include('dFoot.xxmi');
-Session.Connection.BeginTrans;
+db.BeginTrans;
 try
-  Session.Connection.Execute('delete from UserPost where user_id=? and post_id=?',[Session.UserID,id]);
-  Session.Connection.CommitTrans;
+  db.Execute('delete from UserPost where user_id=? and post_id=?',[Session.UserID,id]);
+  db.CommitTrans;
 except
-  Session.Connection.RollbackTrans;
+  db.RollbackTrans;
   raise;
 end;

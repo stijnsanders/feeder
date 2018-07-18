@@ -2,9 +2,11 @@
 i,l,id,c:integer;
 s:string;
 qr:TQueryResult;
+db:TDataConnection;
 ]][[
 Context.ContentType:='text/plain';
-Session.Connection.BeginTrans;
+db:=Session.Connection;
+db.BeginTrans;
 try
   s:=Context.ContextString(csQueryString);//Context['p'].Value;
   l:=Length(s);
@@ -23,12 +25,12 @@ try
         raise Exception.Create('invalid data');
       inc(i);
       end;
-    Session.Connection.Execute('delete from UserPost where user_id=? and post_id=?',[Session.UserID,id]);
+    db.Execute('delete from UserPost where user_id=? and post_id=?',[Session.UserID,id]);
     inc(c);
   end;
-  Session.Connection.CommitTrans;
+  db.CommitTrans;
 except
-  Session.Connection.RollbackTrans;
+  db.RollbackTrans;
   raise;
 end;
 
@@ -36,7 +38,7 @@ end;
 
 ]]OK:[[=c]]:[[
 
-qr:=TQueryResult.Create(Session.Connection,'select count(*) from UserPost where user_id=?',[Session.UserID]);
+qr:=TQueryResult.Create(db,'select count(*) from UserPost where user_id=?',[Session.UserID]);
 try
   Context.Send(qr.GetInt(0));
 finally
