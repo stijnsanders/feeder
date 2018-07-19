@@ -1,10 +1,6 @@
 [[@xxmSession,DataLank,fCommon]][[!var
 qr:TQueryResult;
-cat,sql:string;
-xx:array of OleVariant;
-f,d,d0,l:integer;
-d1:TDateTime;
-
+s:string;
 ]][[
 
 if Session.UserID=0 then
@@ -23,11 +19,13 @@ else
  begin
   Context.Include('dHead.xxmi',[true]);
 
-  cat:=Context['c'].Value;
-  f:=Context['f'].AsInteger;
-
   <<div style="z-index:5;position:fixed;top:0;right:1.2em;background-color:gold;padding:4pt;">
-  [[if (cat<>'') or (f<>0) then begin <<a href="." style="font-weight:bold;">&larr;All</a><br />> end;]]
+  [[
+  if (Context['c'].Value<>'') or (Context['f'].Value<>'') then
+   begin
+    <<a href="." style="font-weight:bold;">&larr;All</a><br />>
+   end;
+  ]]
   <span id="postcount">>
   qr:=TQueryResult.Create(Session.Connection,'select count(*) from UserPost where user_id=?',[Session.UserID]);
   try
@@ -39,7 +37,7 @@ else
   &nbsp;<a href="Feeds.xxm"><img src="img_c.png" width="16" height="16" style="margin-bottom:-2pt;" border="0" alt="Feeds..." /></a>
   </div>
 
-  <script src="feeder.js?v=3"></script>
+  <script src="feeder.js?v=4"></script>
   <div id="black" style="z-index:6;position:fixed;display:none;top:0;left:0;width:100vw;height:100vh;background-color:black;filter:opacity(0.5);user-select:none;" onclick="return doClose();"></div>
   <div id="postbox" class="postbox" style="z-index:8;position:fixed;display:none;top:0.5em;right:1em;user-select:none;">>
     <<a href="#" onclick="return doHere();"><img src="img_d.png" width="16" height="16" alt="load here" /></a>>
@@ -54,101 +52,31 @@ else
   document.body.onscroll=doScroll;
   window.scrollTo(0,0);
   </script>>
-  
-  sql:=
-    'select S.label, S.color, S.readwidth, P.*, X.id as ReadID'+
-    ' from Subscription S'+
-    ' inner join Post P on P.feed_id=S.feed_id'+
-    ' inner join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
-    ' where S.user_id=?';
 
-  if cat='' then
-    if f=0 then
-      if Context['search'].Value='' then
-       begin
-
-        qr:=TQueryResult.Create(Session.Connection,
-          'select distinct S.Category from Subscription S where S.user_id=? and S.Category<>'''' order by 1',[Session.UserID]);
-        try
-          if not qr.EOF then
-          begin
-            <<div style="padding-bottom:2pt;">
-            <div class="date">>=FormatDateTime('mm-dd hh:nn',UtcNow+Session.TimeBias)<</div>
-            [[
-            while qr.Read do
-            begin
-              cat:=qr.GetStr(0);
-              <<div class="catlink"><a href="?c=[[=cat]]">>=cat<</a></div>
-              [[
-            end;
-            <</div>>
-          end;
-        finally
-          qr.Free;
-        end;
-
-        SetLength(xx,1);
-        xx[0]:=Session.UserID;
-       end
-      else
-       begin
-        sql:=
-          'select S.label, S.color, S.readwidth, P.*, X.id as ReadID'+
-          ' from Subscription S'+
-          ' inner join Post P on P.feed_id=S.feed_id'+
-          ' left outer join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
-          ' where S.user_id=? and P.title||'' ''||P.content like ?';
-        SetLength(xx,2);
-        xx[0]:=Session.UserID;
-        xx[1]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
-       end
-    else
-     begin
-      sql:=sql+' and S.feed_id=?';
-      SetLength(xx,2);
-      xx[0]:=Session.UserID;
-      xx[1]:=f;
-     end
-  else 
+  if (Context['c'].Value='') and (Context['f'].Value='') and (Context['search'].Value='') then
    begin
-    sql:=sql+' and S.category=?';
-    SetLength(xx,2);
-    xx[0]:=Session.UserID;
-    xx[1]:=cat;
+    qr:=TQueryResult.Create(Session.Connection,
+      'select distinct S.Category from Subscription S where S.user_id=? and S.Category<>'''' order by 1',[Session.UserID]);
+    try
+      if not qr.EOF then
+      begin
+        <<div style="padding-bottom:2pt;">
+        <div class="date">>=FormatDateTime('mm-dd hh:nn',UtcNow+Session.TimeBias)<</div>
+        [[
+        while qr.Read do
+        begin
+          s:=qr.GetStr(0);
+          <<div class="catlink"><a href="?c=[[=s]]">>=s<</a></div>
+          [[
+        end;
+        <</div>>
+      end;
+    finally
+      qr.Free;
+    end;
    end;
-  
-  if Context['q'].Value='' then l:=0 else l:=Context['q'].AsInteger;
-  if l=0 then l:=200;//default
 
-  qr:=TQueryResult.Create(Session.Connection,
-    sql+' order by P.pubdate desc limit '+IntToStr(l),xx);
-  try
-    d:=0;
-    while qr.Read do
-     begin
-      d1:=qr.GetDate('pubdate')+Session.TimeBias;
-      d0:=Trunc(d1);
-      if d0<>d then
-       begin
-        <<div>
-        <div class="date">>=FormatDateTime('ddd yyyy-mm-dd',d1)<</div>
-        </div>>
-        d:=d0;
-       end;
-      <<div class="post[[if qr.IsNull('ReadID') then Context.SendHTML('read');]]" id="p[[=qr['id']]]">
-      <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('hh:nn',d1)<</div>
-      [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
-      <a href="[[=qr['url']]]" postqs="[[?'id',qr['id']]]" onclick="return doPost(this,event);">>#qr['title']<</a>
-      </div>>
-     end;
-  finally
-    qr.Free;
-  end;
-
-
-  <<div style="height:100vh;border-bottom:4px solid gold;">
-  //TODO: load more when scrolled down to here, for now <a href="?[[=Context.ContextString(csQueryString)]]">refresh!</a>
-  </div>>
+  Context.Include('Posts.xxmi');
  end;
 
 Context.Include('dFoot.xxmi');

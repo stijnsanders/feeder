@@ -11,7 +11,7 @@ var
   x:IXMLDOMElement;
   s,t:string;
   qr:TQueryResult;
-  id,id1,i,j,l:integer;
+  id,id1:integer;
 begin
   x:=xl.nextNode as IXMLDOMElement;
   while x<>nil do
@@ -38,12 +38,12 @@ begin
       if id=0 then
        begin
         t:=NameFromFeedURL(s);
-        id:=db.Insert('Feed',['name',t,'url',s,'created',Now],'id');
+        id:=db.Insert('Feed',['name',t,'url',s,'created',UtcNow],'id');
        end
       else
        begin
         db.Execute('insert into UserPost (user_id,post_id) select ?,id from Post where feed_id=? and pubDate>?',
-          [Session.UserID,id,Now-366.0]);
+          [Session.UserID,id,UtcNow-366.0]);
        end;
 
       qr:=TQueryResult.Create(db,'select id from Subscription where user_id=? and feed_id=?',[Session.UserID,id]);
@@ -61,7 +61,7 @@ begin
           ,'color',0//TODO
           ,'category',Group
           ,'readwidth',DefaultReadWidth//default
-          ,'created',Now
+          ,'created',UtcNow
           ],'id');
        end
       else

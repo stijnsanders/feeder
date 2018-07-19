@@ -58,7 +58,7 @@ if id=0 then
     qr.Free;
   end;
 
-  <<div style="height:100vh;border-bottom:4px solid gold;"></div>>
+  <<div id="trailer" style="height:100vh;border-bottom:4px solid gold;"></div>>
 
 
  end

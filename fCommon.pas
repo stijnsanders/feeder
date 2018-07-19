@@ -61,21 +61,30 @@ var
   c:string;
   i,j,k:integer;
 begin
-  if Length(LblColor)<>6 then c:='EEEEEE' else c:=LblColor;
-  try
-    i:=StrToInt('$0'+c);
-  except
-    i:=$EEEEEE;
-  end;
-  k:=(i and $FF);
-  j:=k;
-  i:=i shr 8;
-  k:=i and $FF;
-  inc(j,k*4);
-  i:=i shr 8;
-  k:=i and $FF;
-  inc(j,k*3);
-  if j<=770 then c:=c+';color:#DDDDDD;';
+  c:=LblColor;
+  if LowerCase(c)='ffffff' then c:='-666666';
+  if not((Length(c)=6) or ((Length(c)=7) and (c[1]='-'))) then c:='EEEEEE';
+  if c[1]='-' then
+   begin
+    c:='FFFFFF;color:#'+Copy(c,2,6)+';border:1px solid #'+Copy(c,2,6);   
+   end
+  else
+   begin
+    try
+      i:=StrToInt('$0'+c);
+    except
+      i:=$EEEEEE;
+    end;
+    k:=(i and $FF);
+    j:=k;
+    i:=i shr 8;
+    k:=i and $FF;
+    inc(j,k*4);
+    i:=i shr 8;
+    k:=i and $FF;
+    inc(j,k*3);
+    if j<=770 then c:=c+';color:#DDDDDD';
+   end;
   Result:='<div class="label" style="background-color:#'+c+';">'+HTMLEncode(Lbl)+'</div>';
 end;
 

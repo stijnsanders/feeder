@@ -1,10 +1,19 @@
-[[@xxmSession,DataLank]][[!var
+[[@xxmSession,DataLank,fCommon]][[!var
 qr:TQueryResult;
-c,c1:string;
+c,c1,d:string;
+d1:TDateTime;
+dy,dm,dd:word;
+const
+dow:array[0..6] of string=('Mon','Tue','Wed','Thu','Fri','Sat','Sun');
+mon:array[0..11] of string=('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
 ]][[
 Context.ContentType:='application/xml';
 Context.AutoEncoding:=aeUtf8;
 Context.DispositionAttach('subscriptions.opml');
+
+d1:=UtcNow;
+DecodeDate(d1,dy,dm,dd);
+d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+FormatDateTime(' hh:nn:ss',d1)+' GMT';
 
 <<?xml version="1.0" encoding="UTF-8"?>
 <opml version="1.1">
@@ -12,11 +21,10 @@ Context.DispositionAttach('subscriptions.opml');
     <title>Feeder - a simple feed reader</title>>
     qr:=TQueryResult.Create(Session.Connection,'select * from User where id=?',[Session.UserID]);
     try
-      <<ownerName>>=qr['name']<</ownerName>>
-      <<ownerEmail>>=qr['email']<</ownerEmail>>
-
-      //<dateCreated>Tue, 26 Jun 2018 20:44:13 GMT</dateCreated>
-      //<dateModified>Tue, 26 Jun 2018 20:44:13 GMT</dateModified>
+      <<ownerName>>=qr['name']<</ownerName>
+      <ownerEmail>>=qr['email']<</ownerEmail>
+      <dateCreated>>=d<</dateCreated>
+      <dateModified>>=d<</dateModified>>
     finally
       qr.Free;
     end;
