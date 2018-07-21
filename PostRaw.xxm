@@ -1,0 +1,28 @@
+[[@DataLank,xxmSession,VBScript_RegExp_55_TLB,fCommon]][[!var
+qr:TQueryResult;
+id:integer;
+db:TDataConnection;
+d1:TDateTime;
+]][[
+Context.Include('dHead.xxmi');
+id:=Context['id'].AsInteger;
+db:=Session.Connection;
+qr:=TQueryResult.Create(db,
+  'select P.*, S.label, S.color, S.readwidth'+
+  ' from Post P'+
+  ' inner join Subscription S on S.feed_id=P.feed_id and S.user_id=?'+
+  ' where P.id=?',[Session.UserID,id]);
+try
+  //TODO: sanitize HTML (either here or in eater)
+  d1:=qr.GetDate('pubdate')+Session.TimeBias;
+  <<div style="padding-bottom:4pt;">
+  <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('mm-dd hh:nn',d1)<</div>
+  [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+  <b>>=qr['title']<</b>
+  </div>
+  <div>>=qr['content']<</div>
+  <div style="color:#9999AA;font-size:0.8em;margin-top:4pt;">>=qr['url']<</div>>
+finally
+  qr.Free;
+end;
+Context.Include('dFoot.xxmi');

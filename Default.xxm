@@ -17,7 +17,7 @@ if Session.UserID=0 then
  end
 else
  begin
-  Context.Include('dHead.xxmi',[true]);
+  Context.Include('dHead.xxmi');
 
   <<div style="z-index:5;position:fixed;top:0;right:1.2em;background-color:gold;padding:4pt;">
   [[

@@ -1,0 +1,60 @@
+[[@DataLank,xxmSession]][[!var
+qr:TQueryResult;
+a:double;
+]][[
+
+qr:=TQueryResult.Create(Session.Connection,
+  'select * from Feed F'
+  +' left outer join ('
+  +'   select X.feed_id, max(X.pubdate) as pl, avg(X.pd) as pa'
+  +'   from('
+  +'     select'
+  +'     P1.feed_id, P1.pubdate, min(P2.pubdate-P1.pubdate) as pd'
+  +'     from Post P1'
+  +'     inner join Post P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
+  +'     group by P1.feed_id, P1.pubdate'
+  +'   ) X'
+  +'   group by X.feed_id'
+  +' ) X on X.feed_id=F.id'
+);
+try
+  <<style>
+  TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;border:1px solid #CCCCCC;}
+  </style>
+  <table cellspacing="0" cellpadding="4" border="1">
+  <tr>
+  <th>&nbsp;</th>
+  <th>name</th>
+  <th>created</th>
+  <th>post:last</th>
+  <th>post:avg</th>
+  <th>load:last</th>
+  <th>load:new</th>
+  <th>load:items</th>
+  <th>regime</th>
+  </tr>>
+  while qr.Read do
+   begin
+    <<tr>
+    <td style="text-align:right;">>=qr['id']<</td>
+    <td><a href="[[=qr['url']]]">>=qr['name']<</a></td>
+    <td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))<</td>
+    <td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('pl'))<</td>>
+    if qr.IsNull('pa') then a:=0 else a:=qr['pa'];
+    if a=0.0 then
+     begin <<td>&nbsp;</td>> end
+    else
+    if a>1.0 then
+     begin <<td style="text-align:right;">>=Round(a)]]d</td>> end
+    else
+     begin <<td style="text-align:right;">>=Round(double(qr['pa'])*1440.0)]]'</td>> end;
+    <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('loadlast'))<</td>
+    <td style="text-align:right;">>=qr['loadcount']<</td>
+    <td style="text-align:right;">>=qr['itemcount']<</td>
+    <td style="text-align:right;">>=qr['regime']<</td>
+    </tr>>
+   end;
+  <</table>>
+finally
+  qr.Free;
+end;

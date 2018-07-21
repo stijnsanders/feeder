@@ -95,6 +95,7 @@ case Context['x'].AsInteger of
       db.RollbackTrans;
       raise;
     end;
+    //TODO: kill live sessions
     <<p>Auto-logon revoked</p>>
    end;
   //3:

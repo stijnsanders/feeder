@@ -13,7 +13,7 @@ f:=Context['f'].AsInteger;
 loadMore:=Length(Values)<>0;
 
 sql:=
-  'select S.label, S.color, S.readwidth, P.*, X.id as ReadID'+
+  'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
   ' from Subscription S'+
   ' inner join Post P on P.feed_id=S.feed_id'+
   ' inner join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
@@ -31,7 +31,7 @@ if cat='' then
     else
      begin
       sql:=
-        'select S.label, S.color, S.readwidth, P.*, X.id as ReadID'+
+        'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
         ' from Subscription S'+
         ' inner join Post P on P.feed_id=S.feed_id'+
         ' left outer join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+

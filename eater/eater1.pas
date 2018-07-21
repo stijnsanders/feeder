@@ -458,25 +458,36 @@ begin
   ;
 end;
 
-procedure DoFeed(db:TDataConnection;id:integer;const url:string);
+procedure DoFeed(db:TDataConnection;qr:TQueryResult);
 var
   r:ServerXMLHTTP60;
   doc:DOMDocument60;
   xl,xl1:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
-  itemid,itemurl:string;
-  title,content:WideString;
-  pubDate:TDateTime;
+  feedid:integer;
+  feedurl,feedresult,itemid,itemurl:string;
+  feedname,title,content:WideString;
+  feedload,pubDate:TDateTime;
+  feedregime:integer;
   b:boolean;
-  rc,c1,c2,pid:integer;
+  rc,c1,c2,postid:integer;
+const
+  regimesteps=7;
+  regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90);
+
   procedure regItem;
   var
     qr:TQueryResult;
     b:boolean;
   begin
+    if Copy(itemid,1,7)='http://' then
+      itemid:=Copy(itemid,8,Length(itemid)-7)
+    else
+      if Copy(itemid,1,8)='https://' then
+        itemid:=Copy(itemid,9,Length(itemid)-8);
     if pubDate<OldPostsCutOff then b:=false else
      begin
-      qr:=TQueryResult.Create(db,'select id from Post where feed_id=? and guid=?',[id,itemid]);
+      qr:=TQueryResult.Create(db,'select id from Post where feed_id=? and guid=?',[feedid,itemid]);
       try
         b:=qr.EOF;
       finally
@@ -487,8 +498,8 @@ var
     if b then
      begin
       inc(c2);
-      pid:=db.Insert('Post',
-        ['feed_id',id
+      postid:=db.Insert('Post',
+        ['feed_id',feedid
         ,'guid',itemid
         ,'title',SanitizeTitle(title)
         ,'content',content
@@ -497,200 +508,291 @@ var
         ,'created',UtcNow
         ],'id');
       db.Execute('insert into UserPost (user_id,post_id)'+
-        ' select S.user_id,? from Subscription S where S.feed_id=?',[pid,id]);
+        ' select S.user_id,? from Subscription S where S.feed_id=?',[postid,feedid]);
      end;
   end;
+var
+  d:TDateTime;
+  i:integer;
 begin
-  Write(IntToStr(id)+':'+url);
+  feedid:=qr.GetInt('id');
+  feedurl:=qr.GetStr('url');
+  feedload:=UtcNow;
+  feedname:=qr.GetStr('name');
+  feedregime:=qr.GetInt('regime');
+  feedresult:='';
 
-  r:=CoServerXMLHTTP60.Create;
-  b:=true;
-  rc:=0;
-  itemurl:=url;
-  while b do
-   begin
-    b:=false;
-    r.open('GET',itemurl,false,EmptyParam,EmptyParam);
-    r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, text/xml');
-    r.setRequestHeader('Cache-Control','max-age=0');
-    if Pos('tumblr.com',itemurl)<>0 then
-     begin
-      r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x'+
-        '64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safar'+
-        'i/537.36');
-      r.setRequestHeader('Cookie','_ga=GA1.2.23714421.1433010142; rxx=2kenj37'+
-        'frug.zcwv3sm&v=1; __utma=189990958.23714421.1433010142.1515355375.15'+
-        '15513281.39; tmgioct=5b490b2e517e660612702270; pfg=324066a0306b92f0b'+
-        '5346487b1309edb56a909231a6bc33a78f47993e4b695ef%23%7B%22eu_resident%'+
-        '22%3A1%2C%22gdpr_is_acceptable_age%22%3A1%2C%22gdpr_consent_core%22%'+
-        '3A1%2C%22gdpr_consent_first_party_ads%22%3A1%2C%22gdpr_consent_third'+
-        '_party_ads%22%3A1%2C%22gdpr_consent_search_history%22%3A1%2C%22exp%2'+
-        '2%3A1563049750%2C%22vc%22%3A%22%22%7D%238216174849');
-     end
+  Write(IntToStr(feedid)+':'+feedurl);
+
+  //check feed timing and regime
+  if qr.IsNull('pl') then
+    if qr.IsNull('loadlast') then
+      d:=feedload-5.0/1440.0
     else
-      r.setRequestHeader('User-Agent','FeedEater/1.0');
-    r.send(EmptyParam);
-    if r.status=301 then //moved permanently
-     begin
-      itemurl:=r.getResponseHeader('Location');
-      b:=true;
-      inc(rc);
-      if rc=8 then
-        raise Exception.Create('max redirects exceeded');
-     end;
+      d:=qr.GetDate('loadlast')+feedregime
+  else
+   begin
+    d:=qr.GetDate('pl')+double(qr['pa'])-5.0/1440.0;
+    if not(qr.IsNull('loadlast')) and (d<qr.GetDate('loadlast')) then
+      d:=qr.GetDate('loadlast')+feedregime;
    end;
-  if r.status<>200 then
-    raise Exception.Create('HTTP:'+IntToStr(r.status)+' '+r.statusText);
-
-  if itemurl<>url then
-    db.Update('Feed',['id',id,'url',itemurl]);
-
-  //doc:=r.responseXML as DOMDocument40;
+  b:=d<feedload;
 
   c1:=0;
   c2:=0;
-  doc:=CoDOMDocument60.Create;
-  doc.async:=false;
-  doc.validateOnParse:=false;
-  doc.resolveExternals:=false;
-
-  //SaveFile(id,#$FE#$FF+r.responseText);
-
-  if doc.loadXML(r.responseText) then
+  if b then
    begin
-    if SaveData then
-      doc.save('xmls\'+Format('%.4d',[id])+'.xml');
+    try
+      rc:=0;
+      r:=CoServerXMLHTTP60.Create;
+      while b do
+       begin
+        b:=false;
+        r.open('GET',feedurl,false,EmptyParam,EmptyParam);
+        r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, text/xml');
+        r.setRequestHeader('Cache-Control','max-age=0');
+        if Pos('tumblr.com',feedurl)<>0 then
+         begin
+          r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x'+
+            '64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safar'+
+            'i/537.36');
+          r.setRequestHeader('Cookie','_ga=GA1.2.23714421.1433010142; rxx=2kenj37'+
+            'frug.zcwv3sm&v=1; __utma=189990958.23714421.1433010142.1515355375.15'+
+            '15513281.39; tmgioct=5b490b2e517e660612702270; pfg=324066a0306b92f0b'+
+            '5346487b1309edb56a909231a6bc33a78f47993e4b695ef%23%7B%22eu_resident%'+
+            '22%3A1%2C%22gdpr_is_acceptable_age%22%3A1%2C%22gdpr_consent_core%22%'+
+            '3A1%2C%22gdpr_consent_first_party_ads%22%3A1%2C%22gdpr_consent_third'+
+            '_party_ads%22%3A1%2C%22gdpr_consent_search_history%22%3A1%2C%22exp%2'+
+            '2%3A1563049750%2C%22vc%22%3A%22%22%7D%238216174849');
+         end
+        else
+          r.setRequestHeader('User-Agent','FeedEater/1.0');
+        r.send(EmptyParam);
+        if r.status=301 then //moved permanently
+         begin
+          feedurl:=r.getResponseHeader('Location');
+          b:=true;
+          inc(rc);
+          if rc=8 then
+            raise Exception.Create('max redirects exceeded');
+         end;
+       end;
+      if r.status<>200 then
+        feedresult:='[HTTP:'+IntToStr(r.status)+']'+r.statusText;
+    except
+      on e:Exception do
+        feedresult:='['+e.ClassName+']'+e.Message;
+    end;
+
+    //if SaveData here?
 
     db.BeginTrans;
     try
 
-      //atom
-      if doc.documentElement.nodeName='feed' then
-       begin
-        doc.setProperty('SelectionNamespaces','xmlns:atom=''http://www.w3.org/2005/Atom''');
+      if feedresult='' then
+        try
 
-        xl:=doc.documentElement.selectNodes('atom:entry');
-        x:=xl.nextNode as IXMLDOMElement;
-        while x<>nil do
-         begin
-          itemid:=x.selectSingleNode('atom:id').text;
-          if Copy(itemid,1,4)='http' then
-            itemurl:=itemid
-          else
+          doc:=CoDOMDocument60.Create;
+          doc.async:=false;
+          doc.validateOnParse:=false;
+          doc.resolveExternals:=false;
+
+          if doc.loadXML(r.responseText) then
            begin
-            xl1:=x.selectNodes('atom:link');
-            y:=xl1.nextNode as IXMLDOMElement;
-            if y=nil then
-              itemurl:=itemid
-            else
-              itemurl:=y.getAttribute('href');//default
-            while y<>nil do
+            if SaveData then
+              doc.save('xmls\'+Format('%.4d',[feedid])+'.xml');
+
+            //atom
+            if doc.documentElement.nodeName='feed' then
              begin
-              //'rel'?
-              if y.getAttribute('type')='text/html' then
-                itemurl:=y.getAttribute('href');
-              y:=xl1.nextNode as IXMLDOMElement;
-             end;
-           end;
-          title:=x.selectSingleNode('atom:title').text;
-          y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
-          if y=nil then
-            y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
-          if y=nil then content:='' else content:=y.text;
-          try
-            y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
-            if y=nil then
-              y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
-            if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
-          except
-            pubDate:=UtcNow;
-          end;
-          regItem;
+              doc.setProperty('SelectionNamespaces','xmlns:atom=''http://www.w3.org/2005/Atom''');
 
-          x:=xl.nextNode as IXMLDOMElement;
-         end;
-       end
-      else
+              x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
+              if x<>nil then feedname:=x.text;
 
-      //RSS
-      if doc.documentElement.nodeName='rss' then
-       begin
-        doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
+              xl:=doc.documentElement.selectNodes('atom:entry');
+              x:=xl.nextNode as IXMLDOMElement;
+              while x<>nil do
+               begin
+                itemid:=x.selectSingleNode('atom:id').text;
+                if Copy(itemid,1,4)='http' then
+                  itemurl:=itemid
+                else
+                 begin
+                  xl1:=x.selectNodes('atom:link');
+                  y:=xl1.nextNode as IXMLDOMElement;
+                  if y=nil then
+                    itemurl:=itemid
+                  else
+                    itemurl:=y.getAttribute('href');//default
+                  while y<>nil do
+                   begin
+                    //'rel'?
+                    if y.getAttribute('type')='text/html' then
+                      itemurl:=y.getAttribute('href');
+                    y:=xl1.nextNode as IXMLDOMElement;
+                   end;
+                 end;
+                title:=x.selectSingleNode('atom:title').text;
+                y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
+                if y=nil then
+                  y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
+                if y=nil then content:='' else content:=y.text;
+                try
+                  y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
+                  if y=nil then
+                    y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
+                  if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                except
+                  pubDate:=UtcNow;
+                end;
+                regItem;
 
-        xl:=doc.documentElement.selectNodes('channel/item');
-        x:=xl.nextNode as IXMLDOMElement;
-        while x<>nil do
-         begin
-          y:=x.selectSingleNode('guid') as IXMLDOMElement;
-          if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
-          itemid:=y.text;
-          itemurl:=x.selectSingleNode('link').text;
-          title:=x.selectSingleNode('title').text;
-          y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
-          if y=nil then
-            y:=x.selectSingleNode('content') as IXMLDOMElement;
-          if y=nil then
-            y:=x.selectSingleNode('description') as IXMLDOMElement;
-          if y=nil then content:='' else content:=y.text;
-          try
-            y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
-            if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
-          except
-            pubDate:=UtcNow;
-          end;
-          regItem;
-
-          x:=xl.nextNode as IXMLDOMElement;
-         end;
-       end
-      else
-
-      //RDF
-      if doc.documentElement.nodeName='rdf:RDF' then
-       begin
-        doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
-         ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
-
-        xl:=doc.documentElement.selectNodes('rss:item');
-        x:=xl.nextNode as IXMLDOMElement;
-        while x<>nil do
-         begin
-          itemid:=x.getAttribute('rdf:about');
-          itemurl:=x.selectSingleNode('rss:link').text;
-          title:=x.selectSingleNode('rss:title').text;
-          y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
-          if y=nil then content:='' else content:=y.text;
-          try
-            y:=x.selectSingleNode('rss:pubDate') as IXMLDOMElement;
-            if y=nil then
-             begin
-              y:=x.selectSingleNode('dc:date') as IXMLDOMElement;
-              if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                x:=xl.nextNode as IXMLDOMElement;
+               end;
+              feedresult:=Format('Atom %d/%d',[c2,c1]);
              end
-            else pubDate:=ConvDate2(y.text);
-          except
-            pubDate:=UtcNow;
-          end;
-          regItem;
+            else
 
-          x:=xl.nextNode as IXMLDOMElement;
-         end;
+            //RSS
+            if doc.documentElement.nodeName='rss' then
+             begin
+              doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
+
+              x:=doc.documentElement.selectSingleNode('channel/title') as IXMLDOMElement;
+              if x<>nil then feedname:=x.text;
+
+              xl:=doc.documentElement.selectNodes('channel/item');
+              x:=xl.nextNode as IXMLDOMElement;
+              while x<>nil do
+               begin
+                y:=x.selectSingleNode('guid') as IXMLDOMElement;
+                if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
+                itemid:=y.text;
+                itemurl:=x.selectSingleNode('link').text;
+                title:=x.selectSingleNode('title').text;
+                y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
+                if y=nil then
+                  y:=x.selectSingleNode('content') as IXMLDOMElement;
+                if y=nil then
+                  y:=x.selectSingleNode('description') as IXMLDOMElement;
+                if y=nil then content:='' else content:=y.text;
+                try
+                  y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
+                  if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
+                except
+                  pubDate:=UtcNow;
+                end;
+                regItem;
+
+                x:=xl.nextNode as IXMLDOMElement;
+               end;
+              feedresult:=Format('RSS %d/%d',[c2,c1]);
+             end
+            else
+
+            //RDF
+            if doc.documentElement.nodeName='rdf:RDF' then
+             begin
+              doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
+               ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
+
+              x:=doc.documentElement.selectSingleNode('rss:channel/rss:title') as IXMLDOMElement;
+              if x<>nil then feedname:=x.text;
+
+              xl:=doc.documentElement.selectNodes('rss:item');
+              x:=xl.nextNode as IXMLDOMElement;
+              while x<>nil do
+               begin
+                itemid:=x.getAttribute('rdf:about');
+                itemurl:=x.selectSingleNode('rss:link').text;
+                title:=x.selectSingleNode('rss:title').text;
+                y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
+                if y=nil then content:='' else content:=y.text;
+                try
+                  y:=x.selectSingleNode('rss:pubDate') as IXMLDOMElement;
+                  if y=nil then
+                   begin
+                    y:=x.selectSingleNode('dc:date') as IXMLDOMElement;
+                    if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                   end
+                  else pubDate:=ConvDate2(y.text);
+                except
+                  pubDate:=UtcNow;
+                end;
+                regItem;
+
+                x:=xl.nextNode as IXMLDOMElement;
+               end;
+
+              feedresult:=Format('RDF %d/%d',[c2,c1]);
+             end
+            else
+
+            //unknown
+              feedresult:='Unkown "'+doc.documentElement.tagName+'"';
+
+           end
+          else
+            feedresult:='[XML]'+doc.parseError.Reason;
+
+        except
+          on e:Exception do
+            feedresult:='['+e.ClassName+']'+e.Message;
+        end;
+
+      if (feedresult<>'') and (feedresult[1]='[') then
+       begin
+        Writeln(' !!!');
+        Writeln(ErrOutput,feedresult);
        end
       else
+       begin
+        //stale? update regime?
+        if (c2=0) and (c1<>0) then
+         begin
+          i:=0;
+          while (i<regimesteps) and (feedregime>=regimestep[i]) do inc(i);
+          if (i<regimesteps) and (qr.IsNull('pl')
+            or (qr.GetDate('pl')+feedregime*2<feedload)) then
+            feedregime:=regimestep[i];
+          feedresult:=feedresult+' Stale?';
+         end;
 
-      //unknown
-        ;//raise?
+        Writeln(' '+feedresult);
+       end;
+
+      if qr.IsNull('itemcount') or
+        (feedurl<>qr.GetStr('url')) or (feedname<>qr.GetStr('name')) then
+        db.Update('Feed',
+          ['id',feedid
+          ,'name',feedname
+          ,'url',feedurl
+          ,'loadlast',feedload
+          ,'result',feedresult
+          ,'loadcount',c2
+          ,'itemcount',c1
+          ,'regime',feedregime
+          ])
+      else
+        db.Update('Feed',
+          ['id',feedid
+          ,'loadlast',feedload
+          ,'result',feedresult
+          ,'loadcount',c2
+          ,'itemcount',c1
+          ,'regime',feedregime
+          ]);
 
       db.CommitTrans;
     except
       db.RollbackTrans;
       raise;
     end;
-    Writeln(Format(' [%d/%d]',[c2,c1]));
-
    end
   else
-    Writeln(ErrOutput,'[XML:'+IntToStr(id)+']'+doc.parseError.Reason);
+    Writeln(' Skip '+
+      IntToStr(Round((d-feedload)*1440.0))+''' regime:'+IntToStr(feedregime));
 end;
 
 procedure DoUpdateFeeds;
@@ -737,6 +839,10 @@ begin
 //TRANSITIONAL
 if SaveData then
 begin
+Writeln('Fixing...');
+      db.Execute('update Post set guid=substr(guid,8) where substr(guid,1,7)=''http://''');
+      db.Execute('update Post set guid=substr(guid,9) where substr(guid,1,8)=''https://''');
+
       qr:=TQueryResult.Create(db,'select id, title from Post where title like ''%&%'' or title like ''%<%'' or title like ''%>%''');
       try
         while qr.Read do
@@ -762,15 +868,22 @@ end;
     end;
 
 
-    qr:=TQueryResult.Create(db,'select * from Feed where ? in (0,id)',[FeedID]);
+    qr:=TQueryResult.Create(db,
+      'select * from Feed F'
+      +' left outer join ('
+      +'   select X.feed_id, max(X.pubdate) as pl, avg(X.pd) as pa'
+      +'   from('
+      +'     select'
+      +'     P1.feed_id, P1.pubdate, min(P2.pubdate-P1.pubdate) as pd'
+      +'     from Post P1'
+      +'     inner join Post P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
+      +'     group by P1.feed_id, P1.pubdate'
+      +'   ) X'
+      +'   group by X.feed_id'
+      +' ) X on X.feed_id=F.id'
+      +' where ? in (0,F.id)',[FeedID]);
     try
-      while qr.Read do
-        try
-          DoFeed(db,qr.GetInt('id'),qr.GetStr('url'));
-        except
-          on e:Exception do
-            Writeln(ErrOutput,'['+e.ClassName+']'+e.Message);
-        end;
+      while qr.Read do DoFeed(db,qr);
     finally
       qr.Free;
     end;

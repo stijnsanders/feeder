@@ -15,7 +15,7 @@ qr:=TQueryResult.Create(db,
   ' inner join Subscription S on S.feed_id=P.feed_id and S.user_id=?'+
   ' where P.id=?',[Session.UserID,id]);
 try
-  //TODO: sanitize HTML (either here or in eater
+  //TODO: sanitize HTML (either here or in eater)
   rw:=qr.GetInt('readwidth');
   if rw=0 then s:='' else s:=' style="max-width:'+IntToStr(rw)+'em;"';
   if rw<4 then rw:=32;

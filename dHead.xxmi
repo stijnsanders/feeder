@@ -13,11 +13,13 @@ if Session.UserID=0 then //if not Session.Authenticated then
 <html>
 <head>
 <title>Feeder - RSS/Atom Feed Reader[[
+{
 if Length(Values)<>0 then
  begin
   Context.SendHTML(' - ');
   Context.Send(Values[0]);
  end;
+} 
 <</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico" />
 <meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui" />

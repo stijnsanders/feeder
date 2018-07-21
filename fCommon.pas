@@ -65,9 +65,7 @@ begin
   if LowerCase(c)='ffffff' then c:='-666666';
   if not((Length(c)=6) or ((Length(c)=7) and (c[1]='-'))) then c:='EEEEEE';
   if c[1]='-' then
-   begin
-    c:='FFFFFF;color:#'+Copy(c,2,6)+';border:1px solid #'+Copy(c,2,6);   
-   end
+    c:='FFFFFF;color:#'+Copy(c,2,6)+';border:1px solid #'+Copy(c,2,6)
   else
    begin
     try
@@ -75,15 +73,11 @@ begin
     except
       i:=$EEEEEE;
     end;
-    k:=(i and $FF);
-    j:=k;
-    i:=i shr 8;
-    k:=i and $FF;
-    inc(j,k*4);
-    i:=i shr 8;
-    k:=i and $FF;
-    inc(j,k*3);
-    if j<=770 then c:=c+';color:#DDDDDD';
+    j:=0;
+    k:=(i shr 16) and $FF; inc(j,((k*k) shr 8)*3);//R
+    k:=(i shr 8)  and $FF; inc(j,((k*k) shr 8)*5);//G
+    k:= i         and $FF; inc(j,((k*k) shr 8)*2);//B
+    if j<750 then c:=c+';color:#DDDDDD';
    end;
   Result:='<div class="label" style="background-color:#'+c+';">'+HTMLEncode(Lbl)+'</div>';
 end;

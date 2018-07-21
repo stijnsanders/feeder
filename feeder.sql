@@ -3,7 +3,11 @@ id integer primary key autoincrement,
 name varchar(200) not null,
 url varchar(200) not null,
 created datetime not null,
-refresh datetime null
+loadlast datetime null,
+result varchar(1000) null,
+loadcount int null,
+itemcount int null,
+regime int null
 );
 
 create table Post (
@@ -17,6 +21,8 @@ pubdate datetime not null,
 created datetime not null,
 constraint FK_Post_Feed foreign key (feed_id) references Feed (id)
 );
+
+create index IX_Post on Post (feed_id,pubdate);
 
 create table User (
 id integer primary key autoincrement,

@@ -34,8 +34,6 @@ except
   raise;
 end;
 
-//TODO: output new total unread
-
 ]]OK:[[=c]]:[[
 
 qr:=TQueryResult.Create(db,'select count(*) from UserPost where user_id=?',[Session.UserID]);

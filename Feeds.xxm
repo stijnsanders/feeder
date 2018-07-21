@@ -22,7 +22,7 @@ if id=0 then
   &nbsp;<a href="Logoff.xxm">Logoff</a>
   </div>
 
-  <div style="height:1.5em;">&nbsp;</div>>
+  <div style="height:1.5em;padding-bottom:2pt;">&nbsp;</div>>
 
 
   qr:=TQueryResult.Create(Session.Connection,
@@ -48,10 +48,11 @@ if id=0 then
       <<div class="post">
       <div class="date">>=FormatDateTime('yyyy-mm-dd',qr.GetDate('created')+Session.TimeBias)<</div>
       [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
-      <a href="?id=[[=qr['id']]]">"[[=qr['name']]]"&nbsp;<span style="color:#CCCCCC;">>=qr['url']<</span></a>
+      <a href="?id=[[=qr['id']]]">"[[=qr['name']]]"</a>
       [[if qr.GetInt('PostCount')<>0 then begin]]
-      <a href=".?f=[[=qr['id']]]" style="color:#0000CC;">>=[qr['UnreadCount'],'/',qr['PostCount']]]]&nbsp;&rarr;</a>
+      <a href=".?f=[[=qr['id']]]" style="color:#0000CC;">>=[qr['UnreadCount'],'/',qr['PostCount']]]]</a>
       [[end;]]
+      <span style="color:#CCCCCC;">>=qr['url']<</span>
       </div>>
      end;
   finally
