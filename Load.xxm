@@ -19,7 +19,8 @@ qr:=TQueryResult.Create(Session.Connection,
 );
 try
   <<style>
-  TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;border:1px solid #CCCCCC;}
+  TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}
+  TD.n{max-width:12em;overflow:hidden;text-overflow:ellipsis;}
   </style>
   <table cellspacing="0" cellpadding="4" border="1">
   <tr>
@@ -28,18 +29,22 @@ try
   <th>created</th>
   <th>post:last</th>
   <th>post:avg</th>
+  <th>regime</th>
   <th>load:last</th>
+  <th>load:result</th>
   <th>load:new</th>
   <th>load:items</th>
-  <th>regime</th>
   </tr>>
   while qr.Read do
    begin
     <<tr>
     <td style="text-align:right;">>=qr['id']<</td>
-    <td><a href="[[=qr['url']]]">>=qr['name']<</a></td>
-    <td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))<</td>
-    <td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('pl'))<</td>>
+    <td class="n"><a href="[[=qr['url']]]" title="[[=qr['name']]]">>=qr['name']<</a></td>
+    <td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))<</td>>
+    if qr.IsNull('pl') then begin <<td>&nbsp;</td>> end else
+     begin
+      <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('pl'))<</td>>
+     end;
     if qr.IsNull('pa') then a:=0 else a:=qr['pa'];
     if a=0.0 then
      begin <<td>&nbsp;</td>> end
@@ -48,10 +53,14 @@ try
      begin <<td style="text-align:right;">>=Round(a)]]d</td>> end
     else
      begin <<td style="text-align:right;">>=Round(double(qr['pa'])*1440.0)]]'</td>> end;
-    <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('loadlast'))<</td>
+    <<td style="text-align:right;">>=qr['regime']<</td>>
+    if qr.IsNull('loadlast') then begin <<td>&nbsp;</td>> end else
+     begin
+      <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('loadlast'))<</td>>
+     end;
+    <<td>>=qr['result']<</td>
     <td style="text-align:right;">>=qr['loadcount']<</td>
     <td style="text-align:right;">>=qr['itemcount']<</td>
-    <td style="text-align:right;">>=qr['regime']<</td>
     </tr>>
    end;
   <</table>>

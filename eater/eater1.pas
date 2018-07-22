@@ -472,7 +472,7 @@ var
   b:boolean;
   rc,c1,c2,postid:integer;
 const
-  regimesteps=7;
+  regimesteps=8;
   regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90);
 
   procedure regItem;
@@ -485,6 +485,10 @@ const
     else
       if Copy(itemid,1,8)='https://' then
         itemid:=Copy(itemid,9,Length(itemid)-8);
+
+    //TODO: switch: allow future posts?
+    if pubDate>feedload+2.0/24.0 then pubDate:=feedload;
+
     if pubDate<OldPostsCutOff then b:=false else
      begin
       qr:=TQueryResult.Create(db,'select id from Post where feed_id=? and guid=?',[feedid,itemid]);
@@ -514,6 +518,7 @@ const
 var
   d:TDateTime;
   i:integer;
+  loadlast,postlast,postavg:double;
 begin
   feedid:=qr.GetInt('id');
   feedurl:=qr.GetStr('url');
@@ -525,16 +530,19 @@ begin
   Write(IntToStr(feedid)+':'+feedurl);
 
   //check feed timing and regime
-  if qr.IsNull('pl') then
-    if qr.IsNull('loadlast') then
+  if qr.IsNull('postlast') then postlast:=0.0 else postlast:=qr['postlast'];
+  if qr.IsNull('postavg') then postavg:=0.0 else postavg:=qr['postavg'];
+  if qr.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr['loadlast'];
+  if postlast=0.0 then
+    if loadlast=0.0 then
       d:=feedload-5.0/1440.0
     else
-      d:=qr.GetDate('loadlast')+feedregime
+      d:=loadlast+feedregime
   else
    begin
-    d:=qr.GetDate('pl')+double(qr['pa'])-5.0/1440.0;
-    if not(qr.IsNull('loadlast')) and (d<qr.GetDate('loadlast')) then
-      d:=qr.GetDate('loadlast')+feedregime;
+    d:=postlast+postavg-5.0/1440.0;
+    if (loadlast<>0.0) and (d<loadlast) then
+      d:=loadlast+feedregime;
    end;
   b:=d<feedload;
 
@@ -748,15 +756,28 @@ begin
        end
       else
        begin
-        //stale? update regime?
+        //stale? update regime
         if (c2=0) and (c1<>0) then
          begin
           i:=0;
           while (i<regimesteps) and (feedregime>=regimestep[i]) do inc(i);
-          if (i<regimesteps) and (qr.IsNull('pl')
-            or (qr.GetDate('pl')+feedregime*2<feedload)) then
+          if (i<regimesteps) and ((postlast=0.0)
+            or (postlast+regimestep[i]*2<feedload)) then
+           begin
+            feedresult:=feedresult+' (stale? r:'+IntToStr(feedregime)+
+              '->'+IntToStr(regimestep[i])+')';
             feedregime:=regimestep[i];
-          feedresult:=feedresult+' Stale?';
+           end;
+         end
+        else
+         begin
+          //not stale: update regime to apparent post average period
+          if feedregime<>0 then
+           begin
+            i:=regimesteps;
+            while (i<>0) and (postavg<regimestep[i-1]) do dec(i);
+            if i=0 then feedregime:=0 else feedregime:=regimestep[i-1];
+           end;
          end;
 
         Writeln(' '+feedresult);
@@ -871,7 +892,7 @@ end;
     qr:=TQueryResult.Create(db,
       'select * from Feed F'
       +' left outer join ('
-      +'   select X.feed_id, max(X.pubdate) as pl, avg(X.pd) as pa'
+      +'   select X.feed_id, max(X.pubdate) as postlast, avg(X.pd) as postavg'
       +'   from('
       +'     select'
       +'     P1.feed_id, P1.pubdate, min(P2.pubdate-P1.pubdate) as pd'
