@@ -13,11 +13,11 @@ f:=Context['f'].AsInteger;
 loadMore:=Length(Values)<>0;
 
 sql:=
-  'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
-  ' from Subscription S'+
-  ' inner join Post P on P.feed_id=S.feed_id'+
-  ' inner join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
-  ' where S.user_id=?';
+  'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
+  +' from UserPost X'
+  +' inner join Post P on P.id=X.post_id'
+  +' left outer join Subscription S on S.feed_id=P.feed_id and S.user_id=X.user_id'
+  +' where X.user_id=?';
 
 if loadMore then lx:=3 else lx:=0;
 

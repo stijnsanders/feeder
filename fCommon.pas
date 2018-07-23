@@ -61,25 +61,30 @@ var
   c:string;
   i,j,k:integer;
 begin
-  c:=LblColor;
-  if LowerCase(c)='ffffff' then c:='-666666';
-  if not((Length(c)=6) or ((Length(c)=7) and (c[1]='-'))) then c:='EEEEEE';
-  if c[1]='-' then
-    c:='FFFFFF;color:#'+Copy(c,2,6)+';border:1px solid #'+Copy(c,2,6)
+  if (Lbl='') and (LblColor='') then
+    Result:='<div class="label" title="feeder: system message" style="background-color:#FFCC00;color:#000000;border:1px solid #000000;border-radius:0;">feeder</div>'
   else
    begin
-    try
-      i:=StrToInt('$0'+c);
-    except
-      i:=$EEEEEE;
+    c:=LblColor;
+    if LowerCase(c)='ffffff' then c:='-666666';
+    if not((Length(c)=6) or ((Length(c)=7) and (c[1]='-'))) then c:='EEEEEE';
+    if c[1]='-' then
+      c:='FFFFFF;color:#'+Copy(c,2,6)+';border:1px solid #'+Copy(c,2,6)
+    else
+    begin
+      try
+        i:=StrToInt('$0'+c);
+      except
+        i:=$EEEEEE;
+      end;
+      j:=0;
+      k:=(i shr 16) and $FF; inc(j,((k*k) shr 8)*3);//R
+      k:=(i shr 8)  and $FF; inc(j,((k*k) shr 8)*5);//G
+      k:= i         and $FF; inc(j,((k*k) shr 8)*2);//B
+      if j<750 then c:=c+';color:#DDDDDD';
     end;
-    j:=0;
-    k:=(i shr 16) and $FF; inc(j,((k*k) shr 8)*3);//R
-    k:=(i shr 8)  and $FF; inc(j,((k*k) shr 8)*5);//G
-    k:= i         and $FF; inc(j,((k*k) shr 8)*2);//B
-    if j<750 then c:=c+';color:#DDDDDD';
+    Result:='<div class="label" style="background-color:#'+c+';">'+HTMLEncode(Lbl)+'</div>';
    end;
-  Result:='<div class="label" style="background-color:#'+c+';">'+HTMLEncode(Lbl)+'</div>';
 end;
 
 function ColorPicker(const ValColor:string):string;
@@ -118,7 +123,7 @@ begin
   while i<$10 do
    begin
     Result:=Result+'<option';
-    if j=i then Result:=Result+' selected="1"';
+    if (j>i-2) and (j<=i+2) then Result:=Result+' selected="1"';
     Result:=Result+'>'+hex[i]+hex[i]+'</option>';
     inc(i,3);
    end;
@@ -128,7 +133,7 @@ begin
   while i<$10 do
    begin
     Result:=Result+'<option';
-    if j=i then Result:=Result+' selected="1"';
+    if (j>i-2) and (j<=i+2) then Result:=Result+' selected="1"';
     Result:=Result+'>'+hex[i]+hex[i]+'</option>';
     inc(i,3);
    end;
@@ -138,7 +143,7 @@ begin
   while i<$10 do
    begin
     Result:=Result+'<option';
-    if j=i then Result:=Result+' selected="1"';
+    if (j>i-2) and (j<=i+2) then Result:=Result+' selected="1"';
     Result:=Result+'>'+hex[i]+hex[i]+'</option>';
     inc(i,3);
    end;

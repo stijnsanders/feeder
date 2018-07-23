@@ -25,7 +25,7 @@ if Length(Values)<>0 then
 <meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui" />
 <meta name="theme-color" content="#FFCC00" />
 <link href="https://fonts.googleapis.com/css?family=PT+Sans:400,700" rel="stylesheet">
-<link rel="stylesheet" type="text/css" href="feeder.css" />
+<link rel="stylesheet" type="text/css" href="feeder.css?v=1" />
 <script src="jquery-3.3.1.min.js"></script>
 [[if LowerCase(Context.ContextString(csLocalURL))='post.xxm' then begin <<base target="_blank">> end;]]
 </head>

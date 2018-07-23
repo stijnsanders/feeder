@@ -26,7 +26,7 @@ if id=0 then
 
 
   qr:=TQueryResult.Create(Session.Connection,
-    'select S.*, F.name, F.url'+
+    'select S.*, F.name, F.url, F.itemcount, F.regime'+
     ', (select count(*) from Post P where P.feed_id=F.id) as PostCount'+
     ', (select count(*) from UserPost X inner join Post P on P.id=X.post_id where P.feed_id=F.id and X.user_id=S.user_id) as UnreadCount'+
     ' from Subscription S'+
@@ -51,7 +51,16 @@ if id=0 then
       <a href="?id=[[=qr['id']]]">"[[=qr['name']]]"</a>
       [[if qr.GetInt('PostCount')<>0 then begin]]
       <a href=".?f=[[=qr['id']]]" style="color:#0000CC;">>=[qr['UnreadCount'],'/',qr['PostCount']]]]</a>
-      [[end;]]
+      [[end;
+      if not(qr.IsNull('itemcount')) and (qr.GetInt('itemcount')=0) then
+       begin
+        <<span style="color:#CC0000;">Error reading feed</span>>
+       end;
+      if qr.GetInt('regime')>20 then
+       begin
+        <<span style="color:#660000;" title="Feed reading on a regime of once every [[=qr['regime']]] days">Stale?</span>>
+       end;
+      ]]
       <span style="color:#CCCCCC;">>=qr['url']<</span>
       </div>>
      end;

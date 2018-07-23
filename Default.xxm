@@ -2,7 +2,6 @@
 qr:TQueryResult;
 s:string;
 ]][[
-
 if Session.UserID=0 then
  begin
   Context.Include('dHead.xxmi');
@@ -37,15 +36,15 @@ else
   &nbsp;<a href="Feeds.xxm"><img src="img_c.png" width="16" height="16" style="margin-bottom:-2pt;" border="0" alt="Feeds..." /></a>
   </div>
 
-  <script src="feeder.js?v=4"></script>
+  <script src="feeder.js?v=5"></script>
   <div id="black" style="z-index:6;position:fixed;display:none;top:0;left:0;width:100vw;height:100vh;background-color:black;filter:opacity(0.5);user-select:none;" onclick="return doClose();"></div>
-  <div id="postbox" class="postbox" style="z-index:8;position:fixed;display:none;top:0.5em;right:1em;user-select:none;">>
-    <<a href="#" onclick="return doHere();"><img src="img_d.png" width="16" height="16" alt="load here" /></a>>
-    ]]&nbsp;[[
-    <<a href="#" id="postlink" target="_blank"><img src="img_r.png" width="16" height="16" alt="load new tab" /></a>>
-    ]]&nbsp;[[
-    <<a href="#" onclick="return doClose();" style="width:4em;"><img src="img_x.png" width="16" height="16" alt="close post view" /></a>>
-  <</div>
+  <div id="postbox" class="postbox" style="z-index:8;position:fixed;display:none;top:0.5em;right:1em;user-select:none;">
+    <a href="#" onclick="return doHere();"><img src="img_d.png" width="16" height="16" alt="load here" /></a>
+    &nbsp;
+    <a href="#" id="postlink" target="_blank"><img src="img_r.png" width="16" height="16" alt="load new tab" /></a>
+    &nbsp;
+    <a href="#" onclick="return doClose();" style="width:4em;"><img src="img_x.png" width="16" height="16" alt="close post view" /></a>
+  </div>
   <iframe id="postview" name="postview" style="z-index:7;position:fixed;display:none;left:1em;top:2em;background-color:white;border:1px solid black;" onload="doPostLoad();" src="about:blank"></iframe>
   <script>
   window.open("about:blank","postview");
@@ -61,7 +60,7 @@ else
       if not qr.EOF then
       begin
         <<div style="padding-bottom:2pt;">
-        <div class="date">>=FormatDateTime('mm-dd hh:nn',UtcNow+Session.TimeBias)<</div>
+        <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',UtcNow+Session.TimeBias)<</div>
         [[
         while qr.Read do
         begin

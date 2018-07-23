@@ -4,7 +4,9 @@ a:double;
 ]][[
 
 qr:=TQueryResult.Create(Session.Connection,
-  'select * from Feed F'
+  'select *'
+  +' ,(select count(*) from Subscription S where S.feed_id=F.id) as scount'
+  +' from Feed F'
   +' left outer join ('
   +'   select X.feed_id, max(X.pubdate) as pl, avg(X.pd) as pa'
   +'   from('
@@ -27,6 +29,7 @@ try
   <th>&nbsp;</th>
   <th>name</th>
   <th>created</th>
+  <th>#</th>
   <th>post:last</th>
   <th>post:avg</th>
   <th>regime</th>
@@ -40,7 +43,8 @@ try
     <<tr>
     <td style="text-align:right;">>=qr['id']<</td>
     <td class="n"><a href="[[=qr['url']]]" title="[[=qr['name']]]">>=qr['name']<</a></td>
-    <td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))<</td>>
+    <td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))<</td>
+    <td style="text-align:right;">>=qr['scount']<</td>>
     if qr.IsNull('pl') then begin <<td>&nbsp;</td>> end else
      begin
       <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('pl'))<</td>>
@@ -50,16 +54,23 @@ try
      begin <<td>&nbsp;</td>> end
     else
     if a>1.0 then
-     begin <<td style="text-align:right;">>=Round(a)]]d</td>> end
+     begin <<td style="text-align:right;">>=Round(a)]] days</td>> end
     else
-     begin <<td style="text-align:right;">>=Round(double(qr['pa'])*1440.0)]]'</td>> end;
+     begin <<td style="text-align:right;">>=Round(double(qr['pa'])*1440.0)]] mins</td>> end;
     <<td style="text-align:right;">>=qr['regime']<</td>>
     if qr.IsNull('loadlast') then begin <<td>&nbsp;</td>> end else
      begin
       <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('loadlast'))<</td>>
      end;
-    <<td>>=qr['result']<</td>
-    <td style="text-align:right;">>=qr['loadcount']<</td>
+    if (qr.GetStr('result')+'-')[1]='[' then
+     begin
+      <<td style="color:#CC0000;">>=qr['result']<</td>>
+     end
+    else
+     begin
+      <<td>>=qr['result']<</td>>
+     end;
+    <<td style="text-align:right;">>=qr['loadcount']<</td>
     <td style="text-align:right;">>=qr['itemcount']<</td>
     </tr>>
    end;
