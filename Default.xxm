@@ -1,6 +1,10 @@
-[[@xxmSession,DataLank,fCommon]][[!var
+[[@DataLank,xxmSession,fCommon]][[!var
 qr:TQueryResult;
-s:string;
+xx:array of OleVariant;
+s,sql,cat:string;
+d,d0,f,l,id,id0,lx:integer;
+d1:TDateTime;
+loadMore:boolean;
 ]][[
 if Session.UserID=0 then
  begin
@@ -16,66 +20,181 @@ if Session.UserID=0 then
  end
 else
  begin
-  Context.Include('dHead.xxmi');
+  loadMore:=Context['x'].Value<>'';
 
-  <<div style="z-index:5;position:fixed;top:0;right:1.2em;background-color:gold;padding:4pt;">
-  [[
-  if (Context['c'].Value<>'') or (Context['f'].Value<>'') then
+  cat:=Context['c'].Value;
+  f:=Context['f'].AsInteger;
+
+  if not loadMore then
    begin
-    <<a href="." style="font-weight:bold;">&larr;All</a><br />>
-   end;
-  ]]
-  <span id="postcount">>
-  qr:=TQueryResult.Create(Session.Connection,'select count(*) from UserPost where user_id=?',[Session.UserID]);
-  try
-    Context.Send(qr.GetInt(0));
-  finally
-    qr.Free;
-  end;
-  <</span>
-  &nbsp;<a href="Feeds.xxm"><img src="img_c.png" width="16" height="16" style="margin-bottom:-2pt;" border="0" alt="Feeds..." /></a>
-  </div>
 
-  <script src="feeder.js?v=6"></script>
-  <div id="black" style="z-index:6;position:fixed;display:none;top:0;left:0;width:100vw;height:100vh;background-color:black;filter:opacity(0.5);user-select:none;" onclick="return doClose();"></div>
-  <div id="postbox" class="postbox" style="z-index:8;position:fixed;display:none;top:0.5em;right:1em;user-select:none;">
-    <a href="#" onclick="return doHere();"><img src="img_d.png" width="16" height="16" alt="load here" /></a>
-    &nbsp;
-    <a href="#" id="postlink" target="_blank"><img src="img_r.png" width="16" height="16" alt="load new tab" /></a>
-    &nbsp;
-    <a href="#" onclick="return doClose();" style="width:4em;"><img src="img_x.png" width="16" height="16" alt="close post view" /></a>
-  </div>
-  <iframe id="postview" name="postview" style="z-index:7;position:fixed;display:none;left:1em;top:2em;background-color:white;border:1px solid black;" onload="doPostLoad();" src="about:blank"></iframe>
-  <script>
-  window.open("about:blank","postview");
-  document.body.onscroll=doScroll;
-  window.scrollTo(0,0);
-  </script>>
+    Context.Include('dHead.xxmi');
 
-  if (Context['c'].Value='') and (Context['f'].Value='') and (Context['search'].Value='') then
-   begin
-    qr:=TQueryResult.Create(Session.Connection,
-      'select distinct S.Category from Subscription S where S.user_id=? and S.Category<>'''' order by 1',[Session.UserID]);
+    <<div style="z-index:5;position:fixed;top:0;right:1.2em;background-color:gold;padding:4pt;">
+    [[
+    if (cat<>'') or (f<>0) then
+     begin
+      <<a href="." style="font-weight:bold;">&larr;All</a><br />>
+     end;
+    ]]
+    <span id="postcount">>
+    qr:=TQueryResult.Create(Session.Connection,'select count(*) from UserPost where user_id=?',[Session.UserID]);
     try
-      if not qr.EOF then
-      begin
-        <<div style="padding-bottom:2pt;">
-        <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',UtcNow+Session.TimeBias)<</div>
-        [[
-        while qr.Read do
-        begin
-          s:=qr.GetStr(0);
-          <<div class="catlink"><a href="?c=[[=s]]">>=s<</a></div>
-          [[
-        end;
-        <</div>>
-      end;
+      Context.Send(qr.GetInt(0));
     finally
       qr.Free;
     end;
+    <</span>
+    &nbsp;<a href="Feeds.xxm"><img src="img_c.png" width="16" height="16" style="margin-bottom:-2pt;" border="0" alt="Feeds..." /></a>
+    </div>
+
+    <script src="feeder.js?v=7"></script>
+    <div id="black" style="z-index:6;position:fixed;display:none;top:0;left:0;width:100vw;height:100vh;background-color:black;filter:opacity(0.5);user-select:none;" onclick="return doClose();"></div>
+    <div id="postbox" class="postbox" style="z-index:8;position:fixed;display:none;top:0.5em;right:1em;user-select:none;">
+      <a href="#" onclick="return doHere();"><img src="img_d.png" width="16" height="16" alt="load here" /></a>
+      &nbsp;
+      <a href="#" id="postlink" target="_blank"><img src="img_r.png" width="16" height="16" alt="load new tab" /></a>
+      &nbsp;
+      <a href="#" onclick="return doClose();" style="width:4em;"><img src="img_x.png" width="16" height="16" alt="close post view" /></a>
+    </div>
+    <iframe id="postview" name="postview" style="z-index:7;position:fixed;display:none;left:1em;top:2em;background-color:white;border:1px solid black;" onload="doPostLoad();" src="about:blank"></iframe>
+    <script>
+    window.open("about:blank","postview");
+    document.body.onscroll=doScroll;
+    window.onbeforeunload=function(){window.scrollTo(0,0);}
+    </script>>
+
+    if (cat='') and (f=0) and (Context['search'].Value='') then
+     begin
+      qr:=TQueryResult.Create(Session.Connection,
+        'select distinct S.Category from Subscription S where S.user_id=? and S.Category<>'''' order by 1',[Session.UserID]);
+      try
+        if not qr.EOF then
+         begin
+          <<div style="padding-bottom:2pt;">
+          <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',UtcNow+Session.TimeBias)<</div>
+          [[
+          while qr.Read do
+           begin
+            s:=qr.GetStr(0);
+            <<div class="catlink"><a href="?c=[[=s]]">>=s<</a></div>
+            [[
+           end;
+          <</div>>
+         end;
+      finally
+        qr.Free;
+      end;
+     end;
    end;
 
-  Context.Include('Posts.xxmi');
+  sql:=
+    'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
+    +' from UserPost X'
+    +' inner join Post P on P.id=X.post_id'
+    +' left outer join Subscription S on S.feed_id=P.feed_id and S.user_id=X.user_id'
+    +' where X.user_id=?';
+
+  if loadMore then lx:=3 else lx:=0;
+
+  if cat='' then
+    if f=0 then
+      if Context['search'].Value='' then
+       begin
+        SetLength(xx,1+lx);
+        xx[0]:=Session.UserID;
+       end
+      else
+       begin
+        sql:=
+          'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
+          ' from Subscription S'+
+          ' inner join Post P on P.feed_id=S.feed_id'+
+          ' left outer join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
+          ' where S.user_id=? and P.title||'' ''||P.content like ?';
+        SetLength(xx,2+lx);
+        xx[0]:=Session.UserID;
+        xx[1]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
+       end
+    else
+     begin
+      sql:=sql+' and S.feed_id=?';
+      SetLength(xx,2+lx);
+      xx[0]:=Session.UserID;
+      xx[1]:=f;
+     end
+  else 
+   begin
+    sql:=sql+' and S.category=?';
+    SetLength(xx,2+lx);
+    xx[0]:=Session.UserID;
+    xx[1]:=cat;
+   end;
+
+  if Context['q'].Value='' then l:=0 else l:=Context['q'].AsInteger;
+  if l=0 then l:=200;//default
+
+  if loadMore then
+   begin
+    id0:=Context['x'].AsInteger;
+    qr:=TQueryResult.Create(Session.Connection,'select pubdate from Post where id=?',[id0]);
+    try
+      d1:=qr.GetDate(0);
+    finally
+      qr.Free;
+    end;
+    d:=Trunc(d1+Session.TimeBias);
+    sql:=sql+' and ((P.pubdate=? and P.id>?) or (P.pubdate<?))';
+    xx[Length(xx)-3]:=d1;
+    xx[Length(xx)-2]:=id0;
+    xx[Length(xx)-1]:=d1;
+  end
+  else
+   begin
+    id0:=0;//counter warning
+    d:=0;
+   end;
+
+  qr:=TQueryResult.Create(Session.Connection,
+    sql+' order by P.pubdate desc, P.id limit '+IntToStr(l),xx);
+  try
+    if loadMore and qr.EOF then
+      Context.SendHTML('-')
+    else
+     begin
+      id:=0;
+      while qr.Read do
+       begin
+        id:=qr.GetInt('id');
+        d1:=qr.GetDate('pubdate')+Session.TimeBias;
+        d0:=Trunc(d1);
+        if d0<>d then
+         begin
+          <<div>
+          <div class="date">>=FormatDateTime('ddd yyyy-mm-dd',d1)<</div>
+          </div>>
+          d:=d0;
+         end;
+        <<div class="post[[if qr.IsNull('ReadID') then Context.SendHTML('read');]]" id="p[[=qr['id']]]">
+        <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('hh:nn',d1)<</div>
+        [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+        <a href="[[=qr['url']]]" postqs="[[?'id',qr['id']]]" onclick="return doPost(this,event);">>#qr['title']<</a>
+        </div>>
+      end;
+
+      if loadMore then
+        Context.SendHTML(';'+IntToStr(id))
+      else
+       begin
+        <<div id="trailer" style="height:100vh;border-bottom:4px solid gold;" x="[[=id]]"></div>>
+       end;
+     end;
+  finally
+    qr.Free;
+  end;
+
+
  end;
 
-Context.Include('dFoot.xxmi');
+if not loadMore then
+  Context.Include('dFoot.xxmi');

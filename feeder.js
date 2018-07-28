@@ -77,7 +77,7 @@ function doScroll(){
     if(!trailer)trailer=document.getElementById("trailer");
     if(trailer.offsetTop<window.scrollY+window.innerHeight*1.5){
       gotMore=true;
-      $.get('More.xxm?x='+trailer.getAttribute("x")+'&'+document.location.href.split("?")[1],function(x){
+      $.get('?x='+trailer.getAttribute("x")+'&'+document.location.href.split("?")[1],function(x){
         if(x!="-"){
           var y=x.length;
           while(y!=0&&x[y-1]!=";")y--;
