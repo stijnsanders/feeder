@@ -38,6 +38,7 @@ function doHere(){
   return false;
 }
 var outOfView="";
+var markRead="";
 var scrollNotify=0;
 var trailer;
 var gotMore=false;
@@ -61,13 +62,15 @@ function doScroll(){
   }
   if(outOfView!=""){
     scrollNotify=window.setTimeout(function(){
-      $.get('Read.xxm?'+outOfView,function(x){
+      markRead+=outOfView;
+      outOfView="";
+      $.get('Read.xxm?'+markRead,function(x){
+        markRead="";
         var xx=x.split(":");
         if(xx[0]=="OK")document.getElementById("postcount").textContent=xx[2];
       }).fail(function(){
         document.getElementById("postcount").style.backgroundColor="#FF0000";
       });
-      outOfView="";
     },500);
   }
   if(!gotMore){

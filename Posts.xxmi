@@ -67,8 +67,8 @@ if loadMore then
   finally
     qr.Free;
   end;
-  d:=Trunc(d1);
-  sql:=sql+' and (P.pubdate=? and P.id>?) or (P.pubdate<?)';
+  d:=Trunc(d1+Session.TimeBias);
+  sql:=sql+' and ((P.pubdate=? and P.id>?) or (P.pubdate<?))';
   xx[Length(xx)-3]:=d1;
   xx[Length(xx)-2]:=id0;
   xx[Length(xx)-1]:=d1;

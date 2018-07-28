@@ -469,7 +469,7 @@ var
   feedname,title,content:WideString;
   feedload,pubDate:TDateTime;
   feedregime:integer;
-  b:boolean;
+  feedglobal,b:boolean;
   rc,c1,c2,postid:integer;
 const
   regimesteps=8;
@@ -491,7 +491,16 @@ const
 
     if pubDate<OldPostsCutOff then b:=false else
      begin
-      qr:=TQueryResult.Create(db,'select id from Post where feed_id=? and guid=?',[feedid,itemid]);
+      if feedglobal then
+        qr:=TQueryResult.Create(db,
+          'select P.id from Post P'
+          +' inner join Feed F on F.id=P.feed_id'
+          +' where P.guid=? and ifnull(F.flags,0)&1=1'
+          ,[itemid])
+      else
+        qr:=TQueryResult.Create(db,
+          'select id from Post where feed_id=? and guid=?'
+          ,[feedid,itemid]);
       try
         b:=qr.EOF;
       finally
@@ -519,6 +528,8 @@ var
   d:TDateTime;
   i:integer;
   loadlast,postlast,postavg:double;
+  rw:WideString;
+  rf:TFileStream;
 begin
   feedid:=qr.GetInt('id');
   feedurl:=qr.GetStr('url');
@@ -528,6 +539,11 @@ begin
   feedresult:='';
 
   Write(IntToStr(feedid)+':'+feedurl);
+
+  //flags
+  i:=qr.GetInt('flags');
+  feedglobal:=(i and 1)<>0;
+  //TODO: more?
 
   //check feed timing and regime
   if qr.IsNull('postlast') then postlast:=0.0 else postlast:=qr['postlast'];
@@ -592,23 +608,41 @@ begin
         feedresult:='['+e.ClassName+']'+e.Message;
     end;
 
-    //if SaveData here?
+    rw:=r.responseText;
+    r:=nil;
+
+    if SaveData then
+     begin
+      rf:=TFileStream.Create('xmls\'+Format('%.4d',[feedid])+'.xml',fmCreate);
+      try
+        i:=$FEFF;
+        rf.Write(i,2);
+        rf.Write(rw[1],Length(rw)*2);
+      finally
+        rf.Free;
+      end;
+     end;
+
+    //sanitize unicode
+    for i:=1 to Length(rw) do
+      case word(rw[i]) of
+        0..8,11,12,14..31:rw[i]:=#9;
+        9,10,13:;//leave as-is
+        else ;//leave as-is
+      end;
 
     db.BeginTrans;
     try
 
       if feedresult='' then
         try
-
           doc:=CoDOMDocument60.Create;
           doc.async:=false;
           doc.validateOnParse:=false;
           doc.resolveExternals:=false;
 
-          if doc.loadXML(r.responseText) then
+          if doc.loadXML(rw) then
            begin
-            if SaveData then
-              doc.save('xmls\'+Format('%.4d',[feedid])+'.xml');
 
             //atom
             if doc.documentElement.nodeName='feed' then
@@ -742,8 +776,8 @@ begin
 
            end
           else
-            feedresult:='[XML]'+doc.parseError.Reason;
-
+            feedresult:='[XML'+IntToStr(doc.parseError.line)+':'+
+              IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
         except
           on e:Exception do
             feedresult:='['+e.ClassName+']'+e.Message;
@@ -904,7 +938,8 @@ end;
       +' ) X on X.feed_id=F.id'
       +' where ? in (0,F.id)',[FeedID]);
     try
-      while qr.Read do DoFeed(db,qr);
+      while qr.Read do
+        DoFeed(db,qr);
     finally
       qr.Free;
     end;
