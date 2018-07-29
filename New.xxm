@@ -16,14 +16,13 @@ case Context['x'].AsInteger of
     <dl>
     <dt>URL</dt>
     <dd>
-      <b>Attention:</b> URL to RSS/atom/RDF (//TODO: fetch feed URL from header &lt;link rel="?"&gt;)
-      <br /><input type="text" name="url" style="width:80vw;" /></dd>
+      <input type="text" name="url" style="width:80vw;" /></dd>
     <dt>name</dt>
     <dd><input type="text" name="name" value="" /> (leave empty for default //TODO: from URL data)</dd>
     <dt>category</dt>
     <dd>
       <select name="category">>
-      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from Subscription where user_id=?',[Session.UserID]);
+      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from Subscription where user_id=? order by 1',[Session.UserID]);
       try
         while qr1.Read do
          begin
@@ -126,7 +125,7 @@ case Context['x'].AsInteger of
       <<p style="color:red;">Already subscribed, not adding</p>>
       end;
 
-    <<p><a href="Feeds.xxm">Continue...</a></p>>
+    <<p><a href="Feeds.xxm">Continue...</a> (or <a href="New.xxm">add another...</a>)</p>>
 
    end;
   else

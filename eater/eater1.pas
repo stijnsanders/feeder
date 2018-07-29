@@ -20,7 +20,7 @@ uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB;
 var
   OldPostsCutOff,LastRun:TDateTime;
   SaveData:boolean;
-  FeedID,RunContinuous:integer;
+  FeedID,RunContinuous,LastClean:integer;
 
 function ConvDate1(const x:string):TDateTime;
 var
@@ -458,6 +458,7 @@ begin
       ,'<$1>$2</$1>')//rh6
       ,'&$1;')//rh7
   ;
+  if Result='' then Result:='&nbsp;&nbsp;&nbsp;';
 end;
 
 procedure DoFeed(db:TDataConnection;qr:TQueryResult);
@@ -527,6 +528,34 @@ const
      end;
   end;
 
+  procedure combineURL(const s:string);
+  var
+    i,l:integer;
+  begin
+    if LowerCase(Copy(s,1,4))='http' then
+      feedurl:=s
+    else
+    if s[1]='/' then
+     begin
+      i:=5;
+      l:=Length(feedurl);
+      //"http://"
+      while (i<=l) and (feedurl[i]<>'/') do inc(i);
+      inc(i);
+      while (i<=l) and (feedurl[i]<>'/') do inc(i);
+      inc(i);
+      //then to the next "/"
+      while (i<=l) and (feedurl[i]<>'/') do inc(i);
+      feedurl:=Copy(feedurl,1,i-1)+s;
+     end
+    else
+     begin
+      i:=Length(feedurl);
+      while (i<>0) and (feedurl[i]<>'/') do dec(i);
+      feedurl:=Copy(feedurl,1,i-1)+s;
+     end;
+  end;
+
   function findFeedURL(const rd:WideString):boolean;
   var
     reLink:RegExp;
@@ -534,7 +563,6 @@ const
     m:Match;
     sm:SubMatches;
     i,s1,s2:integer;
-    s:string;
   begin
     Result:=false;//default
     reLink:=CoRegExp.Create;
@@ -569,14 +597,14 @@ const
       if s1<>0 then
         if (sm[s1]='application/rss+xml') or (sm[s1]='text/rss+xml') then
          begin
-          feedurl:=sm[s2];
+          combineURL(sm[s2]);
           feedresult:='Feed URL found in content, updating (RSS)';
           Result:=true;
          end
         else
         if (sm[s1]='application/atom') or (sm[s1]='text/atom') then
          begin
-          feedurl:=sm[s2];
+          combineURL(sm[s2]);
           feedresult:='Feed URL found in content, updating (Atom)';
           Result:=true;
          end;
@@ -588,31 +616,7 @@ const
       mc:=reLink.Execute(rd) as MatchCollection;
       if (mc.Count<>0) and (sm[0]<>'') then
        begin
-        sm:=(mc[0] as Match).SubMatches as SubMatches;
-        s:=sm[0];
-        if LowerCase(Copy(s,1,4))='http' then
-          feedurl:=s
-        else
-         begin
-          if s[1]='/' then
-           begin
-            i:=5;
-            //"http://"
-            while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
-            inc(i);
-            while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
-            inc(i);
-            //then to the next "/"
-            while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
-            feedurl:=Copy(feedurl,1,i-1)+s;
-           end
-          else
-           begin
-            i:=Length(feedurl);
-            while (i<>0) and (feedurl[i]<>'/') do dec(i);
-            feedurl:=Copy(feedurl,1,i-1)+s;
-           end;
-         end;
+        combineURL(((mc[0] as Match).SubMatches as SubMatches)[0]);
         feedresult:='Meta redirect found, updating URL';
         Result:=true;
        end;
@@ -623,7 +627,7 @@ var
   d:TDateTime;
   i:integer;
   loadlast,postlast,postavg:double;
-  rw,rt:WideString;
+  rw,rt,s:WideString;
   rf:TFileStream;
 begin
   feedid:=qr.GetInt('id');
@@ -746,7 +750,11 @@ begin
             //atom
             if doc.documentElement.nodeName='feed' then
              begin
-              doc.setProperty('SelectionNamespaces','xmlns:atom=''http://www.w3.org/2005/Atom''');
+              if doc.namespaces.length=0 then
+                s:='xmlns:atom=''http://www.w3.org/2005/Atom'''
+              else
+                s:='xmlns:atom='''+doc.namespaces[0]+'''';
+              doc.setProperty('SelectionNamespaces',s);
 
               x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
               if x<>nil then feedname:=x.text;
@@ -1019,20 +1027,25 @@ begin
   try
     db.BusyTimeout:=30000;
 
-    db.BeginTrans;
-    try
+    i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
+    if LastClean<>i then
+     begin
+      LastClean:=i;
 
-      Write('Clean-up old...');
-      OldPostsCutOff:=UtcNow-OldPostsDays;
-      i:=db.Execute('delete from UserPost where post_id in (select id from Post where pubdate<?)',[OldPostsCutOff]);
-      j:=db.Execute('delete from Post where pubdate<?',[OldPostsCutOff]);
-      Writeln(Format(' [%d,%d]',[j,i]));
+      db.BeginTrans;
+      try
 
-      Write('Clean-up unused...');
-      db.Execute('delete from UserPost where post_id in (select P.id from Post P where P.feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id)))');
-      j:=db.Execute('delete from Post where feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id))');
-      i:=db.Execute('delete from Feed where not exists (select S.id from Subscription S where S.feed_id=Feed.id)');
-      Writeln(Format(' [%d,%d]',[j,i]));
+        Write('Clean-up old...');
+        OldPostsCutOff:=UtcNow-OldPostsDays;
+        i:=db.Execute('delete from UserPost where post_id in (select id from Post where pubdate<?)',[OldPostsCutOff]);
+        j:=db.Execute('delete from Post where pubdate<?',[OldPostsCutOff]);
+        Writeln(Format(' [%d,%d]',[j,i]));
+
+        Write('Clean-up unused...');
+        db.Execute('delete from UserPost where post_id in (select P.id from Post P where P.feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id)))');
+        j:=db.Execute('delete from Post where feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id))');
+        i:=db.Execute('delete from Feed where not exists (select S.id from Subscription S where S.feed_id=Feed.id)');
+        Writeln(Format(' [%d,%d]',[j,i]));
 
 //TRANSITIONAL
 if SaveData then
@@ -1059,11 +1072,12 @@ Writeln('Fixing...');
       end;
 end;
 
-      db.CommitTrans;
-    except
-      db.RollbackTrans;
-      raise;
-    end;
+        db.CommitTrans;
+      except
+        db.RollbackTrans;
+        raise;
+      end;
+     end;
 
 
     qr:=TQueryResult.Create(db,
@@ -1092,4 +1106,6 @@ end;
   end;
 end;
 
+initialization
+  LastClean:=0;
 end.

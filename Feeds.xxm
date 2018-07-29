@@ -95,7 +95,7 @@ else
     <dd>
       <select name="category">>
       s:=qr.GetStr('category');
-      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from Subscription where user_id=?',[Session.UserID]);
+      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from Subscription where user_id=? order by 1',[Session.UserID]);
       try
         while qr1.Read do
          begin

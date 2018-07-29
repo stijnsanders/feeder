@@ -1,6 +1,6 @@
 create table Feed (
 id integer primary key autoincrement,
-name varchar(200) not null,
+name varchar(200) not null collate nocase,
 url varchar(200) not null,
 created datetime not null,
 flags int null,
@@ -49,8 +49,8 @@ create table Subscription (
 id integer primary key autoincrement,
 user_id int not null,
 feed_id int not null,
-label varchar(50) not null,
-category varchar(200) not null,
+label varchar(50) not null collate nocase,
+category varchar(200) not null collate nocase,
 color int not null,
 readwidth int not null,
 created datetime not null,
