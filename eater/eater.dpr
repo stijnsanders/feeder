@@ -16,7 +16,10 @@ uses
 begin
   try
     CoInitialize(nil);
-    DoUpdateFeeds;
+    DoProcessParams;
+    repeat
+      DoUpdateFeeds;
+    until DoCheckRunDone;
   except
     on e:Exception do
      begin

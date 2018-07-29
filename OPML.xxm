@@ -99,6 +99,8 @@ case Context['x'].AsInteger of
     <dl>
     <dt>OPML file:</dt>
     <dd><input type="file" name="f" /></dd>
+    <dt>Prefix categories with:</dt>
+    <dd><input type="text" name="c" /></dd>
     </dl>
     <p><input type="submit" value=" Upload " /></p>
     </form>
@@ -124,7 +126,7 @@ case Context['x'].AsInteger of
       db:=Session.Connection;
       db.BeginTrans;
       try
-        DoOutlines(d.documentElement.selectNodes('body/outline'),'');
+        DoOutlines(d.documentElement.selectNodes('body/outline'),Context['c'].Value);
 
         db.CommitTrans;
       except

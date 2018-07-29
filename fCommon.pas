@@ -41,6 +41,7 @@ begin
   else if Copy(Result,Length(Result)-13,14)='.wordpress.com' then
     Result:='wp:'+Copy(Result,1,Length(Result)-15);
   //more?
+  if Result='' then Result:=FormatDateTime('[yyyy-mm-dd hh:nn]',UtcNow);
 end;
 
 function HTMLEncode(const x:string):string;

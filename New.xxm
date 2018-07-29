@@ -56,7 +56,8 @@ case Context['x'].AsInteger of
     //TODO: sanity checks?
     //TODO: first GET here? (or IPC call to feeder eater)
     if (Copy(s,1,7)<>'http://') and (Copy(s,1,8)<>'https://') then
-      raise Exception.Create('HTTP/HTTPS URL required');
+      //raise Exception.Create('HTTP/HTTPS URL required');
+      s:='http://'+s;
 
     t:=Context['name'].Value;
     qr:=TQueryResult.Create(Session.Connection,'select id, name from Feed where url=?',[s]);

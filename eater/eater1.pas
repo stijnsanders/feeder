@@ -4,7 +4,9 @@ interface
 
 uses SysUtils;
 
+procedure DoProcessParams;
 procedure DoUpdateFeeds;
+function DoCheckRunDone:boolean;
 
 //TODO: from ini
 const
@@ -16,9 +18,9 @@ implementation
 uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB;
 
 var
-  OldPostsCutOff:TDateTime;
+  OldPostsCutOff,LastRun:TDateTime;
   SaveData:boolean;
-  FeedID:integer;
+  FeedID,RunContinuous:integer;
 
 function ConvDate1(const x:string):TDateTime;
 var
@@ -403,7 +405,7 @@ end;
 
 
 var
-  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7:IRegExp2;
+  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7:RegExp;
 
 procedure SanitizeInit;
 begin
@@ -524,11 +526,104 @@ const
         ' select S.user_id,? from Subscription S where S.feed_id=?',[postid,feedid]);
      end;
   end;
+
+  function findFeedURL(const rd:WideString):boolean;
+  var
+    reLink:RegExp;
+    mc:MatchCollection;
+    m:Match;
+    sm:SubMatches;
+    i,s1,s2:integer;
+    s:string;
+  begin
+    Result:=false;//default
+    reLink:=CoRegExp.Create;
+    reLink.Global:=true;
+    reLink.IgnoreCase:=true;
+    //search for applicable <link type="" href="">
+    //TODO: <link rel="alternate"?
+    reLink.Pattern:='<link[^>]+?(type|href)=["'']([^"'']+?)["''][^>]+?(type|href)=["'']([^"'']+?)["''][^>]*?>';
+    mc:=reLink.Execute(rd) as MatchCollection;
+    i:=0;
+    while (i<mc.Count) and not(Result) do
+     begin
+      m:=mc[i] as Match;
+      inc(i);
+      sm:=m.SubMatches as SubMatches;
+      if (sm[0]='type') and (sm[2]='href') then
+       begin
+        s1:=1;
+        s2:=3;
+       end
+      else
+      if (sm[0]='href') and (sm[2]='type') then
+       begin
+        s1:=3;
+        s2:=1;
+       end
+      else
+       begin
+        s1:=0;
+        s2:=0;
+       end;
+      if s1<>0 then
+        if (sm[s1]='application/rss+xml') or (sm[s1]='text/rss+xml') then
+         begin
+          feedurl:=sm[s2];
+          feedresult:='Feed URL found in content, updating (RSS)';
+          Result:=true;
+         end
+        else
+        if (sm[s1]='application/atom') or (sm[s1]='text/atom') then
+         begin
+          feedurl:=sm[s2];
+          feedresult:='Feed URL found in content, updating (Atom)';
+          Result:=true;
+         end;
+     end;
+    //search for <meta http-equiv="refresh"> redirects
+    if not(Result) then
+     begin
+      reLink.Pattern:='<meta[^>]+?http-equiv=["'']?refresh["'']?[^>]+?content=["'']\d+?;url=([^"'']+?)["''][^>]*?>';
+      mc:=reLink.Execute(rd) as MatchCollection;
+      if (mc.Count<>0) and (sm[0]<>'') then
+       begin
+        sm:=(mc[0] as Match).SubMatches as SubMatches;
+        s:=sm[0];
+        if LowerCase(Copy(s,1,4))='http' then
+          feedurl:=s
+        else
+         begin
+          if s[1]='/' then
+           begin
+            i:=5;
+            //"http://"
+            while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
+            inc(i);
+            while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
+            inc(i);
+            //then to the next "/"
+            while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
+            feedurl:=Copy(feedurl,1,i-1)+s;
+           end
+          else
+           begin
+            i:=Length(feedurl);
+            while (i<>0) and (feedurl[i]<>'/') do dec(i);
+            feedurl:=Copy(feedurl,1,i-1)+s;
+           end;
+         end;
+        feedresult:='Meta redirect found, updating URL';
+        Result:=true;
+       end;
+     end;
+  end;
+
 var
   d:TDateTime;
   i:integer;
   loadlast,postlast,postavg:double;
-  rw:WideString;
+  rw,rt:WideString;
   rf:TFileStream;
 begin
   feedid:=qr.GetInt('id');
@@ -609,6 +704,10 @@ begin
     end;
 
     rw:=r.responseText;
+    rt:=r.getResponseHeader('Content-Type');
+    i:=1;
+    while (i<=Length(rt)) and (rt[i]<>';') do inc(i);
+    if (i<Length(rt)) then SetLength(rt,i-1);
     r:=nil;
 
     if SaveData then
@@ -772,12 +871,17 @@ begin
             else
 
             //unknown
-              feedresult:='Unkown "'+doc.documentElement.tagName+'"';
+              if not((rt='text/html') and findFeedURL(rw)) then
+              feedresult:='Unkown "'+doc.documentElement.tagName+'" ('
+                +rt+')';
 
            end
           else
-            feedresult:='[XML'+IntToStr(doc.parseError.line)+':'+
-              IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
+          //XML parse failed
+            if not((rt='text/html') and findFeedURL(rw)) then
+              feedresult:='[XML'+IntToStr(doc.parseError.line)+':'+
+                IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
+
         except
           on e:Exception do
             feedresult:='['+e.ClassName+']'+e.Message;
@@ -850,15 +954,13 @@ begin
       IntToStr(Round((d-feedload)*1440.0))+''' regime:'+IntToStr(feedregime));
 end;
 
-procedure DoUpdateFeeds;
+procedure DoProcessParams;
 var
-  db:TDataConnection;
-  qr:TQueryResult;
-  i,j:integer;
+  i:integer;
   s:string;
-  w,w1:WideString;
 begin
   SaveData:=false;
+  RunContinuous:=0;
   FeedID:=0;
 
   for i:=1 to ParamCount do
@@ -866,12 +968,53 @@ begin
     s:=ParamStr(i);
     if s='/s' then SaveData:=true
     else
+    if s='/c' then RunContinuous:=15
+    else
+    if Copy(s,1,2)='/c' then RunContinuous:=StrToInt(Copy(s,3,99))
+    else
     if Copy(s,1,2)='/f' then FeedID:=StrToInt(Copy(s,3,99))
     else
       raise Exception.Create('Unknown parameter #'+IntToStr(i));
    end;
 
-  SanitizeInit; 
+  SanitizeInit;
+end;
+
+function DoCheckRunDone:boolean;
+var
+  RunNext,d:TDateTime;
+  i:integer;
+begin
+  if RunContinuous=0 then
+    Result:=true
+  else
+   begin
+
+    RunNext:=LastRun+RunContinuous/1440.0;
+    d:=UtcNow;
+    while d<RunNext do
+     begin
+      i:=Round((RunNext-d)*86400.0);
+      Write(Format(#13'Waiting %.2d:%.2d',[i div 60,i mod 60]));
+      //TODO: check std-in?
+      //Result:=Eof(Input);
+      Sleep(1000);//?
+      d:=UtcNow;
+     end;
+    Writeln(#13'>>> '+FormatDateTime('yyyy-mm-dd hh:nn:ss',d));
+
+    Result:=false;
+   end;
+end;
+
+procedure DoUpdateFeeds;
+var
+  db:TDataConnection;
+  qr:TQueryResult;
+  i,j:integer;
+  w,w1:WideString;
+begin
+  LastRun:=UtcNow;
   db:=TDataConnection.Create(FeederDBPath);
   try
     db.BusyTimeout:=30000;
