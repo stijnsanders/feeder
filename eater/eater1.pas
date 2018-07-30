@@ -41,6 +41,7 @@ var
 begin
   i:=1;
   l:=Length(x);
+  while (i<=l) and (x[i]<=' ') do inc(i);
   nx(dy,4); inc(i);//':'
   nx(dm,2); inc(i);//':'
   nx(dd,2); inc(i);//'T'
@@ -300,6 +301,7 @@ var
 begin
   i:=1;
   l:=Length(x);
+  while (i<=l) and (x[i]<=' ') do inc(i);
   //day of week 'Mon,','Tue,'...
   while (i<=l) and not(x[i] in ['0'..'9']) do inc(i);
   //day of month
@@ -789,8 +791,9 @@ begin
                 if y=nil then content:='' else content:=y.text;
                 try
                   y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
-                  if y=nil then
-                    y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:modified') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:issued') as IXMLDOMElement;
                   if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
                 except
                   pubDate:=UtcNow;
