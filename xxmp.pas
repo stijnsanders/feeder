@@ -35,10 +35,12 @@ type
 function TXxmfeeder.LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment;
 var
   verb:WideString;
+  a:string;
 begin
   inherited;
   Context.BufferSize:=$10000;
-  if LowerCase(Address)<>'auth.xxm' then
+  a:=LowerCase(Address);
+  if not((a='auth.xxm') and (Context.ContextString(csVerb)='POST')) and (a<>'badge.xxm') then
     SetSession(Context);
 
   verb:=Context.ContextString(csVerb);

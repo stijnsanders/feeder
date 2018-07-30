@@ -88,7 +88,7 @@ else
     <dt>name</dt>
     <dd>>=qr['name']<</dd>
     <dt>URL</dt>
-    <dd>>=qr['url']]]&nbsp;<a href="[[=qr['url']]]" style="text-decoration:none;">&rarr;</a></dd>
+    <dd>>=qr['url']]]&nbsp;<a href="[[=qr['url']]]" style="text-decoration:none;"><img src="img_r.png" width="16" height="16" alt="feed link" /></a></dd>
     <dt>since</dt>
     <dd>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created')+Session.TimeBias)<</dd>
     <dt>category</dt>

@@ -1,0 +1,52 @@
+[[@xxmSession,DataLank]][[!var
+db:TDataConnection;
+qr:TQueryResult;
+x:string;
+id,f,p:integer;
+<<!doctype html>
+<html>
+<head>
+<title>Feeder - RSS/Atom Feed Reader</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico" />
+<link href="https://fonts.googleapis.com/css?family=PT+Sans:400,700" rel="stylesheet">
+<style type="text/css">
+BODY{font-family:"PT Sans",Calibri,sans-serif;padding:2pt;margin:0;background-color:gold;white-space:nowrap;overflow:hidden;user-select:none;text-align:center;}
+A{text-decoration:none;color:#000020;}
+IMG{border:0;margin-bottom:-2pt;}
+</style>
+<base target="_blank">
+</head>
+<body>>
+x:=Context['x'].Value;
+if Length(x)<>12 then x:=Copy(x+'============',1,12);
+db:=TXxmSession.Connection;
+qr:=TQueryResult.Create(db,'select user_id from UserLogon where substr(key,1,12)=?',[x]);
+try
+  if qr.EOF then id:=0 else id:=qr.GetInt('user_id');
+finally
+  qr.Free;
+end;
+if id=0 then
+ begin
+  <<span style="color:red;">Unknown user</span>>
+ end
+else
+ begin
+  qr:=TQueryResult.Create(db,'select count(*) from Subscription where user_id=?',[id]);
+  try
+    f:=qr.GetInt(0);
+  finally
+    qr.Free;
+  end;
+  qr:=TQueryResult.Create(db,'select count(*) from UserPost where user_id=?',[id]);
+  try
+    p:=qr.GetInt(0);
+  finally
+    qr.Free;
+  end;
+  <<span title="Feeder: Subscribed to [[=f]] feeds, [[=p]] unread posts.">#[[=f]]: <b>>=p<</b></span>>
+ end;
+]]
+<a href="[[=PublicURL]]"><img src="img_r.png" width="16" height="16" alt="Feeder: a simple feed reader" /></a>
+</body>
+</html>

@@ -4,6 +4,9 @@ interface
 
 uses xxm, Classes, DataLank;
 
+const
+  PublicURL='http://yoy.be/home/feeder/';
+
 type
   TXxmSession=class(TObject)
   private

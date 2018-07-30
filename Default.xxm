@@ -34,7 +34,7 @@ else
     [[
     if (cat<>'') or (f<>0) then
      begin
-      <<a href="." style="font-weight:bold;">&larr;All</a><br />>
+      <<a href="." style="font-weight:bold;"><img src="img_l.png" width="16" height="16" alt="All"/>&nbsp;All</a><br />>
      end;
     ]]
     <span id="postcount">>
