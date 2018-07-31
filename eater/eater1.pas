@@ -995,6 +995,9 @@ function DoCheckRunDone:boolean;
 var
   RunNext,d:TDateTime;
   i:integer;
+  h:THandle;
+  b:TInputRecord;
+  c:cardinal;
 begin
   if RunContinuous=0 then
     Result:=true
@@ -1011,6 +1014,30 @@ begin
       //Result:=Eof(Input);
       Sleep(1000);//?
       d:=UtcNow;
+
+
+      h:=GetStdHandle(STD_INPUT_HANDLE);
+      while WaitForSingleObject(h,0)=WAIT_OBJECT_0 do
+       begin
+        if not ReadConsoleInput(h,b,1,c) then
+          RaiseLastOSError;
+        if (c<>0) and (b.EventType=KEY_EVENT) and b.Event.KeyEvent.bKeyDown then
+          case b.Event.KeyEvent.AsciiChar of
+            's'://skip
+             begin
+              Writeln(#13'Manual skip    ');
+              d:=RunNext;
+             end;
+            'q'://quit
+             begin
+              Writeln(#13'User abort    ');
+              raise Exception.Create('User abort');
+             end;
+            else
+              Writeln(#13'Unknown code "'+b.Event.KeyEvent.AsciiChar+'"');
+          end;
+       end;
+
      end;
     Writeln(#13'>>> '+FormatDateTime('yyyy-mm-dd hh:nn:ss',d));
 
