@@ -2,6 +2,7 @@ program eater;
 
 uses
   SysUtils,
+  Windows,
   ActiveX,
   eater1 in 'eater1.pas',
   SQLite in '..\SQLite.pas',
@@ -13,13 +14,23 @@ uses
 {$R *.res}
 {$APPTYPE CONSOLE}
 
+var
+  h:THandle;
 begin
   try
-    CoInitialize(nil);
-    DoProcessParams;
-    repeat
-      DoUpdateFeeds;
-    until DoCheckRunDone;
+    h:=CreateMutex(nil,true,'Global\FeederEater');
+    if h=0 then RaiseLastOSError;
+    try
+      if GetLastError=ERROR_ALREADY_EXISTS then
+        raise Exception.Create('Another running instance of Eater detected.');
+      CoInitialize(nil);
+      DoProcessParams;
+      repeat
+        DoUpdateFeeds;
+      until DoCheckRunDone;
+    finally
+      CloseHandle(h);
+    end;
   except
     on e:Exception do
      begin
