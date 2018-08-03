@@ -407,7 +407,7 @@ end;
 
 
 var
-  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7:RegExp;
+  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM:RegExp;
 
 procedure SanitizeInit;
 begin
@@ -437,6 +437,8 @@ begin
   rh7.Pattern:='&amp;(#x?[0-9a-f]+?|[0-9]+?);';
   rh7.Global:=true;
   rh7.IgnoreCase:=true;
+  rhUTM:=CoRegExp.Create;
+  rhUTM.Pattern:='\?utm_[^\?]+?$';
 end;
 
 function SanitizeTitle(const title:WideString):WideString;
@@ -544,11 +546,14 @@ const
     qr:TQueryResult;
     b:boolean;
   begin
-    if Copy(itemid,1,7)='http://' then
+    if Copy(itemid  ,1,7)='http://' then
       itemid:=Copy(itemid,8,Length(itemid)-7)
     else
       if Copy(itemid,1,8)='https://' then
         itemid:=Copy(itemid,9,Length(itemid)-8);
+
+    //strip '?utm_'... query string
+    if rhUTM.Test(itemid) then itemid:=rhUTM.Replace(itemid,'');
 
     //TODO: switch: allow future posts?
     if pubDate>feedload+2.0/24.0 then pubDate:=feedload;
@@ -723,6 +728,7 @@ begin
       d:=loadlast+feedregime;
    end;
   b:=d<feedload;
+  loadext:=false;//default
 
   c1:=0;
   c2:=0;
