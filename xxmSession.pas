@@ -80,7 +80,7 @@ end;
 
 procedure AuthSession(const Key,Login,Name,Email:WideString);
 var
-  i:integer;
+  i,tz:integer;
   db:TDataConnection;
   qr:TQueryResult;
   s:TXxmSession;
@@ -108,9 +108,18 @@ begin
        begin
         s.UserID:=qr.GetInt('id');
         if qr.GetStr('name')<>Name then
+         begin
           db.Execute('update User set name=? where id=?',[Name,s.UserID]);
+          s.Name:=Name;
+         end;
         if qr.GetStr('email')<>Email then
+         begin
           db.Execute('update User set email=? where id=?',[Email,s.UserID]);
+          //?:=Email;
+         end;
+        //TODO: central LoadUser(qr)
+        tz:=qr.GetInt('timezone');
+        s.TimeBias:=(tz div 100)/24.0+(tz mod 100)/1440.0;
        end;
     finally
       qr.Free;
