@@ -151,7 +151,7 @@ begin
     Connection.BeginTrans;
     try
       //TODO: more checks? hash user-agent?
-      qr:=TQueryResult.Create(Connection,'select U.*, L.id as LogonID from UserLogon L inner join User U on U.id=L.user_id',[s]);
+      qr:=TQueryResult.Create(Connection,'select U.*, L.id as LogonID from UserLogon L inner join User U on U.id=L.user_id where L.key=?',[s]);
       try
         if qr.Read then
          begin
