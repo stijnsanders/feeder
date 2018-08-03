@@ -26,7 +26,15 @@ begin
       CoInitialize(nil);
       DoProcessParams;
       repeat
-        DoUpdateFeeds;
+        try
+          DoUpdateFeeds;
+        except
+          on e:Exception do
+           begin
+            Writeln(ErrOutput,'['+e.ClassName+']'+e.Message);
+            ExitCode:=1;
+           end;
+        end;
       until DoCheckRunDone;
     finally
       CloseHandle(h);

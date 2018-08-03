@@ -11,7 +11,7 @@ function DoCheckRunDone:boolean;
 //TODO: from ini
 const
   FeederDBPath='..\feeder.db';
-  OldPostsDays=732;
+  OldPostsDays=3660;
 
 implementation
 
@@ -460,7 +460,66 @@ begin
       ,'<$1>$2</$1>')//rh6
       ,'&$1;')//rh7
   ;
-  if Result='' then Result:='&nbsp;&nbsp;&nbsp;';
+end;
+
+function LoadExternal(const URL,FilePath:string): WideString;
+var
+  si:TStartupInfo;
+  pi:TProcessInformation;
+  f:TFileStream;
+  s:UTF8String;
+  i:integer;
+  w:word;
+begin
+  Writeln(' ->');
+  DeleteFile(PChar(FilePath));//remove any previous file
+
+  ZeroMemory(@si,SizeOf(TStartupInfo));
+  si.cb:=SizeOf(TStartupInfo);
+  {
+  si.dwFlags:=STARTF_USESTDHANDLES;
+  si.hStdInput:=GetStdHandle(STD_INPUT_HANDLE);
+  si.hStdOutput:=GetStdHandle(STD_OUTPUT_HANDLE);
+  si.hStdError:=GetStdHandle(STD_ERROR_HANDLE);
+  }
+  if not CreateProcess(nil,PChar('curl.exe -vLk -H "Accept:application/rss+xml, application/atom+xml, application/xml, text/xml" -o "'+
+    FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
+  CloseHandle(pi.hThread);
+  WaitForSingleObject(pi.hProcess,INFINITE);
+  CloseHandle(pi.hProcess);
+
+  f:=TFileStream.Create(FilePath,fmOpenRead);
+  try
+    f.Read(w,2);
+    if w=$FEFF then //UTF16?
+     begin
+      i:=f.Size-2;
+      SetLength(Result,i div 2);
+      f.Read(Result[1],i);
+     end
+    else
+    if w=$BBEF then
+     begin
+      w:=0;
+      f.Read(w,1);
+      if w<>$BF then raise Exception.Create('Unexpected partial UTF8BOM');
+      i:=f.Size-3;
+      SetLength(s,i);
+      f.Read(s[1],i);
+      Result:=UTF8Decode(s);
+     end
+    else
+     begin
+      f.Position:=0;
+      i:=f.Size;
+      SetLength(s,i);
+      f.Read(s[1],i);
+
+      Result:=s;
+     end;
+  finally
+    f.Free;
+  end;
 end;
 
 procedure DoFeed(db:TDataConnection;qr:TQueryResult);
@@ -516,6 +575,7 @@ const
     if b then
      begin
       inc(c2);
+      if title='' then title:='['+itemid+']';
       postid:=db.Insert('Post',
         ['feed_id',feedid
         ,'guid',itemid
@@ -629,6 +689,7 @@ var
   d:TDateTime;
   i:integer;
   loadlast,postlast,postavg:double;
+  loadext:boolean;
   rw,rt,s:WideString;
   rf:TFileStream;
 begin
@@ -668,65 +729,79 @@ begin
   if b then
    begin
     try
-      rc:=0;
-      r:=CoServerXMLHTTP60.Create;
-      while b do
+
+      loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
+      if loadext then
        begin
-        b:=false;
-        r.open('GET',feedurl,false,EmptyParam,EmptyParam);
-        r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, text/xml');
-        r.setRequestHeader('Cache-Control','max-age=0');
-        if Pos('tumblr.com',feedurl)<>0 then
+        rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml');
+        rt:='text/html';//?? here just to enable search for <link>s
+       end
+      else
+       begin
+        rc:=0;
+        r:=CoServerXMLHTTP60.Create;
+        while b do
          begin
-          r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x'+
-            '64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safar'+
-            'i/537.36');
-          r.setRequestHeader('Cookie','_ga=GA1.2.23714421.1433010142; rxx=2kenj37'+
-            'frug.zcwv3sm&v=1; __utma=189990958.23714421.1433010142.1515355375.15'+
-            '15513281.39; tmgioct=5b490b2e517e660612702270; pfg=324066a0306b92f0b'+
-            '5346487b1309edb56a909231a6bc33a78f47993e4b695ef%23%7B%22eu_resident%'+
-            '22%3A1%2C%22gdpr_is_acceptable_age%22%3A1%2C%22gdpr_consent_core%22%'+
-            '3A1%2C%22gdpr_consent_first_party_ads%22%3A1%2C%22gdpr_consent_third'+
-            '_party_ads%22%3A1%2C%22gdpr_consent_search_history%22%3A1%2C%22exp%2'+
-            '2%3A1563049750%2C%22vc%22%3A%22%22%7D%238216174849');
+          b:=false;
+          r.open('GET',feedurl,false,EmptyParam,EmptyParam);
+          r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, text/xml');
+          r.setRequestHeader('Cache-Control','max-age=0');
+          if Pos('tumblr.com',feedurl)<>0 then
+           begin
+            r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x'+
+              '64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safar'+
+              'i/537.36');
+            r.setRequestHeader('Cookie','_ga=GA1.2.23714421.1433010142; rxx=2kenj37'+
+              'frug.zcwv3sm&v=1; __utma=189990958.23714421.1433010142.1515355375.15'+
+              '15513281.39; tmgioct=5b490b2e517e660612702270; pfg=324066a0306b92f0b'+
+              '5346487b1309edb56a909231a6bc33a78f47993e4b695ef%23%7B%22eu_resident%'+
+              '22%3A1%2C%22gdpr_is_acceptable_age%22%3A1%2C%22gdpr_consent_core%22%'+
+              '3A1%2C%22gdpr_consent_first_party_ads%22%3A1%2C%22gdpr_consent_third'+
+              '_party_ads%22%3A1%2C%22gdpr_consent_search_history%22%3A1%2C%22exp%2'+
+              '2%3A1563049750%2C%22vc%22%3A%22%22%7D%238216174849');
+           end
+          else
+            r.setRequestHeader('User-Agent','FeedEater/1.0');
+          r.send(EmptyParam);
+          if r.status=301 then //moved permanently
+           begin
+            feedurl:=r.getResponseHeader('Location');
+            b:=true;
+            inc(rc);
+            if rc=8 then
+              raise Exception.Create('max redirects exceeded');
+           end;
+         end;
+        if r.status=200 then
+         begin
+
+          rw:=r.responseText;
+          rt:=r.getResponseHeader('Content-Type');
+          i:=1;
+          while (i<=Length(rt)) and (rt[i]<>';') do inc(i);
+          if (i<Length(rt)) then SetLength(rt,i-1);
+          r:=nil;
+
+          if SaveData then
+           begin
+            rf:=TFileStream.Create('xmls\'+Format('%.4d',[feedid])+'.xml',fmCreate);
+            try
+              i:=$FEFF;
+              rf.Write(i,2);
+              rf.Write(rw[1],Length(rw)*2);
+            finally
+              rf.Free;
+            end;
+           end;
+
          end
         else
-          r.setRequestHeader('User-Agent','FeedEater/1.0');
-        r.send(EmptyParam);
-        if r.status=301 then //moved permanently
-         begin
-          feedurl:=r.getResponseHeader('Location');
-          b:=true;
-          inc(rc);
-          if rc=8 then
-            raise Exception.Create('max redirects exceeded');
-         end;
+          feedresult:='[HTTP:'+IntToStr(r.status)+']'+r.statusText;
        end;
-      if r.status<>200 then
-        feedresult:='[HTTP:'+IntToStr(r.status)+']'+r.statusText;
     except
       on e:Exception do
         feedresult:='['+e.ClassName+']'+e.Message;
     end;
-
-    rw:=r.responseText;
-    rt:=r.getResponseHeader('Content-Type');
-    i:=1;
-    while (i<=Length(rt)) and (rt[i]<>';') do inc(i);
-    if (i<Length(rt)) then SetLength(rt,i-1);
-    r:=nil;
-
-    if SaveData then
-     begin
-      rf:=TFileStream.Create('xmls\'+Format('%.4d',[feedid])+'.xml',fmCreate);
-      try
-        i:=$FEFF;
-        rf.Write(i,2);
-        rf.Write(rw[1],Length(rw)*2);
-      finally
-        rf.Free;
-      end;
-     end;
 
     //sanitize unicode
     for i:=1 to Length(rw) do
@@ -746,7 +821,11 @@ begin
           doc.validateOnParse:=false;
           doc.resolveExternals:=false;
 
-          if doc.loadXML(rw) then
+          if loadext then
+            b:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
+          else
+            b:=doc.loadXML(rw);
+          if b then
            begin
 
             //atom
@@ -784,7 +863,8 @@ begin
                     y:=xl1.nextNode as IXMLDOMElement;
                    end;
                  end;
-                title:=x.selectSingleNode('atom:title').text;
+                y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
+                if y=nil then title:='' else title:=y.text;
                 y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
                 if y=nil then
                   y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
@@ -822,7 +902,8 @@ begin
                 if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
                 itemid:=y.text;
                 itemurl:=x.selectSingleNode('link').text;
-                title:=x.selectSingleNode('title').text;
+                y:=x.selectSingleNode('title') as IXMLDOMElement;
+                if y=nil then title:='' else title:=y.text;
                 y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
                 if y=nil then
                   y:=x.selectSingleNode('content') as IXMLDOMElement;
@@ -858,7 +939,8 @@ begin
                begin
                 itemid:=x.getAttribute('rdf:about');
                 itemurl:=x.selectSingleNode('rss:link').text;
-                title:=x.selectSingleNode('rss:title').text;
+                y:=x.selectSingleNode('rss:title') as IXMLDOMElement;
+                if y=nil then title:='' else title:=y.text;
                 y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
                 if y=nil then content:='' else content:=y.text;
                 try
@@ -1050,9 +1132,9 @@ var
   db:TDataConnection;
   qr:TQueryResult;
   i,j:integer;
-  w,w1:WideString;
 begin
   LastRun:=UtcNow;
+  Writeln('Opening database...');
   db:=TDataConnection.Create(FeederDBPath);
   try
     db.BusyTimeout:=30000;
@@ -1077,31 +1159,6 @@ begin
         i:=db.Execute('delete from Feed where not exists (select S.id from Subscription S where S.feed_id=Feed.id)');
         Writeln(Format(' [%d,%d]',[j,i]));
 
-//TRANSITIONAL
-if SaveData then
-begin
-Writeln('Fixing...');
-      db.Execute('update Post set guid=substr(guid,8) where substr(guid,1,7)=''http://''');
-      db.Execute('update Post set guid=substr(guid,9) where substr(guid,1,8)=''https://''');
-
-      qr:=TQueryResult.Create(db,'select id, title from Post where title like ''%&%'' or title like ''%<%'' or title like ''%>%''');
-      try
-        while qr.Read do
-         begin
-          w1:=qr.GetStr('title');
-          w:=SanitizeTitle(w1);
-          if w<>w1 then
-           begin
-            i:=qr.GetInt('id');
-            db.Execute('update Post set title=? where id=?',[w,i]);
-            Writeln(Format('%d:%s',[i,w]));
-           end;
-         end;
-      finally
-        qr.Free;
-      end;
-end;
-
         db.CommitTrans;
       except
         db.RollbackTrans;
@@ -1109,7 +1166,7 @@ end;
       end;
      end;
 
-
+    Writeln('Listing feeds...');
     qr:=TQueryResult.Create(db,
       'select * from Feed F'
       +' left outer join ('
