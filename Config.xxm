@@ -52,6 +52,7 @@ case Context['x'].AsInteger of
       qr.Free;
     end;
     <<p><b>previous logins:</b></p>>
+    s:=Context.Cookie['feederAutoLogon'];
     qr:=TQueryResult.Create(db,'select * from UserLogon where user_id=? order by last desc',[Session.UserID]);
     try
       while qr.Read do
@@ -60,6 +61,7 @@ case Context['x'].AsInteger of
         <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',qr.GetDate('last')+Session.TimeBias)<</div>
         [[=qr['address']]]
         "[[=qr['useragent']]]"
+        [[if s=qr.GetStr('key') then begin <<img src="img_l.png" width="16" height="16" alt="current session" style="margin-bottom:-2pt;" />> end;]]
         <a href="[[?'x',2,'id',qr['id']]]" style="color:#0000CC;">[revoke]</a>
         </div>>
        end;
@@ -102,7 +104,8 @@ case Context['x'].AsInteger of
       raise;
     end;
     //TODO: kill live sessions
-    <<p>Auto-logon revoked</p>>
+    <<p>Auto-logon revoked</p>
+    <p><a href="?">Continue...</a></p>>
    end;
   //3:
   else raise Exception.Create('Unknown action');
