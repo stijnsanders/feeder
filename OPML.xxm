@@ -9,9 +9,9 @@ DefaultReadWidth=32;
 procedure DoOutlines(xl:IXMLDOMNodeList;const Group:string);
 var
   x:IXMLDOMElement;
-  s,t:string;
+  s,t,feedcolor:string;
   qr:TQueryResult;
-  id,id1:integer;
+  id,id1,rw:integer;
 begin
   x:=xl.nextNode as IXMLDOMElement;
   while x<>nil do
@@ -24,20 +24,20 @@ begin
 
       db:=Session.Connection;
 
-      t:='';//counter warning
+      t:=VarToStr(x.getAttribute('f:label'));
       qr:=TQueryResult.Create(db,'select id, name from Feed where url=?',[s]);
       try
         if qr.EOF then id:=0 else
          begin
           id:=qr.GetInt(0);
-          t:=qr.GetStr(1);
+          if t='' then t:=qr.GetStr(1);
          end;
       finally
         qr.Free;
       end;
       if id=0 then
        begin
-        t:=NameFromFeedURL(s);
+        if t='' then t:=NameFromFeedURL(s);
         id:=db.Insert('Feed',['name',t,'url',s,'created',UtcNow],'id');
        end
       else
@@ -45,6 +45,10 @@ begin
         db.Execute('insert into UserPost (user_id,post_id) select ?,id from Post where feed_id=? and pubDate>?',
           [Session.UserID,id,UtcNow-366.0]);
        end;
+    
+      feedcolor:=VarToStr(x.getAttribute('f:color'));
+      if not TryStrToInt(VarToStr(x.getAttribute('f:readwidth')),rw) then
+        rw:=DefaultReadWidth;
 
       qr:=TQueryResult.Create(db,'select id from Subscription where user_id=? and feed_id=?',[Session.UserID,id]);
       try
@@ -58,9 +62,9 @@ begin
           ['user_id',Session.UserID
           ,'feed_id',id
           ,'label',t
-          ,'color',0//TODO
+          ,'color',feedcolor
           ,'category',Group
-          ,'readwidth',DefaultReadWidth//default
+          ,'readwidth',rw
           ,'created',UtcNow
           ],'id');
        end
@@ -69,13 +73,12 @@ begin
         //update category? (allow duplicates?)
        end;
 
-      Context.SendHTML(['<p>',id,'</p>']);
-
      end;
 
     s:=VarToStr(x.getAttribute('title'));
     if s='' then s:=Group else if Group<>'' then s:=Group+'\'+s;
     DoOutlines(x.selectNodes('outline'),s);
+    DoOutlines(x.selectNodes('opml:outline'),s);
     x:=xl.nextNode as IXMLDOMElement;
    end;
 end;
@@ -120,13 +123,18 @@ case Context['x'].AsInteger of
       m.Stream.Position:=0;
       d:=CoDOMDocument60.Create;
       d.async:=false;
+      d.validateOnParse:=false;
+      d.resolveExternals:=false;
       if not d.load(m as IStream) then
         raise Exception.Create(d.parseError.reason);
+
+      d.setProperty('SelectionNamespaces','xmlns:opml=''http://opml.org/spec2'' xmlns:f=''http://yoy.be/schema/2018/feeder_subs''');
       
       db:=Session.Connection;
       db.BeginTrans;
       try
         DoOutlines(d.documentElement.selectNodes('body/outline'),Context['c'].Value);
+        DoOutlines(d.documentElement.selectNodes('opml:body/opml:outline'),Context['c'].Value);
 
         db.CommitTrans;
       except
@@ -139,7 +147,7 @@ case Context['x'].AsInteger of
       //m.Free;
       (m as IUnknown)._Release;
     end;
-    <<p><a href=".">back</a></p>>
+    <<p><a href="Feeds.xxm">continue...</a></p>>
    end;
   else
     raise Exception.Create('Unknown action');

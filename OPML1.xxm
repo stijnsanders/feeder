@@ -16,7 +16,7 @@ DecodeDate(d1,dy,dm,dd);
 d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+FormatDateTime(' hh:nn:ss',d1)+' GMT';
 
 <<?xml version="1.0" encoding="UTF-8"?>
-<opml version="1.1">
+<opml version="1.1" xmlns="http://opml.org/spec2" xmlns:f="http://yoy.be/schema/2018/feeder_subs">
   <head>
     <title>Feeder - a simple feed reader</title>>
     qr:=TQueryResult.Create(Session.Connection,'select * from User where id=?',[Session.UserID]);
@@ -46,7 +46,7 @@ d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+For
         c:=c1;
         <<outline title="[[=c]]" text="[[=c]]">>
        end;
-      <<outline type="rss" xmlUrl="[[=qr['url']]]"/>>
+      <<outline type="rss" xmlUrl="[[=qr['url']]]" f:label="[[=qr['label']]]" f:color="[[=qr['color']]]" f:readwidth="[[=qr['readwidth']]]" />>
      end;
     if c<>'' then Context.SendHTML('</outline>');
   <</body>
