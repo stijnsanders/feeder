@@ -3,8 +3,8 @@ function doResize(){
   var y=document.getElementById("black");
   x.width=window.innerWidth-x.offsetLeft*2;
   x.height=window.innerHeight-x.offsetTop*2.4;
-  y.width=window.innerWidth;
-  y.height=window.innerHeight;
+  y.style.width=window.innerWidth+"px";
+  y.style.height=window.innerHeight+"px";
 }
 function doPost(x,event){
   var e=(window.event||event);
