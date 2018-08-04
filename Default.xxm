@@ -48,7 +48,7 @@ else
     &nbsp;<a href="Feeds.xxm"><img src="img_c.png" width="16" height="16" style="margin-bottom:-2pt;" border="0" alt="Feeds..." /></a>
     </div>
 
-    <script src="feeder.js?v=7b"></script>
+    <script src="feeder.js?v=8"></script>
     <div id="black" style="z-index:6;position:fixed;display:none;top:0;left:0;width:100vw;height:100vh;background-color:black;filter:opacity(0.5);user-select:none;" onclick="return doClose();"></div>
     <div id="postbox" class="postbox" style="z-index:8;position:fixed;display:none;top:0.5em;right:1em;user-select:none;">
       <a href="#" onclick="return doHere();"><img src="img_d.png" width="16" height="16" alt="load here" /></a>

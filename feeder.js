@@ -1,7 +1,10 @@
 function doResize(){
   var x=document.getElementById("postview");
+  var y=document.getElementById("black");
   x.width=window.innerWidth-x.offsetLeft*2;
   x.height=window.innerHeight-x.offsetTop*2.4;
+  y.width=window.innerWidth;
+  y.height=window.innerHeight;
 }
 function doPost(x,event){
   var e=(window.event||event);
@@ -14,11 +17,13 @@ function doPost(x,event){
     document.getElementById("postview").style.display="";
     document.getElementById("postlink").href=x.href;
     window.open("Post.xxm"+x.getAttribute("postqs"),"postview");
-    x.parentElement.className="postread";
+    if(x.parentElement.className=="post"){
+      x.parentElement.className="postread";
+      var c=document.getElementById("postcount");
+      c.textContent=c.textContent-1;
+    }
     window.onresize=doResize;
     doResize();
-    var c=document.getElementById("postcount");
-    c.textContent=c.textContent-1;
     return false;
   }
 }
