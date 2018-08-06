@@ -118,7 +118,12 @@ else
        end
     else
      begin
-      sql:=sql+' and S.feed_id=?';
+      sql:=
+        'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
+        ' from Subscription S'+
+        ' inner join Post P on P.feed_id=S.feed_id'+
+        ' left outer join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
+        ' where S.user_id=? and P.feed_id=?';
       SetLength(xx,2+lx);
       xx[0]:=Session.UserID;
       xx[1]:=f;
