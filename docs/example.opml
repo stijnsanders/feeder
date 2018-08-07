@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.1" xmlns="http://opml.org/spec2" xmlns:f="http://yoy.be/schema/2018/feeder_subs">
+  <body>
+    <outline type="rss" xmlUrl="http://feeds.boingboing.net/boingboing/iBag" f:label="boingboing" f:color="ff0000" />
+    <outline type="rss" xmlUrl="http://feeds.feedburner.com/Metafilter" f:label="MF" f:color="1185b1" />
+    <outline type="rss" xmlUrl="https://www.1843magazine.com/rss/content" f:label="1843" f:color="448844" />
+    <outline type="rss" xmlUrl="https://2kindsofpeople.tumblr.com/rss" f:label="2KofPPL" f:color="cccc00" />
+    <outline type="rss" xmlUrl="https://xkcd.com/rss.xml" f:label="xkcd" f:color="-111111" />
+    <outline type="rss" xmlUrl="http://webcomicname.com/rss" f:label="webcomicname" f:color="ff7db6" f:readwidth="40" />
+    <outline type="rss" xmlUrl="http://rss.slashdot.org/Slashdot/slashdot" f:label="/." f:color="00CC99" />
+    <outline type="rss" xmlUrl="http://www.theregister.co.uk/headlines.atom" f:label="reg" f:color="-cc0000" />
+    <outline type="rss" xmlUrl="http://feeds.arstechnica.com/arstechnica/index" f:label="ars" f:color="DDCC55" />
+    <outline type="rss" xmlUrl="https://www.theverge.com/tech/rss/index.xml" f:label="verge" f:color="00FF00" />
+    <outline type="rss" xmlUrl="https://techcrunch.com/feed/" f:label="tc" f:color="338833" />
+    <outline type="rss" xmlUrl="http://www.slate.com/all.fulltext.all.rss" f:label="slate" f:color="7799bb" />
+    <outline type="rss" xmlUrl="https://cms.qz.com/feed/" f:label="qz" f:color="888866" />
+    <outline type="rss" xmlUrl="http://www.npr.org/rss/rss.php?id=1001" f:label="npr" f:color="6688ff" />
+    <outline type="rss" xmlUrl="http://feeds.reuters.com/reuters/technologyNews" f:label="reuters" f:color="dd6600" />
+    <outline type="rss" xmlUrl="https://www.space.com/home/feed/site.xml" f:label="space" f:color="0" />
+  </body>
+</opml>
