@@ -137,7 +137,7 @@ else
    end;
 
   if Context['q'].Value='' then l:=0 else l:=Context['q'].AsInteger;
-  if l=0 then l:=200;//default
+  if l=0 then l:=100;//default
 
   if loadMore then
    begin

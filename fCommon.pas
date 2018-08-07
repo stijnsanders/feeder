@@ -5,6 +5,7 @@ interface
 function NameFromFeedURL(const url:string):string;
 function ShowLabel(const Lbl,LblColor:string):string;
 function ColorPicker(const ValColor:string):string;
+function CheckColor(const ValColor:string):string;
 function UtcNow:TDateTime;
 
 implementation
@@ -149,6 +150,41 @@ begin
     inc(i,3);
    end;
   Result:=Result+'</select><script>doColorSelect(false);</script>';
+end;
+
+function CheckColor(const ValColor:string):string;
+var
+  i:integer;
+  c:string;
+begin
+  c:=ValColor;
+  try
+    if (c<>'') and (c[1]='-') then
+      begin
+      i:=StrToInt('$0'+Copy(c,2,999));
+      if i<$1000000 then
+        if Length(c)=4 then
+          c:='-'+c[2]+c[2]+c[3]+c[3]+c[4]+c[4]
+        else
+          while Length(c)<7 do c:='-0'+Copy(c,2,999)
+      else
+        c:='0';
+      end
+    else
+      begin
+      i:=StrToInt('$0'+c);
+      if i<$1000000 then
+        if Length(c)=3 then
+          c:=c[1]+c[1]+c[2]+c[2]+c[3]+c[3]
+        else
+          while Length(c)<6 do c:='0'+c
+      else
+        c:='0';
+      end;
+  except
+    c:='';
+  end;
+  Result:=c;
 end;
 
 function UtcNow:TDateTime;

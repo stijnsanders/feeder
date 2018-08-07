@@ -94,19 +94,7 @@ case Context['x'].AsInteger of
       if lbl='' then lbl:=t;
       cat:=Context['category'].Value;
       if cat='---' then cat:=Context['categoryNew'].Value;
-      try
-        c:=Context['color'].Value;
-        i:=StrToInt('$0'+c);
-        if i<$1000000 then
-          if Length(c)=3 then
-            c:=c[1]+c[1]+c[2]+c[2]+c[3]+c[3]
-          else
-            while Length(c)<6 do c:='0'+c
-        else
-          c:='0';
-      except
-        c:='';
-      end;
+      c:=CheckColor(Context['color'].Value);
       rw:=Context['readwidth'].AsInteger;
       Session.Connection.Insert('Subscription',
         ['user_id',Session.UserID
