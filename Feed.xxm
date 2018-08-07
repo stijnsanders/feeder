@@ -1,4 +1,4 @@
-[[@xxmSession,DataLank]][[!var
+[[@xxmSession,DataLank,fCommon]][[!var
 id,i,rw:integer;
 c,cat,lbl:string;
 db:TDataConnection;

@@ -84,6 +84,10 @@ var
   db:TDataConnection;
   qr:TQueryResult;
   s:TXxmSession;
+  fn:string;
+  f:TFileStream;
+  fd:AnsiString;
+  fl:integer;
 begin
   if SessionStore=nil then
     raise Exception.Create('No sessions to authenticate');
@@ -103,6 +107,34 @@ begin
           ,'email',Email
           ,'created',UtcNow
           ],'id');
+        //welcome message
+        SetLength(fn,MAX_PATH);
+        SetLength(fn,GetModuleFileName(HInstance,PChar(fn),MAX_PATH));
+        fn:=ExtractFilePath(fn)+'welcome.html';
+        if FileExists(fn) then
+         begin
+          //TODO: support UTF-8?
+          f:=TFileStream.Create(fn,fmOpenRead or fmShareDenyWrite);
+          try
+            fl:=f.Size;
+            SetLength(fd,fl);
+            f.Read(fd[1],fl);
+          finally
+            f.Free;
+          end;
+          db.Insert('UserPost',
+            ['user_id',s.UserID
+            ,'post_id',db.Insert('Post',
+              ['feed_id',0
+              ,'guid','welcome:'+IntToStr(s.UserID)
+              ,'title','Welcome! (click here)'
+              ,'content',fd
+              ,'url',PublicURL+'welcome.html'
+              ,'pubdate',UtcNow
+              ,'created',UtcNow
+              ])
+            ]);
+         end;
        end
       else
        begin
