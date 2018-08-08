@@ -369,7 +369,7 @@ begin
             (x[i+k]=TimeZoneCode[j][1+k]) do inc(k);
           if byte(TimeZoneCode[j][1+k])<64 then
            begin
-            if TimeZoneCode[j][1+k]='-' then b1:=-1 else b1:=+1;
+            if TimeZoneCode[j][1+k]='-' then b1:=+1 else b1:=-1;
             b:=StrToInt(Copy(TimeZoneCode[j],2+k,4));
             j:=TimeZoneCodeCount;
            end
