@@ -61,19 +61,19 @@ begin
     case x[i] of
       '+':
        begin
-        b1:=+1; inc(i);
+        b1:=-1; inc(i);
         nx(b,2); inc(i);//':'
         nx(b0,2); b:=b*100+b0;
        end;
       '-':
        begin
-        b1:=-1; inc(i);
+        b1:=+1; inc(i);
         nx(b,2); inc(i);//':'
         nx(b0,2); b:=b*100+b0;
        end;
-      'Z':begin b1:=+1; b:=0000; end;
-      'A'..'M':begin b1:=+1; b:=(byte(x[1])-64)*100; end;
-      'N'..'Y':begin b1:=-1; b:=(byte(x[1])-77)*100; end;
+      'Z':begin b1:=0; b:=0000; end;
+      'A'..'M':begin b1:=-1; b:=(byte(x[1])-64)*100; end;
+      'N'..'Y':begin b1:=+1; b:=(byte(x[1])-77)*100; end;
     end;
   Result:=
     EncodeDate(dy,dm,dd)+
@@ -349,13 +349,13 @@ begin
     case x[i] of
       '+':
        begin
-        b1:=+1;
+        b1:=-1;
         inc(i);
         nx(b,4);
        end;
       '-':
        begin
-        b1:=-1;
+        b1:=+1;
         inc(i);
         nx(b,4);
        end;
