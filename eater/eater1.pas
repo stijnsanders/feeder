@@ -19,8 +19,9 @@ uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB;
 
 var
   OldPostsCutOff,LastRun:TDateTime;
-  SaveData:boolean;
+  SaveData,FeedAll:boolean;
   FeedID,RunContinuous,LastClean:integer;
+  FeedOrderBy:string;
 
 function ConvDate1(const x:string):TDateTime;
 var
@@ -732,7 +733,7 @@ begin
 
   c1:=0;
   c2:=0;
-  if b then
+  if b or FeedAll then
    begin
     try
 
@@ -1061,10 +1062,14 @@ begin
   SaveData:=false;
   RunContinuous:=0;
   FeedID:=0;
+  FeedAll:=false;
+  FeedOrderBy:='';
 
   for i:=1 to ParamCount do
    begin
     s:=ParamStr(i);
+    if s='/a' then FeedOrderBy:=' order by X.postavg,X.postlast,F.id'
+    else
     if s='/s' then SaveData:=true
     else
     if s='/c' then RunContinuous:=15
@@ -1072,6 +1077,8 @@ begin
     if Copy(s,1,2)='/c' then RunContinuous:=StrToInt(Copy(s,3,99))
     else
     if Copy(s,1,2)='/f' then FeedID:=StrToInt(Copy(s,3,99))
+    else
+    if s='/x' then FeedAll:=true
     else
       raise Exception.Create('Unknown parameter #'+IntToStr(i));
    end;
@@ -1093,6 +1100,7 @@ begin
    begin
 
     RunNext:=LastRun+RunContinuous/1440.0;
+    FeedAll:=false;//only once
     d:=UtcNow;
     while d<RunNext do
      begin
@@ -1186,7 +1194,7 @@ begin
       +'   ) X'
       +'   group by X.feed_id'
       +' ) X on X.feed_id=F.id'
-      +' where ? in (0,F.id)',[FeedID]);
+      +' where ? in (0,F.id)'+FeedOrderBy,[FeedID]);
     try
       while qr.Read do
         DoFeed(db,qr);
