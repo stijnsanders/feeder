@@ -22,7 +22,7 @@ var
   OldPostsCutOff,LastRun:TDateTime;
   SaveData,FeedAll:boolean;
   FeedID,RunContinuous,LastClean:integer;
-  FeedOrderBy:string;
+  FeedOrderBy:UTF8String;
 
 function ConvDate1(const x:string):TDateTime;
 var
@@ -34,7 +34,7 @@ var
   begin
     xx:=0;
     for ii:=0 to yy-1 do
-      if (i<=l) and (x[i] in ['0'..'9']) then
+      if (i<=l) and (AnsiChar(x[i]) in ['0'..'9']) then
        begin
         xx:=xx*10+(byte(x[i]) and $F);
         inc(i);
@@ -294,7 +294,7 @@ var
   begin
     xx:=0;
     for ii:=0 to yy-1 do
-      if (i<=l) and (x[i] in ['0'..'9']) then
+      if (i<=l) and (AnsiChar(x[i]) in ['0'..'9']) then
        begin
         xx:=xx*10+(byte(x[i]) and $F);
         inc(i);
@@ -305,7 +305,7 @@ begin
   l:=Length(x);
   while (i<=l) and (x[i]<=' ') do inc(i);
   //day of week 'Mon,','Tue,'...
-  while (i<=l) and not(x[i] in ['0'..'9']) do inc(i);
+  while (i<=l) and not(AnsiChar(x[i]) in ['0'..'9']) do inc(i);
   //day of month
   nx(dd,2);
   inc(i);//' '
@@ -466,6 +466,13 @@ begin
   ;
 end;
 
+{$IF not Declared(UTF8ToWideString)}
+function UTF8ToWideString(const x:UTF8String):WideString;
+begin
+  Result:=UTF8Decode(x);
+end;
+{$IFEND}
+
 function LoadExternal(const URL,FilePath:string): WideString;
 var
   si:TStartupInfo;
@@ -510,7 +517,7 @@ begin
       i:=f.Size-3;
       SetLength(s,i);
       f.Read(s[1],i);
-      Result:=UTF8Decode(s);
+      Result:=UTF8ToWideString(s);
      end
     else
      begin
@@ -519,7 +526,7 @@ begin
       SetLength(s,i);
       f.Read(s[1],i);
 
-      Result:=s;
+      Result:=UTF8ToWideString(s);
      end;
   finally
     f.Free;
