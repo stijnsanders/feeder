@@ -44,11 +44,13 @@ d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+For
        begin
         if c<>'' then Context.SendHTML('</outline>');
         c:=c1;
-        <<outline title="[[=c]]" text="[[=c]]">>
+        <<outline title="[[=c]]" text="[[=c]]">
+        [[
        end;
-      <<outline type="rss" xmlUrl="[[=qr['url']]]" f:label="[[=qr['label']]]" f:color="[[=qr['color']]]" f:readwidth="[[=qr['readwidth']]]" />>
+      <<outline type="rss" xmlUrl="[[=qr['url']]]" f:label="[[=qr['label']]]" f:color="[[=qr['color']]]" f:readwidth="[[=qr['readwidth']]]" />
+      [[
      end;
-    if c<>'' then Context.SendHTML('</outline>');
+    if c<>'' then Context.SendHTML('</outline>'#13#10);
   <</body>
 </opml>
 

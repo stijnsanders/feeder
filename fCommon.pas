@@ -69,13 +69,21 @@ begin
    begin
     c:=LblColor;
     if LowerCase(c)='ffffff' then c:='-666666';
-    if not((Length(c)=6) or ((Length(c)=7) and (c[1]='-'))) then c:='EEEEEE';
-    if c[1]='-' then
+    if (c<>'') and (c[1]='-') then
+     begin
+      while Length(c)<7 do c:='-0'+Copy(c,2,6);
       c:='FFFFFF;color:#'+Copy(c,2,6)+';border:1px solid #'+Copy(c,2,6)
+     end
     else
-    begin
+     begin
+      while Length(c)<6 do c:='0'+c;
       try
         i:=StrToInt('$0'+c);
+        if i=0 then
+         begin
+          c:='EEEEEE';
+          i:=$EEEEEE;
+         end;
       except
         i:=$EEEEEE;
       end;
