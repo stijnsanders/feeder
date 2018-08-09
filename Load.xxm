@@ -1,7 +1,9 @@
-[[@DataLank,xxmSession]][[!var
+[[@DataLank,xxmSession,fCommon]][[!var
 qr:TQueryResult;
 a:double;
 f:integer;
+const
+AvgPostsDays=100;
 ]][[
 
 qr:=TQueryResult.Create(Session.Connection,
@@ -15,10 +17,12 @@ qr:=TQueryResult.Create(Session.Connection,
   +'     P1.feed_id, P1.pubdate, min(P2.pubdate-P1.pubdate) as pd'
   +'     from Post P1'
   +'     inner join Post P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
+  +'     where P1.pubdate>?'
   +'     group by P1.feed_id, P1.pubdate'
   +'   ) X'
   +'   group by X.feed_id'
   +' ) X on X.feed_id=F.id'
+  ,[UtcNow-AvgPostsDays]
 );
 try
   <<style>

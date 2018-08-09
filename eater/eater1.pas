@@ -11,6 +11,7 @@ function DoCheckRunDone:boolean;
 //TODO: from ini
 const
   FeederDBPath='..\feeder.db';
+  AvgPostsDays=100;
   OldPostsDays=3660;
 
 implementation
@@ -1190,11 +1191,12 @@ begin
       +'     P1.feed_id, P1.pubdate, min(P2.pubdate-P1.pubdate) as pd'
       +'     from Post P1'
       +'     inner join Post P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
+      +'     where P1.pubdate>?'
       +'     group by P1.feed_id, P1.pubdate'
       +'   ) X'
       +'   group by X.feed_id'
       +' ) X on X.feed_id=F.id'
-      +' where ? in (0,F.id)'+FeedOrderBy,[FeedID]);
+      +' where ? in (0,F.id)'+FeedOrderBy,[UtcNow-AvgPostsDays,FeedID]);
     try
       while qr.Read do
         DoFeed(db,qr);
