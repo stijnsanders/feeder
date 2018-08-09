@@ -2,6 +2,7 @@
 qr:TQueryResult;
 a:double;
 f:integer;
+d:TDateTime;
 const
 AvgPostsDays=100;
 ]][[
@@ -40,6 +41,7 @@ try
   <th>post:avg</th>
   <th>regime</th>
   <th>load:last</th>
+  <th>:since</th>
   <th>load:result</th>
   <th>load:new</th>
   <th>load:items</th>
@@ -63,13 +65,19 @@ try
      begin <<td>&nbsp;</td>> end
     else
     if a>1.0 then
-     begin <<td style="text-align:right;">>=Round(a)]] days</td>> end
+     begin <<td style="text-align:right;background-color:#FFFFCC;">>=Round(a)]] days</td>> end
     else
-     begin <<td style="text-align:right;">>=Round(double(qr['pa'])*1440.0)]] mins</td>> end;
+     begin <<td style="text-align:right;">>=Round(a*1440.0)]] mins</td>> end;
     <<td style="text-align:right;">>=qr['regime']<</td>>
-    if qr.IsNull('loadlast') then begin <<td>&nbsp;</td>> end else
+    if qr.IsNull('loadlast') then begin <<td>&nbsp;</td><td>&nbsp;</td>> end else
      begin
-      <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('loadlast'))<</td>>
+      d:=qr.GetDate('loadlast');
+      <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',d)<</td>>
+      a:=UtcNow-d;
+      if a>1.0 then
+       begin <<td style="text-align:right;background-color:#FFFFCC;">>=Round(a)]] days</td>> end
+      else
+       begin <<td style="text-align:right;">>=Round(a*1440.0)]] mins</td>> end;
      end;
     if (qr.GetStr('result')+'-')[1]='[' then
      begin
