@@ -32,7 +32,7 @@ else
 
     <<div style="z-index:5;position:fixed;top:0;right:1.2em;background-color:gold;padding:4pt;">
     [[
-    if (cat<>'') or (f<>0) then
+    if Context.ContextString(csQueryString)<>'' then
      begin
       <<a href="." style="font-weight:bold;"><img src="img_l.png" width="16" height="16" alt="All"/>&nbsp;All</a><br />>
      end;
@@ -64,28 +64,6 @@ else
     window.onbeforeunload=function(){window.scrollTo(0,0);}
     </script>>
 
-    if (cat='') and (f=0) and (Context['search'].Value='') then
-     begin
-      qr:=TQueryResult.Create(Session.Connection,
-        'select distinct S.Category from Subscription S where S.user_id=? and S.Category<>'''' order by 1',[Session.UserID]);
-      try
-        if not qr.EOF then
-         begin
-          <<div style="padding-bottom:2pt;">
-          <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',UtcNow+Session.TimeBias)<</div>
-          [[
-          while qr.Read do
-           begin
-            s:=qr.GetStr(0);
-            <<div class="catlink"><a href="?c=[[=s]]">>=s<</a></div>
-            [[
-           end;
-          <</div>>
-         end;
-      finally
-        qr.Free;
-      end;
-     end;
    end;
 
   sql:=
@@ -100,10 +78,49 @@ else
   if cat='' then
     if f=0 then
       if Context['search'].Value='' then
-       begin
-        SetLength(xx,1+lx);
-        xx[0]:=Session.UserID;
-       end
+        if Context['d'].Value='' then
+         begin
+
+          //show category links
+          if not loadMore then
+           begin
+            qr:=TQueryResult.Create(Session.Connection,
+              'select distinct S.Category from Subscription S where S.user_id=? and S.Category<>'''' order by 1',[Session.UserID]);
+            try
+              if not qr.EOF then
+               begin
+                <<div style="padding-bottom:2pt;">
+                <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',UtcNow+Session.TimeBias)<</div>
+                [[
+                while qr.Read do
+                 begin
+                  s:=qr.GetStr(0);
+                  <<div class="catlink"><a href="?c=[[=s]]">>=s<</a></div>
+                  [[
+                 end;
+                <</div>>
+               end;
+            finally
+              qr.Free;
+            end;
+           end;
+
+          //query: no extra criteria
+          SetLength(xx,1+lx);
+          xx[0]:=Session.UserID;
+         end
+        else
+         begin
+          sql:=
+            'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
+            ' from Subscription S'+
+            ' inner join Post P on P.feed_id=S.feed_id'+
+            ' left outer join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
+            ' where S.user_id=? and abs(P.pubdate-?)<4.0/24.0';
+          SetLength(xx,2+lx);
+          xx[0]:=Session.UserID;
+          xx[1]:=UtcNow-Context['d'].AsInteger;
+         end
       else
        begin
         sql:=

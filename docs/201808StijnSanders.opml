@@ -11,7 +11,6 @@
       <outline type="rss" xmlUrl="http://www.mandatory.com/feed" f:label="M!" f:color="EE3333" f:readwidth="32" />
       <outline type="rss" xmlUrl="https://feeds.feedburner.com/Mashable" f:label="Mashable" f:color="00aeef" f:readwidth="32" />
       <outline title="Blogs" text="Blogs">
-        <outline type="rss" xmlUrl="http://blog.florian.fastmail.jp/atom.xml" f:label="pelupessy" f:color="0" f:readwidth="32" />
       <outline type="rss" xmlUrl="http://blog.zog.org/feed" f:label="zog" f:color="66aa66" f:readwidth="32" />
       <outline type="rss" xmlUrl="https://www.neopoleon.com/feed/" f:label="neopoleon" f:color="0" f:readwidth="32" />
       <outline type="rss" xmlUrl="https://feeds.feedblitz.com/sethsblog" f:label="seth" f:color="CC9900" f:readwidth="32" />

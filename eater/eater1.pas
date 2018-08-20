@@ -16,11 +16,12 @@ const
 
 implementation
 
-uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB;
+uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB,
+  SQLite;
 
 var
   OldPostsCutOff,LastRun:TDateTime;
-  SaveData,FeedAll:boolean;
+  SaveData,FeedAll,WasLockedDB:boolean;
   FeedID,RunContinuous,LastClean:integer;
   FeedOrderBy:UTF8String;
 
@@ -493,7 +494,7 @@ begin
   si.hStdOutput:=GetStdHandle(STD_OUTPUT_HANDLE);
   si.hStdError:=GetStdHandle(STD_ERROR_HANDLE);
   }
-  if not CreateProcess(nil,PChar('curl.exe -vLk -H "Accept:application/rss+xml, application/atom+xml, application/xml, text/xml" -o "'+
+  if not CreateProcess(nil,PChar('curl.exe -vLk --max-redirs 8 -H "Accept:application/rss+xml, application/atom+xml, application/xml, text/xml" -o "'+
     FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
   WaitForSingleObject(pi.hProcess,INFINITE);
@@ -555,7 +556,7 @@ const
     qr:TQueryResult;
     b:boolean;
   begin
-    if Copy(itemid  ,1,7)='http://' then
+    if Copy(itemid,1,7)='http://' then
       itemid:=Copy(itemid,8,Length(itemid)-7)
     else
       if Copy(itemid,1,8)='https://' then
@@ -736,17 +737,17 @@ begin
     if (loadlast<>0.0) and (d<loadlast) then
       d:=loadlast+feedregime;
    end;
-  b:=d<feedload;
+  b:=(d<feedload) or FeedAll;
   loadext:=false;//default
 
   c1:=0;
   c2:=0;
-  if b or FeedAll then
+  if b then
    begin
     try
 
       loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
-      if loadext then
+      if loadext then                  
        begin
         rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml');
         rt:='text/html';//?? here just to enable search for <link>s
@@ -754,13 +755,13 @@ begin
       else
        begin
         rc:=0;
-        r:=CoServerXMLHTTP60.Create;
         while b do
          begin
           b:=false;
+          r:=CoServerXMLHTTP60.Create;
           r.open('GET',feedurl,false,EmptyParam,EmptyParam);
           r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, text/xml');
-          r.setRequestHeader('Cache-Control','max-age=0');
+          r.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
           if Pos('tumblr.com',feedurl)<>0 then
            begin
             r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x'+
@@ -849,7 +850,12 @@ begin
               if doc.namespaces.length=0 then
                 s:='xmlns:atom=''http://www.w3.org/2005/Atom'''
               else
-                s:='xmlns:atom='''+doc.namespaces[0]+'''';
+               begin
+                i:=0;
+                while (i<doc.namespaces.length) and (doc.namespaces[i]<>'http://www.w3.org/2005/Atom') do inc(i);
+                if i=doc.namespaces.length then i:=0;
+                s:='xmlns:atom='''+doc.namespaces[i]+'''';
+               end;
               doc.setProperty('SelectionNamespaces',s);
 
               x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
@@ -1006,13 +1012,16 @@ begin
         if (c2=0) and (c1<>0) then
          begin
           i:=0;
-          while (i<regimesteps) and (feedregime>=regimestep[i]) do inc(i);
-          if (i<regimesteps) and ((postlast=0.0)
-            or (postlast+regimestep[i]*2<feedload)) then
+          if feedregime>=0 then
            begin
-            feedresult:=feedresult+' (stale? r:'+IntToStr(feedregime)+
-              '->'+IntToStr(regimestep[i])+')';
-            feedregime:=regimestep[i];
+            while (i<regimesteps) and (feedregime>=regimestep[i]) do inc(i);
+            if (i<regimesteps) and ((postlast=0.0)
+              or (postlast+regimestep[i]*2<feedload)) then
+             begin
+              feedresult:=feedresult+' (stale? r:'+IntToStr(feedregime)+
+                '->'+IntToStr(regimestep[i])+')';
+              feedregime:=regimestep[i];
+             end;
            end;
          end
         else
@@ -1072,6 +1081,7 @@ begin
   FeedID:=0;
   FeedAll:=false;
   FeedOrderBy:='';
+  WasLockedDB:=false;
 
   for i:=1 to ParamCount do
    begin
@@ -1104,6 +1114,14 @@ var
 begin
   if RunContinuous=0 then
     Result:=true
+  else
+  if WasLockedDB then
+   begin
+    WasLockedDB:=false;
+    Sleep(2500);
+    Writeln(#13'>>> '+FormatDateTime('yyyy-mm-dd hh:nn:ss',UtcNow));
+    Result:=false;
+   end
   else
    begin
 
@@ -1154,65 +1172,77 @@ var
   db:TDataConnection;
   qr:TQueryResult;
   i,j:integer;
+  sql:string;
 begin
-  LastRun:=UtcNow;
-  Writeln('Opening database...');
-  db:=TDataConnection.Create(FeederDBPath);
   try
-    db.BusyTimeout:=30000;
-
-    i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
-    if LastClean<>i then
-     begin
-      LastClean:=i;
-
-      db.BeginTrans;
-      try
-
-        Write('Clean-up old...');
-        OldPostsCutOff:=UtcNow-OldPostsDays;
-        i:=db.Execute('delete from UserPost where post_id in (select id from Post where pubdate<?)',[OldPostsCutOff]);
-        j:=db.Execute('delete from Post where pubdate<?',[OldPostsCutOff]);
-        Writeln(Format(' [%d,%d]',[j,i]));
-
-        Write('Clean-up unused...');
-        db.Execute('delete from UserPost where post_id in (select P.id from Post P where P.feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id)))');
-        j:=db.Execute('delete from Post where feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id))');
-        i:=db.Execute('delete from Feed where not exists (select S.id from Subscription S where S.feed_id=Feed.id)');
-        Writeln(Format(' [%d,%d]',[j,i]));
-
-        db.CommitTrans;
-      except
-        db.RollbackTrans;
-        raise;
-      end;
-     end;
-
-    Writeln('Listing feeds...');
-    qr:=TQueryResult.Create(db,
-      'select * from Feed F'
-      +' left outer join ('
-      +'   select X.feed_id, max(X.pubdate) as postlast, avg(X.pd) as postavg'
-      +'   from('
-      +'     select'
-      +'     P1.feed_id, P1.pubdate, min(P2.pubdate-P1.pubdate) as pd'
-      +'     from Post P1'
-      +'     inner join Post P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
-      +'     where P1.pubdate>?'
-      +'     group by P1.feed_id, P1.pubdate'
-      +'   ) X'
-      +'   group by X.feed_id'
-      +' ) X on X.feed_id=F.id'
-      +' where ? in (0,F.id)'+FeedOrderBy,[UtcNow-AvgPostsDays,FeedID]);
+    LastRun:=UtcNow;
+    Writeln('Opening database...');
+    db:=TDataConnection.Create(FeederDBPath);
     try
-      while qr.Read do
-        DoFeed(db,qr);
-    finally
-      qr.Free;
-    end;
+      db.BusyTimeout:=30000;
 
-  finally
-    db.Free;
+      i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
+      if LastClean<>i then
+       begin
+        LastClean:=i;
+
+        db.BeginTrans;
+        try
+
+          Write('Clean-up old...');
+          OldPostsCutOff:=UtcNow-OldPostsDays;
+          i:=db.Execute('delete from UserPost where post_id in (select id from Post where pubdate<?)',[OldPostsCutOff]);
+          j:=db.Execute('delete from Post where pubdate<?',[OldPostsCutOff]);
+          Writeln(Format(' [%d,%d]',[j,i]));
+
+          Write('Clean-up unused...');
+          db.Execute('delete from UserPost where post_id in (select P.id from Post P where P.feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id)))');
+          j:=db.Execute('delete from Post where feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id))');
+          i:=db.Execute('delete from Feed where not exists (select S.id from Subscription S where S.feed_id=Feed.id)');
+          Writeln(Format(' [%d,%d]',[j,i]));
+
+          db.CommitTrans;
+        except
+          db.RollbackTrans;
+          raise;
+        end;
+       end;
+
+      Writeln('Listing feeds...');
+      if FeedID=0 then sql:='' else sql:=' where F.id='+IntToStr(FeedID);
+      qr:=TQueryResult.Create(db,
+        'select * from Feed F'
+        +' left outer join ('
+        +'   select X.feed_id, max(X.pubdate) as postlast, avg(X.pd) as postavg'
+        +'   from('
+        +'     select'
+        +'     P1.feed_id, P1.pubdate, min(P2.pubdate-P1.pubdate) as pd'
+        +'     from Post P1'
+        +'     inner join Post P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
+        +'     where P1.pubdate>?'
+        +'     group by P1.feed_id, P1.pubdate'
+        +'   ) X'
+        +'   group by X.feed_id'
+        +' ) X on X.feed_id=F.id'
+        +sql+FeedOrderBy,[UtcNow-AvgPostsDays]);
+      try
+        while qr.Read do
+          DoFeed(db,qr);
+      finally
+        qr.Free;
+      end;
+
+    finally
+      db.Free;
+    end;
+  except
+    on e:Exception do
+     begin
+      if (e is ESQLiteException) and ((e as ESQLiteException).ErrorCode=SQLITE_LOCKED) then
+        WasLockedDB:=true;
+      Writeln(ErrOutput,'['+e.ClassName+']'+e.Message);
+      ExitCode:=1;
+     end;
   end;
 end;
 
