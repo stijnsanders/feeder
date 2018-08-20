@@ -410,7 +410,7 @@ end;
 
 
 var
-  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM:RegExp;
+  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhLFs:RegExp;
 
 procedure SanitizeInit;
 begin
@@ -442,6 +442,9 @@ begin
   rh7.IgnoreCase:=true;
   rhUTM:=CoRegExp.Create;
   rhUTM.Pattern:='\?utm_[^\?]+?$';
+  rhLFs:=CoRegExp.Create;
+  rhLFs.Pattern:='(\x0D?\x0A)+';
+  rhLFs.Global:=true;
 end;
 
 function SanitizeTitle(const title:WideString):WideString;
@@ -464,6 +467,21 @@ begin
       ,'&$1;')//rh5
       ,'<$1>$2</$1>')//rh6
       ,'&$1;')//rh7
+  ;
+end;
+
+function EncodeNonHTMLContent(const title:WideString):WideString;
+begin
+  Result:=
+    rhLFs.Replace(
+    rh3.Replace(
+    rh2.Replace(
+    rh1.Replace(
+      title
+      ,'&amp;')//rh1
+      ,'&lt;')//rh2
+      ,'&gt;')//rh3
+      ,'<br />')//rhLFs
   ;
 end;
 
@@ -836,6 +854,7 @@ begin
           doc.async:=false;
           doc.validateOnParse:=false;
           doc.resolveExternals:=false;
+          doc.preserveWhiteSpace:=true;
 
           if loadext then
             b:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
@@ -848,14 +867,15 @@ begin
             if doc.documentElement.nodeName='feed' then
              begin
               if doc.namespaces.length=0 then
-                s:='xmlns:atom=''http://www.w3.org/2005/Atom'''
+                s:='xmlns:atom="http://www.w3.org/2005/Atom"'
               else
                begin
                 i:=0;
                 while (i<doc.namespaces.length) and (doc.namespaces[i]<>'http://www.w3.org/2005/Atom') do inc(i);
                 if i=doc.namespaces.length then i:=0;
-                s:='xmlns:atom='''+doc.namespaces[i]+'''';
+                s:='xmlns:atom="'+doc.namespaces[i]+'"';
                end;
+              s:=s+' xmlns:media="http://search.yahoo.com/mrss/"';
               doc.setProperty('SelectionNamespaces',s);
 
               x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
@@ -885,16 +905,25 @@ begin
                    end;
                  end;
                 y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
+                if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
                 if y=nil then title:='' else title:=y.text;
                 y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
+                if y=nil then y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
                 if y=nil then
-                  y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
-                if y=nil then content:='' else content:=y.text;
+                 begin
+                  y:=x.selectSingleNode('media:group/media:description') as IXMLDOMElement;
+                  if y=nil then
+                    content:=''
+                  else
+                    content:=EncodeNonHTMLContent(y.text);
+                 end
+                else
+                  content:=y.text;
                 try
-                  y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:modified') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
+                  y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
                   if y=nil then y:=x.selectSingleNode('atom:issued') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:modified') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
                   if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
                 except
                   pubDate:=UtcNow;

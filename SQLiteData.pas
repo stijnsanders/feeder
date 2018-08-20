@@ -159,9 +159,9 @@ var
 begin
   l:=Length(Values);
   if l=0 then
-    raise ESQLiteDataException.Create('Insert('+TableName+') values required');
+    raise ESQLiteDataException.Create('Insert('+string(TableName)+') values required');
   if (l and 1)<>0 then
-    raise ESQLiteDataException.Create('Insert('+TableName+') even number of field,values required');
+    raise ESQLiteDataException.Create('Insert('+string(TableName)+') even number of field,values required');
   i:=0;
   l:=l div 2;
   //TODO: TStringStream
@@ -170,7 +170,7 @@ begin
   SetLength(x,l);
   while i<l do
    begin
-    s:=s+',['+Values[i*2]+']';
+    s:=s+',['+UTF8Encode(VarToWideStr(Values[i*2]))+']';
     t:=t+',?';
     x[i]:=Values[i*2+1];
     inc(i);
@@ -197,9 +197,9 @@ var
 begin
   l:=Length(Values);
   if l<=2 then
-    raise ESQLiteDataException.Create('Update('+TableName+') values required');
+    raise ESQLiteDataException.Create('Update('+string(TableName)+') values required');
   if (l and 1)<>0 then
-    raise ESQLiteDataException.Create('Update('+TableName+') even number of field,values required');
+    raise ESQLiteDataException.Create('Update('+string(TableName)+') even number of field,values required');
   i:=1;
   l:=l div 2;
   //TODO: TStringStream
@@ -207,13 +207,14 @@ begin
   SetLength(x,l);
   while i<l do
    begin
-    s:=s+',['+Values[i*2]+']=?';
+    s:=s+',['+UTF8Encode(VarToWideStr(Values[i*2]))+']=?';
     x[i-1]:=Values[i*2+1];
     inc(i);
    end;
   x[l-1]:=Values[1];
   s[1]:=' ';
-  st:=TSQLiteStatement.Create(Self,'UPDATE ['+TableName+'] SET'+s+' WHERE '+Values[0]+'=?',x);
+  st:=TSQLiteStatement.Create(Self,'UPDATE ['+TableName+'] SET'+s+' WHERE '+
+    UTF8Encode(VarToWideStr(Values[0]))+'=?',x);
   try
     st.Read;
   finally
