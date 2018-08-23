@@ -20,7 +20,7 @@ db:=Session.Connection;
 case Context['x'].AsInteger of
   0:
    begin
-    qr:=TQueryResult.Create(db,'select * from User',[Session.UserID]);
+    qr:=TQueryResult.Create(db,'select * from User where id=?',[Session.UserID]);
     try
       tz:=qr.GetInt('timezone');
       <<form method="post">
