@@ -4,7 +4,7 @@ db:TDataConnection;
 db:=Session.Connection;
 db.BeginTrans;
 try
-  db.Execute('delete from UserLogon where user_id=? and key=?',[Session.UserID,Context.Cookie['feederAutoLogon']]);
+  db.Execute('delete from "UserLogon" where user_id=? and key=?',[Session.UserID,Context.Cookie['feederAutoLogon']]);
   db.CommitTrans;
 except
   db.RollbackTrans;

@@ -11,8 +11,8 @@ id:=Context['id'].AsInteger;
 db:=Session.Connection;
 qr:=TQueryResult.Create(db,
   'select P.*, S.label, S.color, S.readwidth'+
-  ' from Post P'+
-  ' left outer join Subscription S on S.feed_id=P.feed_id and S.user_id=?'+
+  ' from "Post" P'+
+  ' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'+
   ' where P.id=?',[Session.UserID,id]);
 try
   //TODO: sanitize HTML (either here or in eater)
@@ -66,7 +66,7 @@ end;
 Context.Include('dFoot.xxmi');
 db.BeginTrans;
 try
-  db.Execute('delete from UserPost where user_id=? and post_id=?',[Session.UserID,id]);
+  db.Execute('delete from "UserPost" where user_id=? and post_id=?',[Session.UserID,id]);
   db.CommitTrans;
 except
   db.RollbackTrans;

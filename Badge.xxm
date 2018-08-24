@@ -20,7 +20,7 @@ IMG{border:0;margin-bottom:-2pt;}
 x:=Context['x'].Value;
 if Length(x)<>12 then x:=Copy(x+'============',1,12);
 db:=TXxmSession.Connection;
-qr:=TQueryResult.Create(db,'select user_id from UserLogon where substr(key,1,12)=?',[x]);
+qr:=TQueryResult.Create(db,'select user_id from "UserLogon" where substr(key,1,12)=?',[x]);
 try
   if qr.EOF then id:=0 else id:=qr.GetInt('user_id');
 finally
@@ -32,13 +32,13 @@ if id=0 then
  end
 else
  begin
-  qr:=TQueryResult.Create(db,'select count(*) from Subscription where user_id=?',[id]);
+  qr:=TQueryResult.Create(db,'select count(*) from "Subscription" where user_id=?',[id]);
   try
     f:=qr.GetInt(0);
   finally
     qr.Free;
   end;
-  qr:=TQueryResult.Create(db,'select count(*) from UserPost where user_id=?',[id]);
+  qr:=TQueryResult.Create(db,'select count(*) from "UserPost" where user_id=?',[id]);
   try
     p:=qr.GetInt(0);
   finally

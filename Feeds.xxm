@@ -27,12 +27,12 @@ if id=0 then
 
   qr:=TQueryResult.Create(Session.Connection,
     'select S.*, F.name, F.url, F.itemcount, F.regime'+
-    ', (select count(*) from Post P where P.feed_id=F.id) as PostCount'+
-    ', (select count(*) from UserPost X inner join Post P on P.id=X.post_id where P.feed_id=F.id and X.user_id=S.user_id) as UnreadCount'+
-    ' from Subscription S'+
-    ' inner join Feed F on F.id=S.feed_id'+
+    ', (select count(*) from "Post" P where P.feed_id=F.id) as PostCount'+
+    ', (select count(*) from "UserPost" X inner join "Post" P on P.id=X.post_id where P.feed_id=F.id and X.user_id=S.user_id) as UnreadCount'+
+    ' from "Subscription" S'+
+    ' inner join "Feed" F on F.id=S.feed_id'+
     ' where S.user_id=?'+
-    ' order by S.category collate nocase, S.label collate nocase, F.name collate nocase, S.id',[Session.UserID]);
+    ' order by S.category, S.label, F.name, S.id',[Session.UserID]);
   try
     c:='';
     while qr.Read do
@@ -76,8 +76,8 @@ else
  begin
   
   qr:=TQueryResult.Create(Session.Connection,
-    'select S.*, F.name, F.url from Subscription S'+
-    ' inner join Feed F on F.id=S.feed_id'+
+    'select S.*, F.name, F.url from "Subscription" S'+
+    ' inner join "Feed" F on F.id=S.feed_id'+
     ' where S.id=?',[id]);
   try
     <<form method="post" action="Feed.xxm">
@@ -94,7 +94,7 @@ else
     <dd>
       <select name="category">>
       s:=qr.GetStr('category');
-      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from Subscription where user_id=? order by 1',[Session.UserID]);
+      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from "Subscription" where user_id=? order by 1',[Session.UserID]);
       try
         while qr1.Read do
          begin

@@ -97,7 +97,7 @@ begin
    begin
     s:=SessionStore.Objects[i] as TXxmSession;
     db:=TXxmSession.Connection;
-    qr:=TQueryResult.Create(db,'select * from User where login=?',[Login]);
+    qr:=TQueryResult.Create(db,'select * from "User" where login=?',[Login]);
     try
       if qr.EOF then
        begin
@@ -132,8 +132,8 @@ begin
               ,'url',PublicURL+'welcome.html'
               ,'pubdate',UtcNow
               ,'created',UtcNow
-              ])
-            ]);
+              ],'id')
+            ],'id');
          end;
        end
       else
@@ -141,12 +141,12 @@ begin
         s.UserID:=qr.GetInt('id');
         if qr.GetStr('name')<>Name then
          begin
-          db.Execute('update User set name=? where id=?',[Name,s.UserID]);
+          db.Execute('update "User" set name=? where id=?',[Name,s.UserID]);
           s.Name:=Name;
          end;
         if qr.GetStr('email')<>Email then
          begin
-          db.Execute('update User set email=? where id=?',[Email,s.UserID]);
+          db.Execute('update "User" set email=? where id=?',[Email,s.UserID]);
           //?:=Email;
          end;
         //TODO: central LoadUser(qr)
@@ -192,7 +192,7 @@ begin
     Connection.BeginTrans;
     try
       //TODO: more checks? hash user-agent?
-      qr:=TQueryResult.Create(Connection,'select U.*, L.id as LogonID from UserLogon L inner join User U on U.id=L.user_id where L.key=?',[s]);
+      qr:=TQueryResult.Create(Connection,'select U.*, L.id as LogonID from "UserLogon" L inner join "User" U on U.id=L.user_id where L.key=?',[s]);
       try
         if qr.Read then
          begin
@@ -201,7 +201,7 @@ begin
           //:=qr.GetStr('email');?
           tz:=qr.GetInt('timezone');
           TimeBias:=(tz div 100)/24.0+(tz mod 100)/1440.0;
-          Connection.Execute('update UserLogon set last=?,address=?,useragent=? where id=?',
+          Connection.Execute('update "UserLogon" set last=?,address=?,useragent=? where id=?',
             [UtcNow
             ,Context.ContextString(csRemoteAddress)
             ,Context.ContextString(csUserAgent)

@@ -16,7 +16,7 @@ case Context['x'].AsInteger of
       if cat='---' then cat:=Context['categoryNew'].Value;
       c:=CheckColor(Context['color'].Value);
       rw:=Context['readwidth'].AsInteger;
-      db.Execute('update Subscription set'+
+      db.Execute('update "Subscription" set'+
         ' category=?,label=?,color=?,readwidth=?'+
         ' where id=? and user_id=?',[cat,lbl,c,rw,id,Session.UserID]);
       db.CommitTrans;
@@ -31,12 +31,12 @@ case Context['x'].AsInteger of
     db:=Session.Connection;
     db.BeginTrans;
     try
-      db.Execute('delete from UserPost where id in'+
-        ' (select X.id from UserPost X'+
-        ' inner join Post P on P.id=X.post_id'+
-        ' inner join Subscription S on S.feed_id=P.feed_id and S.user_id=X.user_id'+
+      db.Execute('delete from "UserPost" where id in'+
+        ' (select X.id from "UserPost" X'+
+        ' inner join "Post" P on P.id=X.post_id'+
+        ' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'+
         ' where X.user_id=? and P.feed_id=?)',[Session.UserID,id]);
-      db.Execute('delete from Subscription where id=? and user_id=?',[id,Session.UserID]);
+      db.Execute('delete from "Subscription" where id=? and user_id=?',[id,Session.UserID]);
       db.CommitTrans;
     except
       db.RollbackTrans;

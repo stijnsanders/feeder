@@ -22,7 +22,7 @@ case Context['x'].AsInteger of
     <dt>category</dt>
     <dd>
       <select name="category">>
-      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from Subscription where user_id=? order by 1',[Session.UserID]);
+      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from "Subscription" where user_id=? order by 1',[Session.UserID]);
       try
         while qr1.Read do
          begin
@@ -59,7 +59,7 @@ case Context['x'].AsInteger of
       s:='http://'+s;
 
     t:=Context['name'].Value;
-    qr:=TQueryResult.Create(Session.Connection,'select id, name from Feed where url=?',[s]);
+    qr:=TQueryResult.Create(Session.Connection,'select id, name from "Feed" where url=?',[s]);
     try
       if qr.EOF then id:=0 else
        begin
@@ -77,12 +77,12 @@ case Context['x'].AsInteger of
      end
     else
      begin
-      Session.Connection.Execute('insert into UserPost (user_id,post_id) select ?,id from Post where feed_id=? and pubDate>?',
+      Session.Connection.Execute('insert into "UserPost" (user_id,post_id) select ?,id from "Post" where feed_id=? and pubDate>?',
         [Session.UserID,id,UtcNow-366.0]);
       <<p>Feed found, listing posts up to one year old as unread.</p>>
      end;
 
-    qr:=TQueryResult.Create(Session.Connection,'select id from Subscription where user_id=? and feed_id=?',[Session.UserID,id]);
+    qr:=TQueryResult.Create(Session.Connection,'select id from "Subscription" where user_id=? and feed_id=?',[Session.UserID,id]);
     try
       if qr.EOF then id1:=0 else id1:=qr.GetInt(0);
     finally

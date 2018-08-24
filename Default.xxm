@@ -38,7 +38,7 @@ else
      end;
     ]]
     <span id="postcount">>
-    qr:=TQueryResult.Create(Session.Connection,'select count(*) from UserPost where user_id=?',[Session.UserID]);
+    qr:=TQueryResult.Create(Session.Connection,'select count(*) from "UserPost" where user_id=?',[Session.UserID]);
     try
       Context.Send(qr.GetInt(0));
     finally
@@ -68,9 +68,9 @@ else
 
   sql:=
     'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
-    +' from UserPost X'
-    +' inner join Post P on P.id=X.post_id'
-    +' left outer join Subscription S on S.feed_id=P.feed_id and S.user_id=X.user_id'
+    +' from "UserPost" X'
+    +' inner join "Post" P on P.id=X.post_id'
+    +' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'
     +' where X.user_id=?';
 
   if loadMore then lx:=3 else lx:=0;
@@ -85,7 +85,7 @@ else
           if not loadMore then
            begin
             qr:=TQueryResult.Create(Session.Connection,
-              'select distinct S.Category from Subscription S where S.user_id=? and S.Category<>'''' order by 1',[Session.UserID]);
+              'select distinct S.Category from "Subscription" S where S.user_id=? and S.Category<>'''' order by 1',[Session.UserID]);
             try
               if not qr.EOF then
                begin
@@ -113,9 +113,9 @@ else
          begin
           sql:=
             'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
-            ' from Subscription S'+
-            ' inner join Post P on P.feed_id=S.feed_id'+
-            ' left outer join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
+            ' from "Subscription" S'+
+            ' inner join "Post" P on P.feed_id=S.feed_id'+
+            ' left outer join "UserPost" X on X.post_id=P.id and X.user_id=S.user_id'+
             ' where S.user_id=? and abs(P.pubdate-?)<4.0/24.0';
           SetLength(xx,2+lx);
           xx[0]:=Session.UserID;
@@ -125,9 +125,9 @@ else
        begin
         sql:=
           'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
-          ' from Subscription S'+
-          ' inner join Post P on P.feed_id=S.feed_id'+
-          ' left outer join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
+          ' from "Subscription" S'+
+          ' inner join "Post" P on P.feed_id=S.feed_id'+
+          ' left outer join "UserPost" X on X.post_id=P.id and X.user_id=S.user_id'+
           ' where S.user_id=? and P.title||'' ''||P.content like ?';
         SetLength(xx,2+lx);
         xx[0]:=Session.UserID;
@@ -137,9 +137,9 @@ else
      begin
       sql:=
         'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
-        ' from Subscription S'+
-        ' inner join Post P on P.feed_id=S.feed_id'+
-        ' left outer join UserPost X on X.post_id=P.id and X.user_id=S.user_id'+
+        ' from "Subscription" S'+
+        ' inner join "Post" P on P.feed_id=S.feed_id'+
+        ' left outer join "UserPost" X on X.post_id=P.id and X.user_id=S.user_id'+
         ' where S.user_id=? and P.feed_id=?';
       SetLength(xx,2+lx);
       xx[0]:=Session.UserID;
@@ -159,7 +159,7 @@ else
   if loadMore then
    begin
     id0:=Context['x'].AsInteger;
-    qr:=TQueryResult.Create(Session.Connection,'select pubdate from Post where id=?',[id0]);
+    qr:=TQueryResult.Create(Session.Connection,'select pubdate from "Post" where id=?',[id0]);
     try
       d1:=qr.GetDate(0);
     finally

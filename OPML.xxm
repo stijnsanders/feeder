@@ -26,7 +26,7 @@ begin
 
       //feed exists?
       t:=VarToStr(x.getAttribute('f:label'));
-      qr:=TQueryResult.Create(db,'select id, name from Feed where url=?',[s]);
+      qr:=TQueryResult.Create(db,'select id, name from "Feed" where url=?',[s]);
       try
         if qr.EOF then id:=0 else
          begin
@@ -46,7 +46,7 @@ begin
       else
        begin
         //already subscribed?
-        qr:=TQueryResult.Create(db,'select id from Subscription where user_id=? and feed_id=?',[Session.UserID,id]);
+        qr:=TQueryResult.Create(db,'select id from "Subscription" where user_id=? and feed_id=?',[Session.UserID,id]);
         try
           if qr.EOF then id1:=0 else id1:=qr.GetInt(0);
         finally
@@ -54,7 +54,7 @@ begin
         end;
         //if not, mark recent posts as unread
         if id1=0 then
-          db.Execute('insert into UserPost (user_id,post_id) select ?,id from Post where feed_id=? and pubDate>?',
+          db.Execute('insert into "UserPost" (user_id,post_id) select ?,id from "Post" where feed_id=? and pubDate>?',
             [Session.UserID,id,UtcNow-366.0]);
        end;
     
