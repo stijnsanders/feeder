@@ -590,13 +590,13 @@ const
      begin
       if feedglobal then
         qr:=TQueryResult.Create(db,
-          'select P.id from Post P'
-          +' inner join Feed F on F.id=P.feed_id'
+          'select P.id from "Post" P'
+          +' inner join "Feed" F on F.id=P.feed_id'
           +' where P.guid=? and ifnull(F.flags,0)&1=1'
           ,[itemid])
       else
         qr:=TQueryResult.Create(db,
-          'select id from Post where feed_id=? and guid=?'
+          'select id from "Post" where feed_id=? and guid=?'
           ,[feedid,itemid]);
       try
         b:=qr.EOF;
@@ -618,8 +618,8 @@ const
         ,'pubdate',pubDate
         ,'created',UtcNow
         ],'id');
-      db.Execute('insert into UserPost (user_id,post_id)'+
-        ' select S.user_id,? from Subscription S where S.feed_id=?',[postid,feedid]);
+      db.Execute('insert into "UserPost" (user_id,post_id)'+
+        ' select S.user_id,? from "Subscription" S where S.feed_id=?',[postid,feedid]);
      end;
   end;
 
@@ -1179,6 +1179,12 @@ begin
               Writeln(#13'Manual skip    ');
               d:=RunNext;
              end;
+            'x'://skip + run all
+             begin
+              Writeln(#13'Skip + Feed all   ');
+              d:=RunNext;
+              FeedAll:=true;
+             end;
             'q'://quit
              begin
               Writeln(#13'User abort    ');
@@ -1240,14 +1246,14 @@ begin
       Writeln('Listing feeds...');
       if FeedID=0 then sql:='' else sql:=' where F.id='+IntToStr(FeedID);
       qr:=TQueryResult.Create(db,
-        'select * from Feed F'
+        'select * from "Feed" F'
         +' left outer join ('
         +'   select X.feed_id, max(X.pubdate) as postlast, avg(X.pd) as postavg'
         +'   from('
         +'     select'
         +'     P1.feed_id, P1.pubdate, min(P2.pubdate-P1.pubdate) as pd'
-        +'     from Post P1'
-        +'     inner join Post P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
+        +'     from "Post" P1'
+        +'     inner join "Post" P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
         +'     where P1.pubdate>?'
         +'     group by P1.feed_id, P1.pubdate'
         +'   ) X'

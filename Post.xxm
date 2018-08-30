@@ -59,7 +59,7 @@ try
   );
 
   <</div>
-  <div style="color:#9999AA;font-size:0.8em;margin-top:4pt;">>=qr['url']<</div>>
+  <div style="color:#9999AA;font-size:0.8em;margin-top:4pt;border-bottom:4px solid gold;">>=qr['url']<</div>>
 finally
   qr.Free;
 end;
@@ -70,5 +70,5 @@ try
   db.CommitTrans;
 except
   db.RollbackTrans;
-  raise;
+  //raise;
 end;
