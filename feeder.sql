@@ -14,7 +14,7 @@ regime int null
 create table "Post" (
 id serial primary key,
 feed_id integer not null,
-guid varchar(200) not null,
+guid varchar(500) not null,
 title varchar(1000) not null,
 content text not null,
 url varchar(500) not null,

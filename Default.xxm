@@ -1,6 +1,6 @@
 [[@DataLank,xxmSession,fCommon]][[!var
 qr:TQueryResult;
-xx:array of OleVariant;
+xx:array of Variant;
 s,sql,cat:string;
 d,d0,f,l,id,id0,lx:integer;
 d1:TDateTime;

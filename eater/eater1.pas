@@ -10,7 +10,7 @@ function DoCheckRunDone:boolean;
 
 //TODO: from ini
 const
-  FeederDBPath='..\feeder.db';
+  FeederIniPath='..\..\feeder.ini';
   AvgPostsDays=100;
   OldPostsDays=3660;
 
@@ -21,7 +21,7 @@ uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB,
 
 var
   OldPostsCutOff,LastRun:TDateTime;
-  SaveData,FeedAll,WasLockedDB:boolean;
+  SaveData,FeedAll:boolean;
   FeedID,RunContinuous,LastClean:integer;
   FeedOrderBy:UTF8String;
 
@@ -512,7 +512,7 @@ begin
   si.hStdOutput:=GetStdHandle(STD_OUTPUT_HANDLE);
   si.hStdError:=GetStdHandle(STD_ERROR_HANDLE);
   }
-  if not CreateProcess(nil,PChar('curl.exe -vLk --max-redirs 8 -H "Accept:application/rss+xml, application/atom+xml, application/xml, text/xml" -o "'+
+  if not CreateProcess(nil,PChar('curl.exe -Lk --max-redirs 8 -H "Accept:application/rss+xml, application/atom+xml, application/xml, text/xml" -o "'+
     FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
   WaitForSingleObject(pi.hProcess,INFINITE);
@@ -1110,7 +1110,6 @@ begin
   FeedID:=0;
   FeedAll:=false;
   FeedOrderBy:='';
-  WasLockedDB:=false;
 
   for i:=1 to ParamCount do
    begin
@@ -1143,14 +1142,6 @@ var
 begin
   if RunContinuous=0 then
     Result:=true
-  else
-  if WasLockedDB then
-   begin
-    WasLockedDB:=false;
-    Sleep(2500);
-    Writeln(#13'>>> '+FormatDateTime('yyyy-mm-dd hh:nn:ss',UtcNow));
-    Result:=false;
-   end
   else
    begin
 
@@ -1204,17 +1195,27 @@ end;
 
 procedure DoUpdateFeeds;
 var
+  sl:TStringList;
   db:TDataConnection;
   qr:TQueryResult;
   i,j:integer;
   sql:string;
+  d:TDateTime;
 begin
   try
     LastRun:=UtcNow;
     Writeln('Opening database...');
-    db:=TDataConnection.Create(FeederDBPath);
+
+    sl:=TStringList.Create;
     try
-      db.BusyTimeout:=30000;
+      sl.LoadFromFile(FeederIniPath);
+      sql:=sl.Text;
+    finally
+      sl.Free;
+    end;
+
+    db:=TDataConnection.Create(sql);
+    try
 
       i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
       if LastClean<>i then
@@ -1226,14 +1227,14 @@ begin
 
           Write('Clean-up old...');
           OldPostsCutOff:=UtcNow-OldPostsDays;
-          i:=db.Execute('delete from UserPost where post_id in (select id from Post where pubdate<?)',[OldPostsCutOff]);
-          j:=db.Execute('delete from Post where pubdate<?',[OldPostsCutOff]);
+          i:=db.Execute('delete from "UserPost" where post_id in (select id from "Post" where pubdate<?)',[OldPostsCutOff]);
+          j:=db.Execute('delete from "Post" where pubdate<?',[OldPostsCutOff]);
           Writeln(Format(' [%d,%d]',[j,i]));
 
           Write('Clean-up unused...');
-          db.Execute('delete from UserPost where post_id in (select P.id from Post P where P.feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id)))');
-          j:=db.Execute('delete from Post where feed_id in (select F.id from Feed F where not exists (select S.id from Subscription S where S.feed_id=F.id))');
-          i:=db.Execute('delete from Feed where not exists (select S.id from Subscription S where S.feed_id=Feed.id)');
+          db.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id in (select F.id from "Feed" F where not exists (select S.id from "Subscription" S where S.feed_id=F.id)))',[]);
+          j:=db.Execute('delete from "Post" where feed_id in (select F.id from "Feed" F where not exists (select S.id from "Subscription" S where S.feed_id=F.id))',[]);
+          i:=db.Execute('delete from "Feed" where not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
           Writeln(Format(' [%d,%d]',[j,i]));
 
           db.CommitTrans;
@@ -1245,6 +1246,7 @@ begin
 
       Writeln('Listing feeds...');
       if FeedID=0 then sql:='' else sql:=' where F.id='+IntToStr(FeedID);
+      d:=UtcNow-AvgPostsDays;
       qr:=TQueryResult.Create(db,
         'select * from "Feed" F'
         +' left outer join ('
@@ -1259,7 +1261,7 @@ begin
         +'   ) X'
         +'   group by X.feed_id'
         +' ) X on X.feed_id=F.id'
-        +sql+FeedOrderBy,[UtcNow-AvgPostsDays]);
+        +sql+FeedOrderBy,[d]);
       try
         while qr.Read do
           DoFeed(db,qr);
@@ -1273,8 +1275,6 @@ begin
   except
     on e:Exception do
      begin
-      if (e is ESQLiteException) and ((e as ESQLiteException).ErrorCode=SQLITE_LOCKED) then
-        WasLockedDB:=true;
       Writeln(ErrOutput,'['+e.ClassName+']'+e.Message);
       ExitCode:=1;
      end;

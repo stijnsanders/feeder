@@ -2,11 +2,11 @@ unit DataLank;
 
 interface
 
-uses SQLiteData;
+uses LibPQData;
 
 type
-  TDataConnection = TSQLiteConnection;
-  TQueryResult = TSQLiteStatement;
+  TDataConnection = TPostgresConnection;
+  TQueryResult = TPostgresCommand;
 
 implementation
 
