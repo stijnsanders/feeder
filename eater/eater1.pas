@@ -592,7 +592,7 @@ const
         qr:=TQueryResult.Create(db,
           'select P.id from "Post" P'
           +' inner join "Feed" F on F.id=P.feed_id'
-          +' where P.guid=? and ifnull(F.flags,0)&1=1'
+          +' where P.guid=? and coalesce(F.flags,0)&1=1'
           ,[itemid])
       else
         qr:=TQueryResult.Create(db,
@@ -1109,7 +1109,7 @@ begin
   RunContinuous:=0;
   FeedID:=0;
   FeedAll:=false;
-  FeedOrderBy:='';
+  FeedOrderBy:=' order by F.id';
 
   for i:=1 to ParamCount do
    begin
@@ -1253,11 +1253,11 @@ begin
         +'   select X.feed_id, max(X.pubdate) as postlast, avg(X.pd) as postavg'
         +'   from('
         +'     select'
-        +'     P1.feed_id, P1.pubdate, min(P2.pubdate-P1.pubdate) as pd'
+        +'     P1.feed_id, P2.pubdate, min(P2.pubdate-P1.pubdate) as pd'
         +'     from "Post" P1'
         +'     inner join "Post" P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
         +'     where P1.pubdate>?'
-        +'     group by P1.feed_id, P1.pubdate'
+        +'     group by P1.feed_id, P2.pubdate'
         +'   ) X'
         +'   group by X.feed_id'
         +' ) X on X.feed_id=F.id'
