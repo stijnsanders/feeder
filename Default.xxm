@@ -1,4 +1,4 @@
-[[@DataLank,xxmSession,fCommon]][[!var
+[[@DataLank,xxmSession,fCommon,Variants]][[!var
 qr:TQueryResult;
 xx:array of Variant;
 s,sql,cat:string;
@@ -16,7 +16,7 @@ if Session.UserID=0 then
   <p><a href="/tx/Auth.xxm[[?'app','feeder','key',Session.Key]]" style="font-size:2em;font-weight:bold;font-style:italic;">tx...</a></p>
   <p>More about feeder: <a href="https://github.com/stijnsanders/feeder">GitHub...</a></p>
   <div style="border-bottom:4px solid gold;"></div>>
-
+  loadMore:=false;
  end
 else
  begin
@@ -116,10 +116,10 @@ else
             ' from "Subscription" S'+
             ' inner join "Post" P on P.feed_id=S.feed_id'+
             ' left outer join "UserPost" X on X.post_id=P.id and X.user_id=S.user_id'+
-            ' where S.user_id=? and abs(P.pubdate-?)<4.0/24.0';
+            ' where S.user_id=? and (P.pubdate-?::timestamp) between ''-4 hours''::interval and ''4 hours''::interval';
           SetLength(xx,2+lx);
           xx[0]:=Session.UserID;
-          xx[1]:=UtcNow-Context['d'].AsInteger;
+          xx[1]:=VarFromDateTime(UtcNow-Context['d'].AsInteger);
          end
       else
        begin
@@ -172,10 +172,7 @@ else
     xx[Length(xx)-1]:=d1;
   end
   else
-   begin
-    id0:=0;//counter warning
     d:=0;
-   end;
 
   qr:=TQueryResult.Create(Session.Connection,
     sql+' order by P.pubdate desc, P.id limit '+IntToStr(l),xx);

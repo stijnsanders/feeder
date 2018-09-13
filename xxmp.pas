@@ -5,7 +5,12 @@ interface
 uses xxm;
 
 type
-  TXxmfeeder=class(TXxmProject)
+  TXxmfeeder=class(TXxmProject, IXxmProjectEvents1)
+  protected
+    function HandleException(Context: IXxmContext; const PageClass,
+      ExceptionClass, ExceptionMessage: WideString): boolean;
+    procedure ReleasingContexts;
+    procedure ReleasingProject;
   public
     function LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment; override;
     function LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment; override;
@@ -61,6 +66,27 @@ begin
   //TODO: set cache TTL, decrease ref count
   //Fragment.Free;
 end;
+
+function TXxmfeeder.HandleException(Context: IXxmContext; const PageClass,
+  ExceptionClass, ExceptionMessage: WideString): boolean;
+begin
+  Context.SendHTML('<!--[>">">"]--><div style="background-color:red;color:white;font-weight:bold;">');
+  Context.Send(PageClass+'['+ExceptionClass+']'+ExceptionMessage);
+  Context.SendHTML('</div>');
+  //TODO: e-mail
+  Result:=true;
+end;
+
+procedure TXxmfeeder.ReleasingContexts;
+begin
+  //
+end;
+
+procedure TXxmfeeder.ReleasingProject;
+begin
+  //
+end;
+
 
 { TRespondNotImplemented }
 

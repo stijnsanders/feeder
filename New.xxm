@@ -1,6 +1,6 @@
 [[@xxmSession,DataLank,fCommon]][[!var
 s,t,lbl,cat,c:string;
-id,id1,i,j,l,rw:integer;
+id,id1,rw:integer;
 qr,qr1:TQueryResult;
 const
 DefaultReadWidth=32;

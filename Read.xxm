@@ -19,7 +19,7 @@ try
     id:=0;
     while (i<=l) and (s[i]<>'p') do
       begin
-      if s[i] in ['0'..'9'] then
+      if AnsiChar(s[i]) in ['0'..'9'] then
         id:=id*10+(byte(s[i]) and $F)
       else
         raise Exception.Create('invalid data');

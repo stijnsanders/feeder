@@ -1,5 +1,5 @@
 [[@xxmSession,DataLank,fCommon]][[!var
-id,i,rw:integer;
+id,rw:integer;
 c,cat,lbl:string;
 db:TDataConnection;
 ]][[
