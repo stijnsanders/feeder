@@ -21,7 +21,7 @@ uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB,
 
 var
   OldPostsCutOff,LastRun:TDateTime;
-  SaveData,FeedAll:boolean;
+  SaveData,FeedAll,WasLockedDB:boolean;
   FeedID,RunContinuous,LastClean:integer;
   FeedOrderBy:UTF8String;
 
@@ -1110,6 +1110,7 @@ begin
   FeedID:=0;
   FeedAll:=false;
   FeedOrderBy:=' order by F.id';
+  WasLockedDB:=false;
 
   for i:=1 to ParamCount do
    begin
@@ -1142,6 +1143,14 @@ var
 begin
   if RunContinuous=0 then
     Result:=true
+  else
+  if WasLockedDB then
+   begin
+    WasLockedDB:=false;
+    Sleep(2500);
+    Writeln(#13'>>> '+FormatDateTime('yyyy-mm-dd hh:nn:ss',UtcNow));
+    Result:=false;
+   end
   else
    begin
 
@@ -1195,27 +1204,19 @@ end;
 
 procedure DoUpdateFeeds;
 var
-  sl:TStringList;
   db:TDataConnection;
   qr:TQueryResult;
   i,j:integer;
-  sql:string;
+  sql:UTF8String;
   d:TDateTime;
 begin
   try
     LastRun:=UtcNow;
     Writeln('Opening database...');
 
-    sl:=TStringList.Create;
+    db:=TDataConnection.Create('..\feeder.db');
     try
-      sl.LoadFromFile(FeederIniPath);
-      sql:=sl.Text;
-    finally
-      sl.Free;
-    end;
-
-    db:=TDataConnection.Create(sql);
-    try
+      db.BusyTimeout:=30000;
 
       i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
       if LastClean<>i then
@@ -1232,9 +1233,9 @@ begin
           Writeln(Format(' [%d,%d]',[j,i]));
 
           Write('Clean-up unused...');
-          db.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id in (select F.id from "Feed" F where not exists (select S.id from "Subscription" S where S.feed_id=F.id)))',[]);
-          j:=db.Execute('delete from "Post" where feed_id in (select F.id from "Feed" F where not exists (select S.id from "Subscription" S where S.feed_id=F.id))',[]);
-          i:=db.Execute('delete from "Feed" where not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
+          db.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id in (select F.id from "Feed" F where F.id<>0 and not exists (select S.id from "Subscription" S where S.feed_id=F.id)))',[]);
+          j:=db.Execute('delete from "Post" where feed_id in (select F.id from "Feed" F where F.id<>0 and not exists (select S.id from "Subscription" S where S.feed_id=F.id))',[]);
+          i:=db.Execute('delete from "Feed" where id<>0 and not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
           Writeln(Format(' [%d,%d]',[j,i]));
 
           db.CommitTrans;
@@ -1245,7 +1246,7 @@ begin
        end;
 
       Writeln('Listing feeds...');
-      if FeedID=0 then sql:='' else sql:=' where F.id='+IntToStr(FeedID);
+      if FeedID=0 then sql:='' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
       d:=UtcNow-AvgPostsDays;
       qr:=TQueryResult.Create(db,
         'select * from "Feed" F'
@@ -1275,6 +1276,8 @@ begin
   except
     on e:Exception do
      begin
+      if (e is ESQLiteException) and ((e as ESQLiteException).ErrorCode=SQLITE_LOCKED) then
+        WasLockedDB:=true;
       Writeln(ErrOutput,'['+e.ClassName+']'+e.Message);
       ExitCode:=1;
      end;

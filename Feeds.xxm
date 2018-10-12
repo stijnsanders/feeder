@@ -32,7 +32,8 @@ if id=0 then
     ' from "Subscription" S'+
     ' inner join "Feed" F on F.id=S.feed_id'+
     ' where S.user_id=?'+
-    ' order by S.category, S.label, F.name, S.id',[Session.UserID]);
+    //' order by S.category, S.label, F.name, S.id',[Session.UserID]);
+    ' order by S.category collate nocase, S.label collate nocase, F.name collate nocase, S.id',[Session.UserID]);
   try
     c:='';
     while qr.Read do

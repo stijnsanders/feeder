@@ -5,8 +5,8 @@ uses
   Winapi.Windows,
   ActiveX,
   eater1 in 'eater1.pas',
-  LibPQ in '..\LibPQ.pas',
-  LibPQData in '..\LibPQData.pas',
+  SQLite in '..\SQLite.pas',
+  SQLiteData in '..\SQLiteData.pas',
   DataLank in '..\DataLank.pas',
   MSXML2_TLB in '..\MSXML2_TLB.pas',
   VBScript_RegExp_55_TLB in '..\VBScript_RegExp_55_TLB.pas';

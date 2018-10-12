@@ -13,7 +13,7 @@ type
     FID,FKey:WideString;
   public
 
-    Name:AnsiString;
+    Name:string;
     UserID:integer;
     TimeBias:TDateTime;
 
@@ -171,14 +171,14 @@ var
 begin
   inherited Create;
   FID:=ID;
-  FKey:=base64encode(SHA3_224(Format('[feeder]%d:%d:%d:%d:%d[%s]',
+  FKey:=base64encode(SHA3_224(UTF8Encode(Format('[feeder]%d:%d:%d:%d:%d[%s]',
     [GetTickCount
     ,GetCurrentThreadID
     ,GetCurrentProcessID
     ,integer(pointer(Self))
     ,integer(pointer(Context))
     ,ID
-    ])));
+    ]))));
   //TODO: initiate expiry
 
   //default values
@@ -192,7 +192,12 @@ begin
     Connection.BeginTrans;
     try
       //TODO: more checks? hash user-agent?
+try      
       qr:=TQueryResult.Create(Connection,'select U.*, L.id as LogonID from "UserLogon" L inner join "User" U on U.id=L.user_id where L.key=?',[s]);
+except
+on e:Exception do
+Context.Send('['+e.Message+']'+e.ClassName);
+end;
       try
         if qr.Read then
          begin
@@ -245,20 +250,13 @@ threadvar
 class function TXxmSession.Connection: TDataConnection;
 var
   s:string;
-  sl:TStringList;
 begin
   if WorkerThreadConnection=nil then
    begin
     SetLength(s,MAX_PATH);
     SetLength(s,GetModuleFileName(HInstance,PChar(s),MAX_PATH));
-    sl:=TStringList.Create;
-    try
-      sl.LoadFromFile(ExtractFilePath(s)+'..\feeder.ini');
-      s:=sl.Text;
-    finally
-      sl.Free;
-    end;
-    WorkerThreadConnection:=TDataConnection.Create(s);
+    WorkerThreadConnection:=TDataConnection.Create(ExtractFilePath(s)+'feeder.db');
+    WorkerThreadConnection.BusyTimeout:=30000;
    end;
   Result:=WorkerThreadConnection;
 end;

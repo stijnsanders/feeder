@@ -10,22 +10,24 @@ uses SysUtils, SQLiteData, LibPQData, Classes;
 
 procedure DoTrans;
 var
-  db1:TSQLiteConnection;
-  db2:TPostgresConnection;
+  db1:TPostgresConnection;
+  db2:TSQLiteConnection;
   sl:TStringList;
 
-  qr:TSQLiteStatement;
+  qr:TPostgresCommand;
   id,id1,c:integer;
 begin
-  db1:=TSQLiteConnection.Create('..\..\..\feeder.db');
   sl:=TStringList.Create;
   sl.LoadFromFile('feeder.ini');
-  db2:=TPostgresConnection.Create(sl.Text);
+  db1:=TPostgresConnection.Create(sl.Text);
   sl.Free;
+  db2:=TSQLiteConnection.Create('..\..\..\feeder.db');
+
+  db1.BeginTrans;
 
   id1:=0;
   c:=0;
-  qr:=TSQLiteStatement.Create(db1,'select * from Feed',[]);
+  qr:=TPostgresCommand.Create(db1,'select * from "Feed" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -46,11 +48,13 @@ begin
     inc(c);
    end;
   Writeln(#13'Feeds:'+IntToStr(c));
-  db2.Execute('alter sequence "Feed_id_seq" restart with '+IntToStr(id1+1),[]);
+
+  db1.CommitTrans;
+  db1.BeginTrans;
 
   id1:=0;
   c:=0;
-  qr:=TSQLiteStatement.Create(db1,'select * from Post',[]);
+  qr:=TPostgresCommand.Create(db1,'select * from "Post" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -69,11 +73,13 @@ begin
     inc(c);
    end;
   Writeln(#13'Posts:'+IntToStr(c));
-  db2.Execute('alter sequence "Post_id_seq" restart with '+IntToStr(id1+1),[]);
+
+  db1.CommitTrans;
+  db1.BeginTrans;
 
   id1:=0;
   c:=0;
-  qr:=TSQLiteStatement.Create(db1,'select * from User',[]);
+  qr:=TPostgresCommand.Create(db1,'select * from "User" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -90,11 +96,10 @@ begin
     inc(c);
    end;
   Writeln(#13'Users:'+IntToStr(c));
-  db2.Execute('alter sequence "User_id_seq" restart with '+IntToStr(id1+1),[]);
 
   id1:=0;
   c:=0;
-  qr:=TSQLiteStatement.Create(db1,'select * from UserLogon',[]);
+  qr:=TPostgresCommand.Create(db1,'select * from "UserLogon" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -112,11 +117,10 @@ begin
     inc(c);
    end;
   Writeln(#13'UserLogons:'+IntToStr(c));
-  db2.Execute('alter sequence "UserLogon_id_seq" restart with '+IntToStr(id1+1),[]);
 
   id1:=0;
   c:=0;
-  qr:=TSQLiteStatement.Create(db1,'select * from Subscription',[]);
+  qr:=TPostgresCommand.Create(db1,'select * from "Subscription" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -135,11 +139,10 @@ begin
     inc(c);
    end;
   Writeln(#13'Subscriptions:'+IntToStr(c));
-  db2.Execute('alter sequence "Subscription_id_seq" restart with '+IntToStr(id1+1),[]);
 
   id1:=0;
   c:=0;
-  qr:=TSQLiteStatement.Create(db1,'select * from UserPost',[]);
+  qr:=TPostgresCommand.Create(db1,'select * from "UserPost" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -153,7 +156,8 @@ begin
     inc(c);
    end;
   Writeln(#13'UserPosts:'+IntToStr(c));
-  db2.Execute('alter sequence "UserPost_id_seq" restart with '+IntToStr(id1+1),[]);
+
+  db1.CommitTrans;
 
 end;
 

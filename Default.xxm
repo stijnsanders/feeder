@@ -1,6 +1,6 @@
 [[@DataLank,xxmSession,fCommon,Variants]][[!var
 qr:TQueryResult;
-xx:array of Variant;
+xx:array of OleVariant;
 s,sql,cat:string;
 d,d0,f,l,id,id0,lx:integer;
 d1:TDateTime;
@@ -128,7 +128,7 @@ else
           ' from "Subscription" S'+
           ' inner join "Post" P on P.feed_id=S.feed_id'+
           ' left outer join "UserPost" X on X.post_id=P.id and X.user_id=S.user_id'+
-          ' where S.user_id=? and P.title||'' ''||P.content ilike ?';
+          ' where S.user_id=? and P.title||'' ''||P.content like ?';
         SetLength(xx,2+lx);
         xx[0]:=Session.UserID;
         xx[1]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
