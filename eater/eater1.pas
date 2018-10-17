@@ -490,7 +490,7 @@ function UTF8ToWideString(const x:UTF8String):WideString;
 begin
   Result:=UTF8Decode(x);
 end;
-{$IFEND}
+{$ENDIF}
 
 function LoadExternal(const URL,FilePath:string): WideString;
 var
@@ -552,7 +552,7 @@ begin
   end;
 end;
 
-procedure DoFeed(db:TDataConnection;qr:TQueryResult);
+procedure DoFeed(db:TDataConnection;qr,qr1:TQueryResult);
 var
   r:ServerXMLHTTP60;
   doc:DOMDocument60;
@@ -741,8 +741,8 @@ begin
   //TODO: more?
 
   //check feed timing and regime
-  if qr.IsNull('postlast') then postlast:=0.0 else postlast:=qr['postlast'];
-  if qr.IsNull('postavg') then postavg:=0.0 else postavg:=qr['postavg'];
+  if qr1.Eof or qr1.IsNull('postlast') then postlast:=0.0 else postlast:=qr1['postlast'];
+  if qr1.Eof or qr1.IsNull('postavg') then postavg:=0.0 else postavg:=qr1['postavg'];
   if qr.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr['loadlast'];
   if postlast=0.0 then
     if loadlast=0.0 then
@@ -1202,11 +1202,30 @@ begin
    end;
 end;
 
+procedure BackupSQLite(db1:HSQLiteDB;const db2:AnsiString);
+var
+  b:HSQLiteDB;
+  b1:HSQLiteBackup;
+  p:integer;
+begin
+  sqlite3_check(sqlite3_open(PAnsiChar(db2),b));
+  try
+    b1:=sqlite3_backup_init(b,'main',db1,'main');
+    p:=$1000;
+    while sqlite3_backup_step(b1,p)<>SQLITE_DONE do
+      Write(#13+IntToStr((sqlite3_backup_remaining(b1) div p)+1));
+    Writeln(#13'Done');
+    sqlite3_check(sqlite3_backup_finish(b1));
+  finally
+    {sqlite3_check}(sqlite3_close(b));
+  end;
+end;
+
 procedure DoUpdateFeeds;
 var
-  db:TDataConnection;
-  qr:TQueryResult;
-  i,j:integer;
+  db,db1:TDataConnection;
+  qr,qr1:TQueryResult;
+  i,j,r,id:integer;
   sql:UTF8String;
   d:TDateTime;
 begin
@@ -1245,29 +1264,65 @@ begin
         end;
        end;
 
-      Writeln('Listing feeds...');
-      if FeedID=0 then sql:='' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
-      d:=UtcNow-AvgPostsDays;
-      qr:=TQueryResult.Create(db,
-        'select * from "Feed" F'
-        +' left outer join ('
-        +'   select X.feed_id, max(X.pubdate) as postlast, avg(X.pd) as postavg'
-        +'   from('
-        +'     select'
-        +'     P1.feed_id, P2.pubdate, min(P2.pubdate-P1.pubdate) as pd'
-        +'     from "Post" P1'
-        +'     inner join "Post" P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
-        +'     where P1.pubdate>?'
-        +'     group by P1.feed_id, P2.pubdate'
-        +'   ) X'
-        +'   group by X.feed_id'
-        +' ) X on X.feed_id=F.id'
-        +sql+FeedOrderBy,[d]);
+      Writeln('Copy for query averages...');
+      {
+      if not CopyFile(PChar('..\feeder.db'),PChar('feederX.db'),false) then
+        RaiseLastOSError;
+      }
+      BackupSQLite(db.Handle,'feederX.db');
+
+      db1:=TDataConnection.Create('feederX.db');
       try
-        while qr.Read do
-          DoFeed(db,qr);
+        db1.BusyTimeout:=30000;
+
+        Writeln('Listing feeds...');
+        if FeedID=0 then sql:=' where F.id<>0' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
+        d:=UtcNow-AvgPostsDays;
+        qr:=TQueryResult.Create(db1,'select * from "Feed" F'+sql+FeedOrderBy,[]);
+        try
+          while qr.Read do
+           begin
+            id:=qr.GetInt('id');
+            r:=5;
+            while r<>0 do
+              try
+                Writeln(IntToStr(id)+':averages...');
+                qr1:=TQueryResult.Create(db1,
+                   'select max(X.pubdate) as postlast, avg(X.pd) as postavg'
+                  +' from('
+                  +'  select'
+                  +'  P2.pubdate, min(P2.pubdate-P1.pubdate) as pd'
+                  +'  from "Post" P1'
+                  +'  inner join "Post" P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
+                  +'  where P1.feed_id=? and P1.pubdate>?'
+                  +'  group by P2.pubdate'
+                  +' ) X'
+                ,[id,d]);
+                try
+                  DoFeed(db,qr,qr1);
+                  r:=0;
+                finally
+                  qr1.Free;
+                end;
+              except
+                on e:ESQLiteException do
+                  if e.ErrorCode=SQLITE_LOCKED then
+                   begin
+                    Writeln(ErrOutput,'['+e.ClassName+'#'+IntToStr(r)+']'+e.Message);
+                    dec(r);
+                    if r=0 then raise;
+                   end
+                  else
+                    raise;
+              end;
+           end;
+
+        finally
+          qr.Free;
+        end;
+
       finally
-        qr.Free;
+        db1.Free;
       end;
 
     finally
