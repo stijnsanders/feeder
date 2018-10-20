@@ -520,7 +520,7 @@ var
   i:integer;
   w:word;
 begin
-  Write(' ->');
+  WriteLn(' ->');
   DeleteFile(PChar(FilePath));//remove any previous file
 
   ZeroMemory(@si,SizeOf(TStartupInfo));
@@ -1348,7 +1348,7 @@ begin
                 r:=0;
               except
                 on e:ESQLiteException do
-                  if e.ErrorCode=SQLITE_LOCKED then
+                  if e.ErrorCode=SQLITE_BUSY then
                    begin
                     ErrLn('['+e.ClassName+'#'+IntToStr(r)+']'+e.Message);
                     dec(r);
@@ -1373,7 +1373,7 @@ begin
   except
     on e:Exception do
      begin
-      if (e is ESQLiteException) and ((e as ESQLiteException).ErrorCode=SQLITE_LOCKED) then
+      if (e is ESQLiteException) and ((e as ESQLiteException).ErrorCode=SQLITE_BUSY) then
         WasLockedDB:=true;
       ErrLn('['+e.ClassName+']'+e.Message);
       ExitCode:=1;

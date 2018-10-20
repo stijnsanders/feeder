@@ -274,7 +274,7 @@ end;
 
 procedure TSQLiteConnection.BeginTrans;
 begin
-  Execute('BEGIN TRANSACTION');
+  Execute('BEGIN IMMEDIATE TRANSACTION');
 end;
 
 procedure TSQLiteConnection.CommitTrans;
