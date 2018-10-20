@@ -34,7 +34,7 @@ begin
   except
     on e:Exception do
      begin
-      Writeln(ErrOutput,'['+e.ClassName+']'+e.Message);
+      ErrLn('['+e.ClassName+']'+e.Message);
       ExitCode:=1;
      end;
   end;

@@ -4,6 +4,9 @@ interface
 
 uses SysUtils;
 
+procedure OutLn(const x:string);
+procedure ErrLn(const x:string);
+
 procedure DoProcessParams;
 procedure DoUpdateFeeds;
 function DoCheckRunDone:boolean;
@@ -18,6 +21,22 @@ implementation
 
 uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB,
   SQLite;
+
+procedure OutLn(const x:string);
+begin
+  WriteLn(FormatDateTime('hh:nn:ss.zzz ',Now)+x);
+end;
+
+procedure ErrLn(const x:string);
+begin
+  WriteLn(ErrOutput,FormatDateTime('hh:nn:ss.zzz ',Now)+x);
+end;
+
+procedure Out0(const x:string);
+begin
+  Write(FormatDateTime('hh:nn:ss.zzz ',Now)+x);
+end;
+
 
 var
   OldPostsCutOff,LastRun:TDateTime;
@@ -501,7 +520,7 @@ var
   i:integer;
   w:word;
 begin
-  Writeln(' ->');
+  Write(' ->');
   DeleteFile(PChar(FilePath));//remove any previous file
 
   ZeroMemory(@si,SizeOf(TStartupInfo));
@@ -552,7 +571,7 @@ begin
   end;
 end;
 
-procedure DoFeed(db:TDataConnection;qr,qr1:TQueryResult);
+procedure DoFeed(db,db1:TDataConnection;qr:TQueryResult;oldPostDate:TDateTime);
 var
   r:ServerXMLHTTP60;
   doc:DOMDocument60;
@@ -592,7 +611,9 @@ const
         qr:=TQueryResult.Create(db,
           'select P.id from "Post" P'
           +' inner join "Feed" F on F.id=P.feed_id'
-          +' where P.guid=? and coalesce(F.flags,0)&1=1'
+          //+' and coalesce(F.flags,0)&1=1'
+          +' and F.flags=1'
+          +' where P.guid=?'
           ,[itemid])
       else
         qr:=TQueryResult.Create(db,
@@ -721,10 +742,11 @@ const
 var
   d:TDateTime;
   i:integer;
-  loadlast,postlast,postavg:double;
+  loadlast,postlast,postavg,margin:double;
   loadext:boolean;
-  rw,rt,s:WideString;
+  rw,rt,s,sql1,sql2:WideString;
   rf:TFileStream;
+  qr1:TQueryResult;
 begin
   feedid:=qr.GetInt('id');
   feedurl:=qr.GetStr('url');
@@ -733,30 +755,65 @@ begin
   feedregime:=qr.GetInt('regime');
   feedresult:='';
 
-  Write(IntToStr(feedid)+':'+feedurl);
+  Out0(IntToStr(feedid)+':'+feedurl);
 
   //flags
   i:=qr.GetInt('flags');
-  feedglobal:=(i and 1)<>0;
+  //feedglobal:=(i and 1)<>0;
+  feedglobal:=i=1;
   //TODO: more?
 
   //check feed timing and regime
-  if qr1.Eof or qr1.IsNull('postlast') then postlast:=0.0 else postlast:=qr1['postlast'];
-  if qr1.Eof or qr1.IsNull('postavg') then postavg:=0.0 else postavg:=qr1['postavg'];
+  qr1:=TQueryResult.Create(db1,
+    'select id from "Post" where feed_id=? order by 1 desc limit 1000,1',[feedid]);
+  try
+    if qr1.EOF then
+     begin
+      sql1:='';
+      sql2:='';
+     end
+    else
+     begin
+      sql1:=' and P1.id>'+IntToStr(qr1.GetInt('id'));
+      sql2:=' and P2.id>'+IntToStr(qr1.GetInt('id'));
+     end;
+  finally
+    qr1.Free;
+  end;
+  qr1:=TQueryResult.Create(db1,UTF8Encode(
+     'select max(X.pubdate) as postlast, avg(X.pd) as postavg'
+    +' from('
+    +'  select'
+    +'  P2.pubdate, min(P2.pubdate-P1.pubdate) as pd'
+    +'  from "Post" P1'
+    +'  inner join "Post" P2 on P2.feed_id=P1.feed_id'+sql2+' and P2.pubdate>P1.pubdate'
+    +'  where P1.feed_id=?'+sql1+' and P1.pubdate>?'
+    +'  group by P2.pubdate'
+    +' ) X')
+  ,[feedid,oldPostDate]);
+  try
+    if qr1.EOF or qr1.IsNull('postlast') then postlast:=0.0 else postlast:=qr1['postlast'];
+    if qr1.EOF or qr1.IsNull('postavg') then postavg:=0.0 else postavg:=qr1['postavg'];
+  finally
+    qr1.Free;
+  end;
   if qr.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr['loadlast'];
+  margin:=(RunContinuous+5)/1440.0;
   if postlast=0.0 then
     if loadlast=0.0 then
-      d:=feedload-5.0/1440.0
+      d:=feedload-margin
     else
       d:=loadlast+feedregime
   else
    begin
-    d:=postlast+postavg-5.0/1440.0;
+    d:=postlast+postavg-margin;
     if (loadlast<>0.0) and (d<loadlast) then
-      d:=loadlast+feedregime;
+      d:=loadlast+feedregime-margin;
    end;
   b:=(d<feedload) or FeedAll;
   loadext:=false;//default
+
+  //Write(?
 
   c1:=0;
   c2:=0;
@@ -776,6 +833,7 @@ begin
         while b do
          begin
           b:=false;
+          Write(':');
           r:=CoServerXMLHTTP60.Create;
           r.open('GET',feedurl,false,EmptyParam,EmptyParam);
           r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, text/xml');
@@ -809,6 +867,7 @@ begin
         if r.status=200 then
          begin
 
+          Write(':');
           rw:=r.responseText;
           rt:=r.getResponseHeader('Content-Type');
           i:=1;
@@ -1033,7 +1092,7 @@ begin
       if (feedresult<>'') and (feedresult[1]='[') then
        begin
         Writeln(' !!!');
-        Writeln(ErrOutput,feedresult);
+        ErrLn(feedresult);
        end
       else
        begin
@@ -1213,8 +1272,8 @@ begin
     b1:=sqlite3_backup_init(b,'main',db1,'main');
     p:=$1000;
     while sqlite3_backup_step(b1,p)<>SQLITE_DONE do
-      Write(#13+IntToStr((sqlite3_backup_remaining(b1) div p)+1));
-    Writeln(#13'Done');
+      Write(#13'... '+IntToStr((sqlite3_backup_remaining(b1) div p)+1)+' ');
+    Write(#13);//Writeln(#13'Done');
     sqlite3_check(sqlite3_backup_finish(b1));
   finally
     {sqlite3_check}(sqlite3_close(b));
@@ -1224,14 +1283,14 @@ end;
 procedure DoUpdateFeeds;
 var
   db,db1:TDataConnection;
-  qr,qr1:TQueryResult;
-  i,j,r,id:integer;
+  qr:TQueryResult;
+  i,j,r:integer;
   sql:UTF8String;
   d:TDateTime;
 begin
   try
     LastRun:=UtcNow;
-    Writeln('Opening database...');
+    OutLn('Opening database...');
 
     db:=TDataConnection.Create('..\feeder.db');
     try
@@ -1245,13 +1304,13 @@ begin
         db.BeginTrans;
         try
 
-          Write('Clean-up old...');
+          Out0('Clean-up old...');
           OldPostsCutOff:=UtcNow-OldPostsDays;
           i:=db.Execute('delete from "UserPost" where post_id in (select id from "Post" where pubdate<?)',[OldPostsCutOff]);
           j:=db.Execute('delete from "Post" where pubdate<?',[OldPostsCutOff]);
           Writeln(Format(' [%d,%d]',[j,i]));
 
-          Write('Clean-up unused...');
+          Out0('Clean-up unused...');
           db.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id in (select F.id from "Feed" F where F.id<>0 and not exists (select S.id from "Subscription" S where S.feed_id=F.id)))',[]);
           j:=db.Execute('delete from "Post" where feed_id in (select F.id from "Feed" F where F.id<>0 and not exists (select S.id from "Subscription" S where S.feed_id=F.id))',[]);
           i:=db.Execute('delete from "Feed" where id<>0 and not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
@@ -1264,7 +1323,7 @@ begin
         end;
        end;
 
-      Writeln('Copy for query averages...');
+      OutLn('Copy for query averages...');
       {
       if not CopyFile(PChar('..\feeder.db'),PChar('feederX.db'),false) then
         RaiseLastOSError;
@@ -1275,40 +1334,23 @@ begin
       try
         db1.BusyTimeout:=30000;
 
-        Writeln('Listing feeds...');
+        OutLn('Listing feeds...');
         if FeedID=0 then sql:=' where F.id<>0' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
         d:=UtcNow-AvgPostsDays;
         qr:=TQueryResult.Create(db1,'select * from "Feed" F'+sql+FeedOrderBy,[]);
         try
           while qr.Read do
            begin
-            id:=qr.GetInt('id');
             r:=5;
             while r<>0 do
               try
-                Writeln(IntToStr(id)+':averages...');
-                qr1:=TQueryResult.Create(db1,
-                   'select max(X.pubdate) as postlast, avg(X.pd) as postavg'
-                  +' from('
-                  +'  select'
-                  +'  P2.pubdate, min(P2.pubdate-P1.pubdate) as pd'
-                  +'  from "Post" P1'
-                  +'  inner join "Post" P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
-                  +'  where P1.feed_id=? and P1.pubdate>?'
-                  +'  group by P2.pubdate'
-                  +' ) X'
-                ,[id,d]);
-                try
-                  DoFeed(db,qr,qr1);
-                  r:=0;
-                finally
-                  qr1.Free;
-                end;
+                DoFeed(db,db1,qr,d);
+                r:=0;
               except
                 on e:ESQLiteException do
                   if e.ErrorCode=SQLITE_LOCKED then
                    begin
-                    Writeln(ErrOutput,'['+e.ClassName+'#'+IntToStr(r)+']'+e.Message);
+                    ErrLn('['+e.ClassName+'#'+IntToStr(r)+']'+e.Message);
                     dec(r);
                     if r=0 then raise;
                    end
@@ -1333,7 +1375,7 @@ begin
      begin
       if (e is ESQLiteException) and ((e as ESQLiteException).ErrorCode=SQLITE_LOCKED) then
         WasLockedDB:=true;
-      Writeln(ErrOutput,'['+e.ClassName+']'+e.Message);
+      ErrLn('['+e.ClassName+']'+e.Message);
       ExitCode:=1;
      end;
   end;

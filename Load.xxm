@@ -1,32 +1,23 @@
 [[@DataLank,xxmSession,fCommon]][[!var
-qr:TQueryResult;
-a:double;
-f:integer;
-d:TDateTime;
+db1:TDataConnection;
+qr,qr1:TQueryResult;
+loadlast,postlast,postavg:double;
+feedid,flags:integer;
+oldPostDate:TDateTime;
+sql1,sql2:UTF8String;
 const
 AvgPostsDays=100;
 ]][[
 
-d:=UtcNow-AvgPostsDays;
+oldPostDate:=UtcNow-AvgPostsDays;
 qr:=TQueryResult.Create(Session.Connection,
   'select *'
   +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
-  +' from "Feed" F'
-  +' left outer join ('
-  +'   select X.feed_id, max(X.pubdate) as pl, avg(X.pd) as pa'
-  +'   from('
-  +'     select'
-  +'     P1.feed_id, P2.pubdate, min(P2.pubdate-P1.pubdate) as pd'
-  +'     from "Post" P1'
-  +'     inner join "Post" P2 on P2.feed_id=P1.feed_id and P2.pubdate>P1.pubdate'
-  +'     where P1.pubdate>?'
-  +'     group by P1.feed_id, P2.pubdate'
-  +'   ) X'
-  +'   group by X.feed_id'
-  +' ) X on X.feed_id=F.id'
-  +' order by F.id'
-  ,[d]
+  +' from "Feed" F where F.id<>0 order by F.id'
+  ,[]
 );
+db1:=Session.Connection;
+
 try
   <<style>
   TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}
@@ -50,36 +41,76 @@ try
   </tr>>
   while qr.Read do
    begin
+
+    feedid:=qr.GetInt('id');
+
     <<tr>
-    <td style="text-align:right;">>=qr['id']<</td>
+    <td style="text-align:right;">>=feedid<</td>
     <td class="n">>
-    f:=qr.GetInt('flags');
-    if (f and 1)<>0 then begin <<div class="flag" style="background-color:red;">g</div>&nbsp;[[ end;
+    flags:=qr.GetInt('flags');
+    if flags=1 then //if (flags and 1)<>0 then
+     begin <<div class="flag" style="background-color:red;">g</div>&nbsp;[[ end;
     <<a href="[[=qr['url']]]" title="[[=qr['name']]]">>=qr['name']<</a></td>
     <td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))<</td>
     <td style="text-align:right;">>=qr['scount']<</td>>
-    if qr.IsNull('pl') then begin <<td>&nbsp;</td>> end else
+
+    Context.Flush;
+    qr1:=TQueryResult.Create(db1,
+      'select id from "Post" where feed_id=? order by 1 desc limit 1000,1',[feedid]);
+    try
+      if qr1.EOF then
+       begin
+        sql1:='';
+        sql2:='';
+      end
+      else
+       begin
+        sql1:=' and P1.id>'+IntToStr(qr1.GetInt('id'));
+        sql2:=' and P2.id>'+IntToStr(qr1.GetInt('id'));
+       end;
+    finally
+      qr1.Free;
+    end;
+    qr1:=TQueryResult.Create(db1,UTF8Encode(
+      'select max(X.pubdate) as postlast, avg(X.pd) as postavg'
+      +' from('
+      +'  select'
+      +'  P2.pubdate, min(P2.pubdate-P1.pubdate) as pd'
+      +'  from "Post" P1'
+      +'  inner join "Post" P2 on P2.feed_id=P1.feed_id'+sql2+' and P2.pubdate>P1.pubdate'
+      +'  where P1.feed_id=?'+sql1+' and P1.pubdate>?'
+      +'  group by P2.pubdate'
+      +' ) X')
+    ,[feedid,oldPostDate]);
+    try
+      if qr1.EOF or qr1.IsNull('postlast') then postlast:=0.0 else postlast:=qr1['postlast'];
+      if qr1.EOF or qr1.IsNull('postavg') then postavg:=0.0 else postavg:=qr1['postavg'];
+    finally
+      qr1.Free;
+    end;
+    if qr.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr['loadlast'];
+
+
+    if postlast=0.0 then begin <<td>&nbsp;</td>> end else
      begin
-      <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('pl'))<</td>>
+      <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',postlast)<</td>>
      end;
-    if qr.IsNull('pa') then a:=0 else a:=qr['pa'];
-    if a=0.0 then
+    if postavg=0.0 then
      begin <<td>&nbsp;</td>> end
     else
-    if a>1.0 then
-     begin <<td style="text-align:right;background-color:#FFFFCC;">>=Round(a)]] days</td>> end
+    if postavg>1.0 then
+     begin <<td style="text-align:right;background-color:#FFFFCC;">>=Round(postavg)]] days</td>> end
     else
-     begin <<td style="text-align:right;">>=Round(a*1440.0)]] mins</td>> end;
+     begin <<td style="text-align:right;">>=Round(postavg*1440.0)]] mins</td>> end;
     <<td style="text-align:right;">>=qr['regime']<</td>>
     if qr.IsNull('loadlast') then begin <<td>&nbsp;</td><td>&nbsp;</td>> end else
      begin
-      d:=qr.GetDate('loadlast');
-      <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',d)<</td>>
-      a:=UtcNow-d;
-      if a>1.0 then
-       begin <<td style="text-align:right;background-color:#FFFFCC;">>=Round(a)]] days</td>> end
+      <<td>>=FormatDateTime('yyyy-mm-dd hh:nn',loadlast)<</td>>
+      loadlast:=UtcNow-loadlast;
+      if loadlast>1.0 then
+       begin <<td style="text-align:right;background-color:#FFFFCC;">>=Round(loadlast)]] days</td>> end
       else
-       begin <<td style="text-align:right;">>=Round(a*1440.0)]] mins</td>> end;
+       begin <<td style="text-align:right;">>=Round(loadlast*1440.0)]] mins</td>> end;
      end;
     if (qr.GetStr('result')+'-')[1]='[' then
      begin
