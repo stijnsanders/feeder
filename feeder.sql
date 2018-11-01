@@ -24,6 +24,7 @@ constraint FK_Post_Feed foreign key (feed_id) references "Feed" (id)
 );
 
 create index IX_Post on "Post" (feed_id,pubdate);
+create index IX_PostGuid on "Post" (feed_id,guid);
 
 create table "User" (
 id integer primary key autoincrement,

@@ -47,7 +47,7 @@ var markRead="";
 var scrollNotify=0;
 var trailer;
 var gotMore=false;
-function doScroll(){
+function doScroll1(){
   if(scrollNotify!=0){
     window.clearTimeout(scrollNotify);
     scrollNotify=0;
@@ -105,7 +105,21 @@ function doScroll(){
       });
     }
   }
-};
+}
+function doScroll0(){
+  if(window.scrollY<25){
+    document.body.onscroll=doScroll1;
+    doScroll1();
+  }
+}
+function doScroll(){
+  if(window.scrollY>100)
+    document.body.onscroll=doScroll0;
+  else{
+    document.body.onscroll=doScroll1;
+    doScroll1();
+  }
+}
 function doPostLoad(){
   if(document.getElementById("postview").contentWindow.location.href=="about:blank")
     doPostHide();
