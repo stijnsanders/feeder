@@ -76,12 +76,16 @@ function doScroll1(){
         markRead="";
         r.text().then(function(x){
           var xx=x.split(":");
-          if(xx[0]=="OK")document.getElementById("postcount").textContent=xx[2];
+          if(xx[0]=="OK"){
+            var pc=document.getElementById("postcount");
+            pc.textContent=xx[2];
+            pc.style.backgroundColor="";
+          }
         });
       }).catch(function(ee){
         var pc=document.getElementById("postcount");
-        pc.style.backgroundColor="#FF0000";
         pc.title=ee;
+        pc.style.backgroundColor="#FF0000";
       });
     },500);
   }
@@ -110,12 +114,14 @@ function doScroll0(){
   if(window.scrollY<25){
     document.body.onscroll=doScroll1;
     doScroll1();
+    document.getElementById("postcount").style.backgroundColor="";
   }
 }
 function doScroll(){
-  if(window.scrollY>100)
+  if(window.scrollY>100){
     document.body.onscroll=doScroll0;
-  else{
+    document.getElementById("postcount").style.backgroundColor="#999999";
+  }else{
     document.body.onscroll=doScroll1;
     doScroll1();
   }
