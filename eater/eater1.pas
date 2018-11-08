@@ -504,6 +504,19 @@ begin
   ;
 end;
 
+function HTMLEncode(const x:string):string;
+begin
+  Result:=
+    StringReplace(
+    StringReplace(
+    StringReplace(
+      x
+      ,'&','&amp;',[rfReplaceAll])
+      ,'<','&lt;',[rfReplaceAll])
+      ,'>','&gt;',[rfReplaceAll])
+  ;
+end;
+
 {$IF not Declared(UTF8ToWideString)}
 function UTF8ToWideString(const x:UTF8String):WideString;
 begin
@@ -571,7 +584,8 @@ begin
   end;
 end;
 
-procedure DoFeed(db,db1:TDataConnection;qr:TQueryResult;oldPostDate:TDateTime);
+procedure DoFeed(db,db1:TDataConnection;qr:TQueryResult;oldPostDate:TDateTime;
+  sl:TStringList);
 var
   r:ServerXMLHTTP60;
   doc:DOMDocument60;
@@ -763,6 +777,15 @@ begin
   feedglobal:=i=1;
   //TODO: more?
 
+  sl.Add('<tr>');
+  sl.Add('<td style="text-align:right;">'+IntToStr(feedid)+'</td>');
+  sl.Add('<td class="n" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)+'">');
+  if feedglobal then
+    sl.Add('<div class="flag" style="background-color:red;">g</div>&nbsp;');
+  sl.Add('<a href="'+HTMLEncode(feedurl)+'" title="'+HTMLEncode(feedname)+'">'+HTMLEncode(feedname)+'</a></td>');
+  sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))+'</td>');
+  sl.Add('<td style="text-align:right;">'+VarToStr(qr['scount'])+'</td>');
+
   //check feed timing and regime
   qr1:=TQueryResult.Create(db1,
     'select id from "Post" where feed_id=? order by 1 desc limit 1000,1',[feedid]);
@@ -798,20 +821,45 @@ begin
     qr1.Free;
   end;
   if qr.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr['loadlast'];
+
   margin:=(RunContinuous+5)/1440.0;
   if postlast=0.0 then
+   begin
+    sl.Add('<td>&nbsp;</td>');
     if loadlast=0.0 then
       d:=feedload-margin
     else
-      d:=loadlast+feedregime
+      d:=loadlast+feedregime;
+   end
   else
    begin
+    sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',postlast)+'</td>');
     d:=postlast+postavg-margin;
     if (loadlast<>0.0) and (d<loadlast) then
       d:=loadlast+feedregime-margin;
    end;
   b:=(d<feedload) or FeedAll;
   loadext:=false;//default
+
+  if postavg=0.0 then
+    sl.Add('<td>&nbsp;</td>')
+  else
+  if postavg>1.0 then
+    sl.Add('<td style="text-align:right;background-color:#FFFFCC;">'+IntToStr(Round(postavg))+' days</td>')
+  else
+    sl.Add('<td style="text-align:right;">'+IntToStr(Round(postavg*1440.0))+' mins</td>');
+  sl.Add('<td style="text-align:right;">'+VarToStr(qr['regime'])+'</td>');
+  if qr.IsNull('loadlast') then
+    sl.Add('<td>&nbsp;</td><td>&nbsp;</td>')
+  else
+   begin
+    sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',loadlast)+'</td>');
+    loadlast:=UtcNow-loadlast;
+    if loadlast>1.0 then
+      sl.Add('<td style="text-align:right;background-color:#FFFFCC;">'+IntToStr(Round(loadlast))+' days</td>')
+    else
+      sl.Add('<td style="text-align:right;">'+IntToStr(Round(loadlast*1440.0))+' mins</td>');
+   end;
 
   //Write(?
 
@@ -1155,8 +1203,23 @@ begin
     end;
    end
   else
+   begin
     Writeln(' Skip '+
       IntToStr(Round((d-feedload)*1440.0))+''' regime:'+IntToStr(feedregime));
+    feedresult:=qr.GetStr('result');
+    c1:=qr.GetInt('itemcount');
+    c2:=qr.GetInt('loadcount');
+    feedload:=qr.GetDate('loadlast');
+   end;
+
+  if (feedresult+'-')[1]='[' then
+    sl.Add('<td style="color:#CC0000;">'+HTMLEncode(feedresult)+'</td>')
+  else
+    sl.Add('<td>'+HTMLEncode(feedresult)+'</td>');
+  sl.Add('<td style="text-align:right;">'+IntToStr(c2)+'</td>');
+  sl.Add('<td style="text-align:right;" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)+'">'+IntToStr(c1)+'</td>');
+  sl.Add('</tr>');
+
 end;
 
 procedure DoProcessParams;
@@ -1287,12 +1350,14 @@ var
   i,j,r:integer;
   sql:UTF8String;
   d:TDateTime;
+  sl:TStringList;
 begin
   try
     LastRun:=UtcNow;
     OutLn('Opening database...');
 
     db:=TDataConnection.Create('..\feeder.db');
+    sl:=TStringList.Create;
     try
       db.BusyTimeout:=30000;
 
@@ -1330,6 +1395,28 @@ begin
       }
       BackupSQLite(db.Handle,'feederX.db');
 
+      sl.Add('<style>');
+      sl.Add('TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
+      sl.Add('TD.n{max-width:12em;overflow:hidden;text-overflow:ellipsis;}');
+      sl.Add('DIV.flag{display:inline;padding:2pt;border-radius:4pt;white-space:nowrap;}');
+      sl.Add('</style>');
+      sl.Add('<table cellspacing="0" cellpadding="4" border="1">');
+      sl.Add('<tr>');
+      sl.Add('<th>&nbsp;</th>');
+      sl.Add('<th>name</th>');
+      sl.Add('<th>created</th>');
+      sl.Add('<th>#</th>');
+      sl.Add('<th>post:last</th>');
+      sl.Add('<th>post:avg</th>');
+      sl.Add('<th>regime</th>');
+      sl.Add('<th>load:last</th>');
+      sl.Add('<th>:since</th>');
+      sl.Add('<th>load:result</th>');
+      sl.Add('<th>load:new</th>');
+      sl.Add('<th>load:items</th>');
+      sl.Add('</tr>');
+
+
       db1:=TDataConnection.Create('feederX.db');
       try
         db1.BusyTimeout:=30000;
@@ -1337,14 +1424,16 @@ begin
         OutLn('Listing feeds...');
         if FeedID=0 then sql:=' where F.id<>0' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
         d:=UtcNow-AvgPostsDays;
-        qr:=TQueryResult.Create(db1,'select * from "Feed" F'+sql+FeedOrderBy,[]);
+        qr:=TQueryResult.Create(db1,'select *'
+           +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
+           +' from "Feed" F'+sql+FeedOrderBy,[]);
         try
           while qr.Read do
            begin
             r:=5;
             while r<>0 do
               try
-                DoFeed(db,db1,qr,d);
+                DoFeed(db,db1,qr,d,sl);
                 r:=0;
               except
                 on e:ESQLiteException do
@@ -1367,8 +1456,12 @@ begin
         db1.Free;
       end;
 
+      sl.Add('</table>');
+      sl.SaveToFile('..\Load.html');
+
     finally
       db.Free;
+      sl.Free;
     end;
   except
     on e:Exception do

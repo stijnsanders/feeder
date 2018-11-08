@@ -59,8 +59,7 @@ try
   );
 
   <</div>
-  <div style="color:#9999AA;font-size:0.8em;margin-top:4pt;">>=qr['url']<</div>
-  <div style="height:75vh;margin-top:4pt;border-top:4px solid gold;"></div>>
+  <div style="height:75vh;margin-top:4pt;border-top:4px solid gold;color:#9999AA;font-size:0.8em;">>=qr['url']<</div>>
 finally
   qr.Free;
 end;
