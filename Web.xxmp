@@ -72,11 +72,6 @@
 			"unitName": "postraw_xxm1",
 			"unitPath": ""
 		},
-		"load_xxm": {
-			"path": "Load.xxm",
-			"unitName": "load_xxm1",
-			"unitPath": ""
-		},
 		"badge_xxm": {
 			"path": "Badge.xxm",
 			"unitName": "badge_xxm1",

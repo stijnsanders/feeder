@@ -825,7 +825,7 @@ begin
   margin:=(RunContinuous+5)/1440.0;
   if postlast=0.0 then
    begin
-    sl.Add('<td>&nbsp;</td>');
+    sl.Add('<td class="empty">&nbsp;</td>');
     if loadlast=0.0 then
       d:=feedload-margin
     else
@@ -842,7 +842,7 @@ begin
   loadext:=false;//default
 
   if postavg=0.0 then
-    sl.Add('<td>&nbsp;</td>')
+    sl.Add('<td class="empty">&nbsp;</td>')
   else
   if postavg>1.0 then
     sl.Add('<td style="text-align:right;background-color:#FFFFCC;">'+IntToStr(Round(postavg))+' days</td>')
@@ -850,7 +850,7 @@ begin
     sl.Add('<td style="text-align:right;">'+IntToStr(Round(postavg*1440.0))+' mins</td>');
   sl.Add('<td style="text-align:right;">'+VarToStr(qr['regime'])+'</td>');
   if qr.IsNull('loadlast') then
-    sl.Add('<td>&nbsp;</td><td>&nbsp;</td>')
+    sl.Add('<td class="empty">&nbsp;</td><td class="empty">&nbsp;</td>')
   else
    begin
     sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',loadlast)+'</td>');
@@ -1398,6 +1398,7 @@ begin
       sl.Add('<style>');
       sl.Add('TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
       sl.Add('TD.n{max-width:12em;overflow:hidden;text-overflow:ellipsis;}');
+      sl.Add('TD.empty{background-color:#CCCCCC;}');
       sl.Add('DIV.flag{display:inline;padding:2pt;border-radius:4pt;white-space:nowrap;}');
       sl.Add('</style>');
       sl.Add('<table cellspacing="0" cellpadding="4" border="1">');

@@ -1,0 +1,137 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.1" xmlns="http://opml.org/spec2" xmlns:f="http://yoy.be/schema/2018/feeder_subs">
+  <head>
+    <title>Feeder - a simple feed reader</title><ownerName>Stijn Sanders</ownerName>
+      <ownerEmail>stijn@yoy.be</ownerEmail>
+      <dateCreated>Thu, 8 Nov 2018 21:54:43 GMT</dateCreated>
+      <dateModified>Thu, 8 Nov 2018 21:54:43 GMT</dateModified></head>
+  <body><outline type="rss" xmlUrl="http://feeds.boingboing.net/boingboing/iBag" f:label="boing" f:color="ff0000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.feedburner.com/Metafilter" f:label="MF" f:color="1185b1" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.1843magazine.com/rss/content" f:label="1843" f:color="448844" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.kottke.org/main" f:label="kottke" f:color="CC0066" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.mandatory.com/feed" f:label="M!" f:color="EE3333" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://feeds.feedburner.com/Mashable" f:label="Mashable" f:color="00aeef" f:readwidth="32" />
+      <outline title="Blogs" text="Blogs">
+      <outline type="rss" xmlUrl="http://blog.zog.org/feed" f:label="zog" f:color="66aa66" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://feeds.feedblitz.com/sethsblog" f:label="seth" f:color="CC9900" f:readwidth="32" />
+      </outline><outline title="Comics" text="Comics">
+        <outline type="rss" xmlUrl="http://comicfeeds.chrisbenard.net/view/dilbert/default" f:label="dilbert" f:color="ffff00" f:readwidth="40" />
+      <outline type="rss" xmlUrl="https://2kindsofpeople.tumblr.com/rss" f:label="2KofPPL" f:color="cccc00" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://xkcd.com/rss.xml" f:label="xkcd" f:color="-111111" f:readwidth="40" />
+      <outline type="rss" xmlUrl="http://phdcomics.com/gradfeed.php" f:label="phd" f:color="51697E" f:readwidth="40" />
+      <outline type="rss" xmlUrl="http://webcomicname.com/rss" f:label="webcomicname" f:color="ff7db6" f:readwidth="40" />
+      <outline type="rss" xmlUrl="http://lizclimo.tumblr.com/rss" f:label="liz climo" f:color="ff00cc" f:readwidth="40" />
+      <outline type="rss" xmlUrl="http://thisisindexed.com/feed/" f:label="indexed" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.feedburner.com/GeekAndPoke" f:label="geek&amp;poke" f:color="eeee66" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://pcweenies.com/feed/" f:label="pc weenies" f:color="000000" f:readwidth="40" />
+      <outline type="rss" xmlUrl="http://hello.eboy.com/eboy/eboy-feed/" f:label="eboy" f:color="000000" f:readwidth="32" />
+      </outline><outline title="Fora" text="Fora">
+        <outline type="rss" xmlUrl="https://www.nldelphi.com/external.php?type=RSS2&amp;forumids=2" f:label="nldelphi" f:color="-3333FF" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://reddit.com/r/delphi/.rss" f:label="r/delphi" f:color="EE4444" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://reddit.com/r/programming/.rss" f:label="r/programming" f:color="ee4444" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://reddit.com/r/webdev/.rss" f:label="r/webdev" f:color="ee4444" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.reddit.com/r/programminghumour/.rss" f:label="r/ProgrammingHumour" f:color="ee4444" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.reddit.com/r/programminghumor/.rss" f:label="r/ProgrammingHumor" f:color="ee4444" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.nldelphi.com/external.php?type=RSS2&amp;forumids=37" f:label="nld web" f:color="-33CCFF" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://en.delphipraxis.net/discover/all.xml/" f:label="DelphiPraxis" f:color="-004477" f:readwidth="32" />
+      </outline><outline title="IT Blogs" text="IT Blogs">
+        <outline type="rss" xmlUrl="https://99u.adobe.com/feed/" f:label="99u" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.feedburner.com/codinghorror" f:label="codinghorror" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://blog.cleancoder.com/atom.xml" f:label="cleancoder" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://beginend.net/api/recent.rss.dws" f:label="begin end;" f:color="afdced" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.feedburner.com/dbms2/feed" f:label="dbms2" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://blog.regehr.org/feed" f:label="regehr" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://scripting.com/rss.xml" f:label="scripting" f:color="-666666" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://randsinrepose.com/feed" f:label="rands" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.joelonsoftware.com/rss.xml" f:label="joel" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://chris.pirillo.com/feed/" f:label="Chris Pirillo" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://anildash.com/rss/" f:label="Anil Dash" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://alper.nl/dingen/feed/" f:label="alper" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://blogs.msdn.microsoft.com/oldnewthing/feed" f:label="old new" f:color="66CCCC" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.jwz.org/blog/feed/" f:label="jwz" f:color="-6600" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://randomascii.wordpress.com/feed/" f:label="random ascii" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://radio3.io/users/davewiner/rss.xml" f:label="sn links" f:color="-777777" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://inessential.com/xml/rss.xml" f:label="inessential" f:color="000000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.feedburner.com/IgnoreTheCode" f:label="ignore the code" f:color="000000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.dwheeler.com/blog/index.rss" f:label="David A. Wheeler" f:color="000000" f:readwidth="32" />
+      </outline><outline title="IT News" text="IT News">
+        <outline type="rss" xmlUrl="http://rss.slashdot.org/Slashdot/slashdot" f:label="/." f:color="00CC99" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.theregister.co.uk/headlines.atom" f:label="reg.ᴜᴋ" f:color="-cc0000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.arstechnica.com/arstechnica/index" f:label="ars" f:color="DDCC55" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.theverge.com/tech/rss/index.xml" f:label="verge" f:color="ec008c" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.technologyreview.com/stream/rss/" f:label="MIT" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://waag.org/nl/RSS" f:label="waag" f:color="cc8000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.infoq.com/feed/news" f:label="InfoQ" f:color="1d9347" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://news.ycombinator.com/rss" f:label="HN" f:color="-ff6600" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://techcrunch.com/feed/" f:label="tc" f:color="338833" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://dev.to/feed" f:label="dev.to" f:color="ede9e3" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.itprotoday.com/rss.xml" f:label="ITPro" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://feeds.feedburner.com/WhenCanIUse" f:label="can!use?" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.techrepublic.com/rssfeeds/articles/" f:label="TechRepublic" f:color="3399" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.zdnet.com/news/rss.xml" f:label="ZD" f:color="CC3300" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.wired.com/feed/rss" f:label="wired" f:color="-000066" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.techradar.com/rss" f:label="TechRadar" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://cyberlaw.stanford.edu/rss.xml" f:label="stanford cyberlaw" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.feedburner.com/oreilly/radar/atom" f:label="O'Reilly Radar" f:color="000000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://bitcoinblog.de/category/english/feed/" f:label="bitcoin.de" f:color="f99400" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://breakermag.com/feed/" f:label="ʙʀᴇᴀᴋᴇʀ" f:color="FFDD00" f:readwidth="32" />
+      </outline><outline title="News" text="News">
+        <outline type="rss" xmlUrl="http://www.slate.com/all.fulltext.all.rss" f:label="slate" f:color="8899aa" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://theintercept.com/feed/?lang=en" f:label="intercept" f:color="0000ff" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://cms.qz.com/feed/" f:label="qz" f:color="888866" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.npr.org/rss/rss.php?id=1001" f:label="npr" f:color="6688ff" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.reuters.com/reuters/technologyNews" f:label="reuters" f:color="dd6600" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://digg.com/rss/top.rss" f:label="digg" f:color="1" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://feeds.bbci.co.uk/news/science_and_environment/rss.xml" f:label="BBC sci" f:color="990000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.space.com/home/feed/site.xml" f:label="space" f:color="9900CC" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.vox.com/rss/index.xml" f:label="vox" f:color="FFFF00" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://m.snopes.com/feed/" f:label="snopes" f:color="fbd440" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.feedburner.com/fastcoexist/feed" f:label="FC" f:color="10101" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://feeds.bbci.co.uk/news/technology/rss.xml" f:label="BBC tech" f:color="990000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://feeds.bbci.co.uk/news/world/rss.xml" f:label="BBC world" f:color="990000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.theatlantic.com/feed/all/" f:label="atlantic" f:color="660066" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.youtube.com/feeds/videos.xml?channel_id=UC3XTzVzaHQEd30rQbuvCtTQ" f:label="LastWeekTonight" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://theoutline.com/feeds/recent.rss" f:label="outline" f:color="00eeee" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.nbcnews.com/nbcnews/public/news" f:label="NBC" f:color="766ea5" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://feeds.bbci.co.uk/news/world/europe/rss.xml" f:label="BBC eu" f:color="990000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://fair.org/feed/" f:label="FAIR" f:color="bbc3e8" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://jalopnik.com/rss" f:label="jalopnik" f:color="ff4d00" f:readwidth="32" />
+      </outline><outline title="News BE" text="News BE">
+        <outline type="rss" xmlUrl="https://www.hln.be/net-binnen/rss.xml" f:label="hln" f:color="ff9999" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.hln.be/regio/gent/rss.xml" f:label="hln 9k" f:color="ff7777" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.vrt.be/vrtnws/nl.rss.headlines.xml" f:label="NWS" f:color="5dfc71" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.vrt.be/vrtnieuws/nl.rss.articles.xml" f:label="NWS+" f:color="4dec61" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.hln.be/ihln/rss.xml" f:label="iHLN" f:color="-ff7777" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://newsmonkey.be/auto/rss/main.rss" f:label="newsmonkey" f:color="ffcc88" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.feedburner.com/apache/feed" f:label="apache" f:color="CC99FF" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.standaard.be/rss/section/1f2838d4-99ea-49f0-9102-138784c7ea7c" f:label="S" f:color="-0000FF" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.standaard.be/rss/section/e70ccf13-a2f0-42b0-8bd3-e32d424a0aa0" f:label="S¹" f:color="-6666FF" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.standaard.be/rss/section/451c8e1e-f9e4-450e-aa1f-341eab6742cc" f:label="S€" f:color="-00AA00" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://feeds.feedburner.com/vtm/NMdG" f:label="vtm" f:color="99CC66" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.demorgen.be/rss.xml" f:label="morgen" f:color="ffff99" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://feeds.feedburner.com/HumoAlgemeen" f:label="humo" f:color="-ee090C" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://datanews.knack.be/ict/feed.rss" f:label="data" f:color="BB0000" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.nieuwsblad.be/nieuws/snelnieuws" f:label="nieuwsblad" f:color="0099CC" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.nieuwsblad.be/nieuws/binnenland" f:label="nieuwsblad¹" f:color="0088bb" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.nieuwsblad.be/nieuwsblad/buitenland" f:label="nieuwsblad²" f:color="0077aa" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://www.nieuwsblad.be/rss/section/3e0de96c-0d3f-4619-b873-2c3a2831ac35?intro=1" f:label="nb 9k" f:color="00AACC" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://persruimte.stad.gent/press_releases.atom" f:label="gent" f:color="000033" f:readwidth="32" />
+      </outline><outline title="News NL" text="News NL">
+        <outline type="rss" xmlUrl="https://www.nrc.nl/rss/" f:label="nrc.ɴʟ" f:color="-660099" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.nos.nl/nosnieuwsalgemeen" f:label="NOS.ɴʟ" f:color="666666" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.nos.nl/nosnieuwsbuitenland" f:label="NOS.ɴʟ¹" f:color="555555" f:readwidth="32" />
+      <outline type="rss" xmlUrl="http://feeds.nos.nl/nosnieuwstech" f:label="NOS.ɴʟ²" f:color="555577" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.ad.nl/nieuws/rss.xml" f:label="AD.ɴʟ" f:color="CC9999" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.nd.nl/Rss/DaN5JP2NpAO9VfOrEi_NYA==/Feed.lynkx" f:label="nd.ɴʟ" f:color="000000" f:readwidth="32" />
+      </outline><outline title="Photography" text="Photography">
+        <outline type="rss" xmlUrl="https://www.dpreview.com/feeds/news.xml" f:label="dpreview" f:color="000000" f:readwidth="32" />
+      </outline><outline title="Security" text="Security">
+        <outline type="rss" xmlUrl="http://www.fireeye.com/blog/threat-research/_jcr_content.feed" f:label="fireeye" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://securelist.com/feed/" f:label="securelist" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://threatpost.com/feed/" f:label="threatpost" f:color="0" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://www.kaspersky.com/blog/feed/" f:label="kaspersky" f:color="9981" f:readwidth="32" />
+      <outline type="rss" xmlUrl="https://blog.cloudflare.com/rss/" f:label="cloudflare" f:color="f38020" f:readwidth="32" />
+      </outline>
+</body>
+</opml>
+
