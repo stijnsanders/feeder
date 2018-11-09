@@ -848,7 +848,10 @@ begin
     sl.Add('<td style="text-align:right;background-color:#FFFFCC;">'+IntToStr(Round(postavg))+' days</td>')
   else
     sl.Add('<td style="text-align:right;">'+IntToStr(Round(postavg*1440.0))+' mins</td>');
-  sl.Add('<td style="text-align:right;">'+VarToStr(qr['regime'])+'</td>');
+  if feedregime=0 then
+    sl.Add('<td class="empty">&nbsp;</td>')
+  else
+    sl.Add('<td style="text-align:right;">'+IntToStr(feedregime)+'</td>');
   if qr.IsNull('loadlast') then
     sl.Add('<td class="empty">&nbsp;</td><td class="empty">&nbsp;</td>')
   else
@@ -1216,7 +1219,10 @@ begin
     sl.Add('<td style="color:#CC0000;">'+HTMLEncode(feedresult)+'</td>')
   else
     sl.Add('<td>'+HTMLEncode(feedresult)+'</td>');
-  sl.Add('<td style="text-align:right;">'+IntToStr(c2)+'</td>');
+  if c2=0 then
+    sl.Add('<td class="empty">&nbsp;</td>')
+  else
+    sl.Add('<td style="text-align:right;">'+IntToStr(c2)+'</td>');
   sl.Add('<td style="text-align:right;" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)+'">'+IntToStr(c1)+'</td>');
   sl.Add('</tr>');
 

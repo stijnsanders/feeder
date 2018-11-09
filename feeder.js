@@ -11,7 +11,8 @@ function doPost(x,event){
   if(e.ctrlKey||e.shiftKey)
     return true;
   else {
-    document.body.style.overflow="hidden";
+    document.body.style.overflowX="hidden";
+    document.body.style.overflowY="hidden";
     document.getElementById("black").style.display="";
     document.getElementById("postbox").style.display="";
     document.getElementById("postview").style.display="";
@@ -31,7 +32,8 @@ function doPostHide(){
   document.getElementById("black").style.display="none";
   document.getElementById("postbox").style.display="none";
   document.getElementById("postview").style.display="none";
-  document.body.style.overflow="scroll";
+  document.body.style.overflowX="";
+  document.body.style.overflowY="scroll";
 }
 function doClose(){
   window.open("about:blank","postview");
