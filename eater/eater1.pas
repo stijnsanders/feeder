@@ -1339,7 +1339,7 @@ begin
   sqlite3_check(sqlite3_open(PAnsiChar(db2),b));
   try
     b1:=sqlite3_backup_init(b,'main',db1,'main');
-    p:=$1000;
+    p:=$4000;
     while sqlite3_backup_step(b1,p)<>SQLITE_DONE do
       Write(#13'... '+IntToStr((sqlite3_backup_remaining(b1) div p)+1)+' ');
     Write(#13);//Writeln(#13'Done');
@@ -1367,40 +1367,6 @@ begin
     try
       db.BusyTimeout:=30000;
 
-      i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
-      if LastClean<>i then
-       begin
-        LastClean:=i;
-
-        db.BeginTrans;
-        try
-
-          Out0('Clean-up old...');
-          OldPostsCutOff:=UtcNow-OldPostsDays;
-          i:=db.Execute('delete from "UserPost" where post_id in (select id from "Post" where pubdate<?)',[OldPostsCutOff]);
-          j:=db.Execute('delete from "Post" where pubdate<?',[OldPostsCutOff]);
-          Writeln(Format(' [%d,%d]',[j,i]));
-
-          Out0('Clean-up unused...');
-          db.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id in (select F.id from "Feed" F where F.id<>0 and not exists (select S.id from "Subscription" S where S.feed_id=F.id)))',[]);
-          j:=db.Execute('delete from "Post" where feed_id in (select F.id from "Feed" F where F.id<>0 and not exists (select S.id from "Subscription" S where S.feed_id=F.id))',[]);
-          i:=db.Execute('delete from "Feed" where id<>0 and not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
-          Writeln(Format(' [%d,%d]',[j,i]));
-
-          db.CommitTrans;
-        except
-          db.RollbackTrans;
-          raise;
-        end;
-       end;
-
-      OutLn('Copy for query averages...');
-      {
-      if not CopyFile(PChar('..\feeder.db'),PChar('feederX.db'),false) then
-        RaiseLastOSError;
-      }
-      BackupSQLite(db.Handle,'feederX.db');
-
       sl.Add('<style>');
       sl.Add('TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
       sl.Add('TD.n{max-width:12em;overflow:hidden;text-overflow:ellipsis;}');
@@ -1423,10 +1389,73 @@ begin
       sl.Add('<th>load:items</th>');
       sl.Add('</tr>');
 
+      OutLn('Copy for queries...');
+      {
+      if not CopyFile(PChar('..\feeder.db'),PChar('feederX.db'),false) then
+        RaiseLastOSError;
+      }
+      BackupSQLite(db.Handle,'feederX.db');
 
       db1:=TDataConnection.Create('feederX.db');
       try
         db1.BusyTimeout:=30000;
+
+        i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
+        if LastClean<>i then
+         begin
+          LastClean:=i;
+
+          Out0('Clean-up old...');
+          OldPostsCutOff:=UtcNow-OldPostsDays;
+          qr:=TQueryResult.Create(db1,'select id from "Post" where pubdate<?',[OldPostsCutOff]);
+          try
+
+            j:=0;
+            while qr.Read do
+             begin
+              i:=qr.GetInt('id');
+              db.BeginTrans;
+              try
+                db.Execute('delete from "UserPost" where post_id=?',[i]);
+                db.Execute('delete from "Post" where id=?',[i]);
+                inc(j);
+                db.CommitTrans;
+              except
+                db.RollbackTrans;
+                raise;
+              end;
+             end;
+            Writeln(' '+IntToStr(j)+' posts cleaned');
+
+          finally
+            qr.Free;
+          end;
+
+          Out0('Clean-up unused...');
+          qr:=TQueryResult.Create(db1,'select id from "Feed" where id<>0 and not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
+          try
+            j:=0;
+            while qr.Read do
+             begin
+              i:=qr.GetInt('id');
+              Write(#13'... #'+IntToStr(i)+'   ');
+              db.BeginTrans;
+              try
+                db.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id=?)',[i]);
+                db.Execute('delete from "Post" where feed_id=?',[i]);
+                inc(j);
+                db.CommitTrans;
+              except
+                db.RollbackTrans;
+                raise;
+              end;
+             end;
+            Writeln(' '+IntToStr(j)+' feeds cleaned');
+
+          finally
+            qr.Free;
+          end;
+         end;
 
         OutLn('Listing feeds...');
         if FeedID=0 then sql:=' where F.id<>0' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
