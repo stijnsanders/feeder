@@ -119,6 +119,7 @@ else
     </dl>
     <p><input type="submit" value="Update" /></p>
     </form>
+    <p><a href=".?f=[[=id]]">view posts from this feed...</a></p>
     <form method="post" action="Feed.xxm" onsubmit="return confirm('Are you sure to unsubscribe from this feed?');">
     <input type="hidden" name="x" value="2" />
     <input type="hidden" name="id" value="[[=id]]" />

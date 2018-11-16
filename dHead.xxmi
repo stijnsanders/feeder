@@ -25,7 +25,7 @@ if Length(Values)<>0 then
 <meta name="viewport" content="width=420" />
 <meta name="theme-color" content="#FFCC00" />
 <link href="https://fonts.googleapis.com/css?family=PT+Sans:400,400i,700,700i" rel="stylesheet">
-<link rel="stylesheet" type="text/css" href="feeder.css?v=2a" />
+<link rel="stylesheet" type="text/css" href="feeder.css?v=2b" />
 [[if LowerCase(Context.ContextString(csLocalURL))='post.xxm' then begin <<base target="_blank">> end;]]
 </head>
 <body>

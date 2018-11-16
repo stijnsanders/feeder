@@ -113,7 +113,11 @@ case Context['x'].AsInteger of
       <<p style="color:red;">Already subscribed, not adding</p>>
       end;
 
-    <<p><a href="Feeds.xxm">Continue...</a> (or <a href="New.xxm">add another...</a>)</p>>
+    <<p>
+    <a href="New.xxm">add another...</a><br />
+    <a href="Feeds.xxm">back to feeds...</a><br />
+    <a href=".">back to posts...</a><br />
+    </p>>
 
    end;
   else
