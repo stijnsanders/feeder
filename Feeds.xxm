@@ -49,9 +49,9 @@ if id=0 then
       <<div class="post">
       <div class="date">>=FormatDateTime('yyyy-mm-dd',qr.GetDate('created')+Session.TimeBias)<</div>
       [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
-      <a href="?id=[[=qr['id']]]">"[[=qr['name']]]"</a>
+      <a href="?id=[[.id]]">"[[.name]]"</a>
       [[if qr.GetInt('PostCount')<>0 then begin]]
-      <a href=".?f=[[=qr['id']]]" style="color:#0000CC;">>=[qr['UnreadCount'],'/',qr['PostCount']]]]</a>
+      <a href=".?f=[[.id]]" style="color:#0000CC;" title="posts=[[.PostCount]] unread=[[.UnreadCount]] opened=[[.postsopened]]">>=[qr['UnreadCount'],'/',qr['PostCount']]<</a>
       [[end;
       if not(qr.IsNull('itemcount')) and (qr.GetInt('itemcount')=0) then
        begin
@@ -59,10 +59,10 @@ if id=0 then
        end;
       if qr.GetInt('regime')>20 then
        begin
-        <<span style="color:#660000;" title="Feed reading on a regime of once every [[=qr['regime']]] days">Stale?</span>>
+        <<span style="color:#660000;" title="Feed reading on a regime of once every [[.regime]] days">Stale?</span>>
        end;
       ]]
-      <span style="color:#CCCCCC;">>=qr['url']<</span>
+      <span style="color:#CCCCCC;">>.url<</span>
       </div>>
      end;
   finally

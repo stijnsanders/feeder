@@ -54,6 +54,7 @@ label varchar(50) not null collate nocase,
 category varchar(200) not null collate nocase, 
 color varchar(20) not null,
 readwidth int not null,
+postsopened int null,
 created datetime not null,
 constraint FK_Subscription_User foreign key (user_id) references "User" (id),
 constraint FK_Subscription_Feed foreign key (feed_id) references "Feed" (id)

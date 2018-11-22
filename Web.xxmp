@@ -93,5 +93,11 @@
 		"xxmp.pas": {}
 	},
 	"lastModified": "2018-07-17T00:37:33",
+	"parserValues": {
+		"Extra3Open": "Context.Send(qr['",
+		"Extra3Close": "']);",
+		"Extra4Open": "Context.Send(qr1['",
+		"Extra4Close": "']);"
+	},
 	"uuid": "{6B6A1BFE-8E4D-4F16-A0EB-33C83A8BD9BE}"
 }

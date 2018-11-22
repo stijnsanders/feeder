@@ -965,6 +965,7 @@ begin
           doc.validateOnParse:=false;
           doc.resolveExternals:=false;
           doc.preserveWhiteSpace:=true;
+          doc.setProperty('ProhibitDTD',false);
 
           if loadext then
             b:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
@@ -1425,7 +1426,7 @@ begin
                 raise;
               end;
              end;
-            Writeln(' '+IntToStr(j)+' posts cleaned');
+            Writeln(' '+IntToStr(j)+' posts cleaned      ');
 
           finally
             qr.Free;
@@ -1450,7 +1451,7 @@ begin
                 raise;
               end;
              end;
-            Writeln(' '+IntToStr(j)+' feeds cleaned');
+            Writeln(' '+IntToStr(j)+' feeds cleaned      ');
 
           finally
             qr.Free;
