@@ -1140,10 +1140,13 @@ begin
                   if y=nil then title:='' else title:=y.text;
                   y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
                   //if y<>nil then title:=title+' <i>'+y.text+'</i>';
-                  if y<>nil then title:='<b>'+title+'</b> '+y.text;
+                  //if y<>nil then title:='<b>'+title+'</b> '+y.text;
+                  if y<>nil then title:=title+' '#$2022' '+y.text;
+
 
                   y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
-                  if y=nil then content:='' else content:=y.text;
+                  if y=nil then content:='' else content:=
+                    '<base url="'+HTMLEncode(itemurl)+'" />'+y.text;
                   try
                     y:=x.selectSingleNode('schema:datePublished') as IXMLDOMElement;
                     pubDate:=ConvDate1(y.text);
