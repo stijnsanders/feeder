@@ -6,7 +6,6 @@ rp1,rp2,rp3:IRegExp2;
 db:TDataConnection;
 d1:TDateTime;
 ]][[
-Context.Include('dHead.xxmi');
 id:=Context['id'].AsInteger;
 db:=Session.Connection;
 qr:=TQueryResult.Create(db,
@@ -15,6 +14,7 @@ qr:=TQueryResult.Create(db,
   ' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'+
   ' where P.id=?',[Session.UserID,id]);
 try
+  Context.Include('dHead.xxmi',[qr['url']]);
   //TODO: sanitize HTML (either here or in eater)
   rw:=qr.GetInt('readwidth');
   sid:=qr.GetInt('subid');
