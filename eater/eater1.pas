@@ -544,7 +544,12 @@ begin
   si.hStdOutput:=GetStdHandle(STD_OUTPUT_HANDLE);
   si.hStdError:=GetStdHandle(STD_ERROR_HANDLE);
   }
+  {
   if not CreateProcess(nil,PChar('curl.exe -Lk --max-redirs 8 -H "Accept:application/rss+xml, application/atom+xml, application/xml, text/xml" -o "'+
+    FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
+  }
+  if not CreateProcess(nil,PChar('wget.exe -nv --no-cache --max-redirect 8 --no-http-keep-alive --no-check-certificate'+
+    ' -A "Accept:application/rss+xml, application/atom+xml, application/xml, text/xml" -O "'+
     FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
   WaitForSingleObject(pi.hProcess,INFINITE);
@@ -1090,7 +1095,6 @@ begin
              begin
               doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
                ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
-
               x:=doc.documentElement.selectSingleNode('rss:channel/rss:title') as IXMLDOMElement;
               if x<>nil then feedname:=x.text;
 
@@ -1116,9 +1120,41 @@ begin
                   pubDate:=UtcNow;
                 end;
                 regItem;
-
                 x:=xl.nextNode as IXMLDOMElement;
                end;
+
+              if c2=0 then
+               begin
+                doc.setProperty('SelectionNamespaces',
+                 'xmlns:rdf=''http://www.w3.org/1999/02/22-rdf-syntax-ns#'''+
+                 ' xmlns:schema=''http://schema.org/''');
+                xl:=doc.documentElement.selectNodes('rdf:Description/schema:hasPart/rdf:Description');
+                x:=xl.nextNode as IXMLDOMElement;
+                while x<>nil do
+                 begin
+                  itemid:=x.getAttribute('rdf:about');
+                  y:=x.selectSingleNode('schema:url') as IXMLDOMElement;
+                  if y=nil then itemurl:=itemid else
+                    itemurl:=VarToStr(y.getAttribute('rdf:resource'));
+                  y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
+                  if y=nil then title:='' else title:=y.text;
+                  y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
+                  //if y<>nil then title:=title+' <i>'+y.text+'</i>';
+                  if y<>nil then title:='<b>'+title+'</b> '+y.text;
+
+                  y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
+                  if y=nil then content:='' else content:=y.text;
+                  try
+                    y:=x.selectSingleNode('schema:datePublished') as IXMLDOMElement;
+                    pubDate:=ConvDate1(y.text);
+                  except
+                    pubDate:=UtcNow;
+                  end;
+                  regItem;
+                  x:=xl.nextNode as IXMLDOMElement;
+                 end;
+               end;
+
 
               feedresult:=Format('RDF %d/%d',[c2,c1]);
              end
