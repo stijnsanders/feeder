@@ -597,7 +597,7 @@ var
   xl,xl1:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
   feedid:integer;
-  feedurl,feedresult,itemid,itemurl:string;
+  feedurl,feedurlskip,feedresult,itemid,itemurl:string;
   feedname,title,content:WideString;
   feedload,pubDate:TDateTime;
   feedregime:integer;
@@ -611,6 +611,7 @@ const
   var
     qr:TQueryResult;
     b:boolean;
+    i:integer;
   begin
     if Copy(itemid,1,7)='http://' then
       itemid:=Copy(itemid,8,Length(itemid)-7)
@@ -620,6 +621,12 @@ const
 
     //strip '?utm_'... query string
     if rhUTM.Test(itemid) then itemid:=rhUTM.Replace(itemid,'');
+
+    if feedurlskip<>'' then
+     begin
+      i:=Pos(feedurlskip,itemid);
+      if i<>0 then itemid:=Copy(itemid,1,i-1);
+     end;
 
     //TODO: switch: allow future posts?
     if pubDate>feedload+2.0/24.0 then pubDate:=feedload;
@@ -769,6 +776,7 @@ var
 begin
   feedid:=qr.GetInt('id');
   feedurl:=qr.GetStr('url');
+  feedurlskip:=qr.GetStr('urlskip');
   feedload:=UtcNow;
   feedname:=qr.GetStr('name');
   feedregime:=qr.GetInt('regime');
