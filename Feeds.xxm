@@ -51,7 +51,7 @@ if id=0 then
       [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
       <a href="?id=[[.id]]">"[[.name]]"</a>
       [[if qr.GetInt('PostCount')<>0 then begin]]
-      <a href=".?f=[[.id]]" style="color:#0000CC;" title="posts=[[.PostCount]] unread=[[.UnreadCount]] opened=[[.postsopened]]">>=[qr['UnreadCount'],'/',qr['PostCount']]<</a>
+      <a href=".?f=[[.feed_id]]" style="color:#0000CC;" title="posts=[[.PostCount]] unread=[[.UnreadCount]] opened=[[.postsopened]]">>=[qr['UnreadCount'],'/',qr['PostCount']]<</a>
       [[end;
       if not(qr.IsNull('itemcount')) and (qr.GetInt('itemcount')=0) then
        begin
@@ -86,9 +86,9 @@ else
     <input type="hidden" name="id" value="[[=id]]" />
     <dl>
     <dt>name</dt>
-    <dd>>=qr['name']<</dd>
+    <dd>>.name<</dd>
     <dt>URL</dt>
-    <dd>>=qr['url']]]&nbsp;<a href="[[=qr['url']]]" style="text-decoration:none;"><img src="img_r.png" width="16" height="16" alt="feed link" /></a></dd>
+    <dd>>.url]]&nbsp;<a href="[[.url]]" style="text-decoration:none;"><img src="img_r.png" width="16" height="16" alt="feed link" /></a></dd>
     <dt>since</dt>
     <dd>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created')+Session.TimeBias)<</dd>
     <dt>category</dt>
@@ -111,15 +111,15 @@ else
       <input type="text" name="categoryNew" />
     </dd>
     <dt>label text</dt>
-    <dd><input type="text" name="label" value="[[=qr['label']]]" /></dd>
+    <dd><input type="text" name="label" value="[[.label]]" /></dd>
     <dt>label color</dt>
     <dd>>#ColorPicker(qr.GetStr('color'))<</dd>
    <dt>read width</dt>
-    <dd><input type="text" name="readwidth" value="[[=qr['readwidth']]]" style="width:4em;" /> M-width</dd>
+    <dd><input type="text" name="readwidth" value="[[.readwidth]]" style="width:4em;" /> M-width</dd>
     </dl>
     <p><input type="submit" value="Update" /></p>
     </form>
-    <p><a href=".?f=[[=id]]">view posts from this feed...</a></p>
+    <p><a href=".?f=[[.feed_id]]">view posts from this feed...</a></p>
     <form method="post" action="Feed.xxm" onsubmit="return confirm('Are you sure to unsubscribe from this feed?');">
     <input type="hidden" name="x" value="2" />
     <input type="hidden" name="id" value="[[=id]]" />
