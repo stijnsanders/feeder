@@ -1,6 +1,5 @@
 [[@xxmSession]][[!var
 s,r:string;
-i:integer;
 ]][[
 
 if Session.UserID=0 then //if not Session.Authenticated then
@@ -10,37 +9,21 @@ if Session.UserID=0 then //if not Session.Authenticated then
     Context.Redirect('.',true);
  end;
 
-if Length(Values)=0 then r:='' else
- begin
-  r:=Context.URL;
-  i:=Length(r);
-  while (i<>0) and (r[i]<>'/') do dec(i);
-  SetLength(r,i);
- end;
+if Length(Values)=0 then r:='' else r:=Values[0];
 
 <<!doctype html>
 <html>
 <head>
-<title>Feeder - RSS/Atom Feed Reader[[
-{
-if Length(Values)<>0 then
- begin
-  Context.SendHTML(' - ');
-  Context.Send(Values[0]);
- end;
-} 
-<</title>
+<title>Feeder - RSS/Atom Feed Reader</title>
 <link rel="icon" type="image/x-icon" href="[[=r]]favicon.ico" />
 <meta name="viewport" content="width=device-width,initial-scale=0.9" />
 <meta name="theme-color" content="#FFCC00" />
 <link href="https://fonts.googleapis.com/css?family=PT+Sans:400,400i,700,700i" rel="stylesheet">
 <link rel="stylesheet" type="text/css" href="[[=r]]feeder.css?v=2b" />
 [[
-if LowerCase(Context.ContextString(csLocalURL))='post.xxm' then
+if Length(Values)=2 then
  begin
-  Context.SendHTML('<base target="_blank"');
-  if Length(Values)>0 then Context.SendHTML(' href="'+HTMLEncode(Values[0])+'"');
-  Context.SendHTML(' />');
+  <<base target="_blank" href="[[=Values[1]]]" />>
  end;
 ]]
 </head>

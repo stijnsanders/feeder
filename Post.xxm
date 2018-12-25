@@ -1,12 +1,18 @@
 [[@DataLank,xxmSession,VBScript_RegExp_55_TLB,fCommon]][[!var
 qr:TQueryResult;
-id,rw,sid:integer;
-s:string;
+id,rw,sid,i:integer;
+s,r:string;
 rp1,rp2,rp3:IRegExp2;
 db:TDataConnection;
 d1:TDateTime;
 ]][[
 id:=Context['id'].AsInteger;
+
+r:=Context.URL;
+i:=Length(r);
+while (i<>0) and (r[i]<>'/') do dec(i);
+SetLength(r,i);
+
 db:=Session.Connection;
 qr:=TQueryResult.Create(db,
   'select P.*, S.label, S.color, S.readwidth, S.id as subid'+
@@ -14,7 +20,7 @@ qr:=TQueryResult.Create(db,
   ' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'+
   ' where P.id=?',[Session.UserID,id]);
 try
-  Context.Include('dHead.xxmi',[qr['url']]);
+  Context.Include('dHead.xxmi',[r,qr['url']]);
   //TODO: sanitize HTML (either here or in eater)
   rw:=qr.GetInt('readwidth');
   sid:=qr.GetInt('subid');
@@ -62,7 +68,8 @@ try
   <</div>
   <div style="height:75vh;margin-top:4pt;border-top:4px solid gold;color:#9999AA;font-size:0.8em;">
   [[=qr['url']]]
-  <a class="raw" target="postview" href="PostRaw.xxm?[[=Context.ContextString(csQueryString)]]">#</a>
+  <a class="raw" target="postview" href="[[=r]]PostRaw.xxm?[[=Context.ContextString(csQueryString)]]"
+    title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',qr.GetDate('created'))]]">#</a>
   </div>>
 finally
   qr.Free;
