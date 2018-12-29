@@ -901,8 +901,28 @@ begin
           b:=false;
           Write(':');
           r:=CoServerXMLHTTP60.Create;
-          r.open('GET',feedurl,false,EmptyParam,EmptyParam);
-          r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, text/xml');
+
+          if Copy(feedurl,1,9)='sparql://' then
+           begin
+            r.open('GET','https://'+Copy(feedurl,10,Length(feedurl)-9)+
+              '?default-graph-uri=&query=PREFIX+schema%3A+<http%3A%2F%2Fschema.org%2F>%0D%0A'+
+              'SELECT+*+WHERE+%7B+%3Fnews+a+schema%3ANewsArticle%0D%0A.+%3Fnews+schema%3Aurl+%3Furl%0D%0A'+
+              '.+%3Fnews+schema%3AdatePublished+%3FpubDate%0D%0A'+
+              '.+%3Fnews+schema%3Aheadline+%3Fheadline%0D%0A'+
+              '.+%3Fnews+schema%3Adescription+%3Fdescription%0D%0A'+
+              '.+%3Fnews+schema%3AarticleBody+%3Fbody%0D%0A'+
+              '%7D+ORDER+BY+DESC%28%3FpubDate%29+LIMIT+20'
+              ,false,EmptyParam,EmptyParam);
+            r.setRequestHeader('Accept','application/sparql-results+xml, application/xml, text/xml')
+           end
+          else
+           begin
+            r.open('GET',feedurl,false,EmptyParam,EmptyParam);
+            if Pos('sparql',feedurl)<>0 then
+              r.setRequestHeader('Accept','application/sparql-results+xml, application/xml, text/xml')
+            else
+              r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, text/xml');
+           end;
           r.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
           if Pos('tumblr.com',feedurl)<>0 then
            begin
@@ -1149,8 +1169,6 @@ begin
                   y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
                   if y=nil then title:='' else title:=y.text;
                   y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
-                  //if y<>nil then title:=title+' <i>'+y.text+'</i>';
-                  //if y<>nil then title:='<b>'+title+'</b> '+y.text;
                   if y<>nil then title:=title+' '#$2014' '+y.text;
 
 
@@ -1169,6 +1187,40 @@ begin
 
 
               feedresult:=Format('RDF %d/%d',[c2,c1]);
+             end
+            else
+
+            //SPARQL
+            if doc.documentElement.nodeName='sparql' then
+             begin
+              doc.setProperty('SelectionNamespaces',
+               'xmlns:s=''http://www.w3.org/2005/sparql-results#''');
+
+              //feedname:=??
+              xl:=doc.documentElement.selectNodes('s:results/s:result');
+              x:=xl.nextNode as IXMLDOMElement;
+              while x<>nil do
+               begin
+                itemid:=x.selectSingleNode('s:binding[@name="news"]/s:uri').text;
+                itemurl:=x.selectSingleNode('s:binding[@name="url"]/s:uri').text;
+                title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
+
+                y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
+                if y<>nil then title:=title+' '#$2014' '+y.text;
+
+                y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
+                if y=nil then content:='' else content:=y.text;
+                try
+                  y:=x.selectSingleNode('s:binding[@name="pubDate"]/s:literal') as IXMLDOMElement;
+                  pubDate:=ConvDate1(y.text);
+                except
+                  pubDate:=UtcNow;
+                end;
+                regItem;
+                x:=xl.nextNode as IXMLDOMElement;
+               end;
+
+              feedresult:=Format('SPARQL %d/%d',[c2,c1]);
              end
             else
 
