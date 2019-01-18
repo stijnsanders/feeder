@@ -854,7 +854,6 @@ begin
       d:=loadlast+feedregime-margin;
    end;
   b:=(d<feedload) or FeedAll;
-  loadext:=false;//default
 
   if postavg=0.0 then
     sl.Add('<td class="empty">&nbsp;</td>')
@@ -1002,10 +1001,13 @@ begin
           doc.preserveWhiteSpace:=true;
           doc.setProperty('ProhibitDTD',false);
 
+          {
           if loadext then
             b:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
           else
+          }
             b:=doc.loadXML(rw);
+
           if b then
            begin
 
@@ -1491,10 +1493,6 @@ begin
       sl.Add('</tr>');
 
       OutLn('Copy for queries...');
-      {
-      if not CopyFile(PChar('..\feeder.db'),PChar('feederX.db'),false) then
-        RaiseLastOSError;
-      }
       BackupSQLite(db.Handle,'feederX.db');
 
       db1:=TDataConnection.Create('feederX.db');
@@ -1544,6 +1542,7 @@ begin
               try
                 db.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id=?)',[i]);
                 db.Execute('delete from "Post" where feed_id=?',[i]);
+                db.Execute('delete from "Feed" where id=?',[i]);
                 inc(j);
                 db.CommitTrans;
               except

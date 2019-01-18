@@ -167,6 +167,7 @@ var
 begin
   c:=ValColor;
   try
+    if (c<>'') and (c[1]='#') then c:=Copy(c,2,Length(c)-1);
     if (c<>'') and (c[1]='-') then
       begin
       i:=StrToInt('$0'+Copy(c,2,999));
