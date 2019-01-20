@@ -591,6 +591,33 @@ begin
   end;
 end;
 
+function StripWhiteSpace(const x:WideString):WideString;
+var
+  i,j,l:integer;
+begin
+  l:=Length(x);
+  i:=1;
+  j:=1;
+  SetLength(Result,l);
+  while i<=l do
+   begin
+    if word(x[i])>=32 then
+     begin
+      Result[j]:=x[i];
+      inc(j);
+     end;
+    inc(i);
+   end;
+  SetLength(Result,j-1);
+end;
+
+function IsSomethingEmpty(const x:WideString):boolean;
+begin
+  Result:=
+    (x='') or
+    (x='<div></div>');
+end;
+
 procedure DoFeed(db,db1:TDataConnection;qr:TQueryResult;oldPostDate:TDateTime;
   sl:TStringList);
 var
@@ -1103,7 +1130,7 @@ begin
                 y:=x.selectSingleNode('title') as IXMLDOMElement;
                 if y=nil then title:='' else title:=y.text;
                 y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
-                if y=nil then
+                if (y=nil) or IsSomeThingEmpty(StripWhiteSpace(y.text)) then
                   y:=x.selectSingleNode('content') as IXMLDOMElement;
                 if y=nil then
                   y:=x.selectSingleNode('description') as IXMLDOMElement;
