@@ -186,8 +186,13 @@ else
   qr:=TQueryResult.Create(Session.Connection,
     sql+' order by P.pubdate desc, P.id limit '+IntToStr(l),xx);
   try
-    if loadMore and qr.EOF then
-      Context.SendHTML('-')
+    if qr.EOF then
+     begin
+      if loadMore then Context.SendHTML('-') else
+       begin
+        <<div class="date">no posts found</div>>
+       end;
+     end
     else
      begin
       id:=0;
