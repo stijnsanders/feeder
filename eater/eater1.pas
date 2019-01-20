@@ -601,7 +601,7 @@ begin
   SetLength(Result,l);
   while i<=l do
    begin
-    if word(x[i])>=32 then
+    if word(x[i])>32 then
      begin
       Result[j]:=x[i];
       inc(j);
@@ -612,10 +612,15 @@ begin
 end;
 
 function IsSomethingEmpty(const x:WideString):boolean;
+var
+  xx:WideString;
 begin
-  Result:=
-    (x='') or
-    (x='<div></div>');
+  if Length(x)>60 then Result:=true else
+   begin
+    xx:=StripWhiteSpace(x);
+    Result:=(xx='')
+      or (xx='<div></div>');
+   end;
 end;
 
 procedure DoFeed(db,db1:TDataConnection;qr:TQueryResult;oldPostDate:TDateTime;
@@ -1130,7 +1135,7 @@ begin
                 y:=x.selectSingleNode('title') as IXMLDOMElement;
                 if y=nil then title:='' else title:=y.text;
                 y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
-                if (y=nil) or IsSomeThingEmpty(StripWhiteSpace(y.text)) then
+                if (y=nil) or IsSomeThingEmpty(y.text) then
                   y:=x.selectSingleNode('content') as IXMLDOMElement;
                 if y=nil then
                   y:=x.selectSingleNode('description') as IXMLDOMElement;
