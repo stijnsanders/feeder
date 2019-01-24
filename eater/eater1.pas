@@ -452,7 +452,7 @@ begin
   rh5.Pattern:='&amp;([a-z]+?);';
   rh5.Global:=true;
   rh6:=CoRegExp.Create;
-  rh6.Pattern:='&lt;(i|b|u|s|em|strong)&gt;(.+?)&lt;/\1&gt;';
+  rh6.Pattern:='&lt;(i|b|u|s|em|strong|sub|sup)&gt;(.+?)&lt;/\1&gt;';
   rh6.Global:=true;
   rh6.IgnoreCase:=true;
   rh7:=CoRegExp.Create;
@@ -532,6 +532,7 @@ var
   s:UTF8String;
   i:integer;
   w:word;
+  r:cardinal;
 begin
   WriteLn(' ->');
   DeleteFile(PChar(FilePath));//remove any previous file
@@ -554,7 +555,12 @@ begin
     ' --user-agent="FeedEater/1.0"'+
     ' -O "'+FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
-  WaitForSingleObject(pi.hProcess,INFINITE);
+  r:=WaitForSingleObject(pi.hProcess,30000);
+  if r<>WAIT_OBJECT_0 then
+   begin
+    TerminateProcess(pi.hProcess,9);
+    raise Exception.Create('LoadExternal:'+SysErrorMessage(r));
+   end;
   CloseHandle(pi.hProcess);
 
   f:=TFileStream.Create(FilePath,fmOpenRead);
@@ -615,7 +621,7 @@ function IsSomethingEmpty(const x:WideString):boolean;
 var
   xx:WideString;
 begin
-  if Length(x)>60 then Result:=true else
+  if Length(x)>60 then Result:=false else
    begin
     xx:=StripWhiteSpace(x);
     Result:=(xx='')
@@ -689,7 +695,7 @@ const
     if b then
      begin
       inc(c2);
-      if title='' then title:='['+itemid+']';
+      if IsSomethingEmpty(title) then title:='['+itemid+']';
       postid:=db.Insert('Post',
         ['feed_id',feedid
         ,'guid',itemid
@@ -933,7 +939,7 @@ begin
           Write(':');
           r:=CoServerXMLHTTP60.Create;
 
-          if Copy(feedurl,1,9)='sparql://' then
+           if Copy(feedurl,1,9)='sparql://' then
            begin
             r.open('GET','https://'+Copy(feedurl,10,Length(feedurl)-9)+
               '?default-graph-uri=&query=PREFIX+schema%3A+<http%3A%2F%2Fschema.org%2F>%0D%0A'+
