@@ -9,7 +9,8 @@ uses
   SQLiteData in '..\SQLiteData.pas',
   DataLank in '..\DataLank.pas',
   MSXML2_TLB in '..\MSXML2_TLB.pas',
-  VBScript_RegExp_55_TLB in '..\VBScript_RegExp_55_TLB.pas';
+  VBScript_RegExp_55_TLB in '..\VBScript_RegExp_55_TLB.pas',
+  jsonDoc in 'jsonDoc.pas';
 
 {$R *.res}
 {$APPTYPE CONSOLE}

@@ -20,7 +20,7 @@ const
 implementation
 
 uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB,
-  SQLite;
+  SQLite, jsonDoc;
 
 procedure OutLn(const x:string);
 begin
@@ -634,6 +634,8 @@ procedure DoFeed(db,db1:TDataConnection;qr:TQueryResult;oldPostDate:TDateTime;
 var
   r:ServerXMLHTTP60;
   doc:DOMDocument60;
+  jdoc,jn0,jn1,jc0,jc1,jd1:IJSONDocument;
+  jnodes,jcaption:IJSONDocArray;
   xl,xl1:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
   feedid:integer;
@@ -807,7 +809,7 @@ const
 
 var
   d:TDateTime;
-  i:integer;
+  i,j:integer;
   loadlast,postlast,postavg,margin:double;
   loadext:boolean;
   rw,rt,s,sql1,sql2:WideString;
@@ -939,7 +941,7 @@ begin
           Write(':');
           r:=CoServerXMLHTTP60.Create;
 
-           if Copy(feedurl,1,9)='sparql://' then
+          if Copy(feedurl,1,9)='sparql://' then
            begin
             r.open('GET','https://'+Copy(feedurl,10,Length(feedurl)-9)+
               '?default-graph-uri=&query=PREFIX+schema%3A+<http%3A%2F%2Fschema.org%2F>%0D%0A'+
@@ -951,6 +953,13 @@ begin
               '%7D+ORDER+BY+DESC%28%3FpubDate%29+LIMIT+20'
               ,false,EmptyParam,EmptyParam);
             r.setRequestHeader('Accept','application/sparql-results+xml, application/xml, text/xml')
+           end
+          else
+          if Copy(feedurl,1,26)='https://www.instagram.com/' then
+           begin
+            r.open('GET',feedurl,false,EmptyParam,EmptyParam);
+            //+'?__a=1'?
+            r.setRequestHeader('Accept','text/html');
            end
           else
            begin
@@ -1032,190 +1041,296 @@ begin
 
       if feedresult='' then
         try
-          doc:=CoDOMDocument60.Create;
-          doc.async:=false;
-          doc.validateOnParse:=false;
-          doc.resolveExternals:=false;
-          doc.preserveWhiteSpace:=true;
-          doc.setProperty('ProhibitDTD',false);
 
-          {
-          if loadext then
-            b:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
-          else
-          }
-            b:=doc.loadXML(rw);
-
-          if b then
+          if Copy(feedurl,1,26)='https://www.instagram.com/' then
            begin
 
-            //atom
-            if doc.documentElement.nodeName='feed' then
+            i:=1;
+            while (i<Length(rw)-8) and (Copy(rw,i,11)<>'"graphql":{') do
+              inc(i);
+            inc(i,10);
+
+            jnodes:=JSONDocArray;
+            jdoc:=JSON(['user{'
+              ,'edge_felix_video_timeline{','edges',jnodes,'}'
+              ,'edge_owner_to_timeline_media{','edges',jnodes,'}'
+              ,'edge_saved_media{','edges',jnodes,'}'
+              ,'edge_media_collections{','edges',jnodes,'}'
+              ]);
+            try
+              jdoc.Parse(Copy(rw,i,Length(rw)-i+1));
+            except
+              on EJSONDecodeException do
+                ;//ignore "data past end"
+            end;
+
+            jd1:=JSON(jdoc['user']);
+            if jd1<>nil then
+              feedname:='Instagram: '+VarToStr(jd1['full_name'])+' (@'+VarToStr(jd1['username'])+')';
+
+            jcaption:=JSONDocArray;
+            jn1:=JSON(['edge_media_to_caption{','edges',jcaption]);
+            jn0:=JSON(['node',jn1]);
+            jc1:=JSON;
+            jc0:=JSON(['node',jc1]);
+            for i:=0 to jnodes.Count-1 do
              begin
-              if doc.namespaces.length=0 then
-                s:='xmlns:atom="http://www.w3.org/2005/Atom"'
-              else
+              jnodes.LoadItem(i,jn0);
+
+              itemid:=VarToStr(jn1['id']);
+              if itemid='' then raise Exception.Create('edge node without ID');
+              itemurl:='https://www.instagram.com/p/'+VarToStr(jn1['shortcode'])+'/';
+              pubDate:=int64(jn1['taken_at_timestamp'])/SecsPerDay+UnixDateDelta;//is UTC?
+
+              content:=VarToStr(jn1['title'])+' ';
+              for j:=0 to jcaption.Count-1 do
                begin
-                i:=0;
-                while (i<doc.namespaces.length) and (doc.namespaces[i]<>'http://www.w3.org/2005/Atom') do inc(i);
-                if i=doc.namespaces.length then i:=0;
-                s:='xmlns:atom="'+doc.namespaces[i]+'"';
+                jcaption.LoadItem(j,jc0);
+                content:=content+VarToStr(jc1['text'])+#13#10;
                end;
-              s:=s+' xmlns:media="http://search.yahoo.com/mrss/"';
-              doc.setProperty('SelectionNamespaces',s);
 
-              x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
-              if x<>nil then feedname:=x.text;
+              if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
+              content:=
+                '<img src="'+HTMLEncode(VarToStr(jn1['display_url']))+'" /><br />'#13#10+
+                HTMLEncode(content);
 
-              xl:=doc.documentElement.selectNodes('atom:entry');
-              x:=xl.nextNode as IXMLDOMElement;
-              while x<>nil do
+              jd1:=JSON(jn1['location']);
+              if jd1<>nil then
+                content:='<i>'+HTMLEncode(jd1['name'])+'</i><br />'#13#10+content;
+
+              //TODO: likes, views, owner?
+
+              regItem;
+
+             end;
+
+            feedresult:=Format('Instagram %d/%d',[c2,c1]);
+
+           end
+          else
+           begin
+
+
+            doc:=CoDOMDocument60.Create;
+            doc.async:=false;
+            doc.validateOnParse:=false;
+            doc.resolveExternals:=false;
+            doc.preserveWhiteSpace:=true;
+            doc.setProperty('ProhibitDTD',false);
+
+            {
+            if loadext then
+              b:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
+            else
+            }
+              b:=doc.loadXML(rw);
+
+            if b then
+             begin
+
+              //atom
+              if doc.documentElement.nodeName='feed' then
                begin
-                itemid:=x.selectSingleNode('atom:id').text;
-                if Copy(itemid,1,4)='http' then
-                  itemurl:=itemid
+                if doc.namespaces.length=0 then
+                  s:='xmlns:atom="http://www.w3.org/2005/Atom"'
                 else
                  begin
-                  xl1:=x.selectNodes('atom:link');
-                  y:=xl1.nextNode as IXMLDOMElement;
-                  if y=nil then
+                  i:=0;
+                  while (i<doc.namespaces.length) and (doc.namespaces[i]<>'http://www.w3.org/2005/Atom') do inc(i);
+                  if i=doc.namespaces.length then i:=0;
+                  s:='xmlns:atom="'+doc.namespaces[i]+'"';
+                 end;
+                s:=s+' xmlns:media="http://search.yahoo.com/mrss/"';
+                doc.setProperty('SelectionNamespaces',s);
+
+                x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
+                if x<>nil then feedname:=x.text;
+
+                xl:=doc.documentElement.selectNodes('atom:entry');
+                x:=xl.nextNode as IXMLDOMElement;
+                while x<>nil do
+                 begin
+                  itemid:=x.selectSingleNode('atom:id').text;
+                  if Copy(itemid,1,4)='http' then
                     itemurl:=itemid
                   else
-                    itemurl:=y.getAttribute('href');//default
-                  while y<>nil do
                    begin
-                    //'rel'?
-                    if y.getAttribute('type')='text/html' then
-                      itemurl:=y.getAttribute('href');
+                    xl1:=x.selectNodes('atom:link');
                     y:=xl1.nextNode as IXMLDOMElement;
+                    if y=nil then
+                      itemurl:=itemid
+                    else
+                      itemurl:=y.getAttribute('href');//default
+                    while y<>nil do
+                     begin
+                      //'rel'?
+                      if y.getAttribute('type')='text/html' then
+                        itemurl:=y.getAttribute('href');
+                      y:=xl1.nextNode as IXMLDOMElement;
+                     end;
                    end;
-                 end;
-                y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
-                if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
-                if y=nil then title:='' else title:=y.text;
-                y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
-                if y=nil then y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
-                if y=nil then
-                 begin
-                  y:=x.selectSingleNode('media:group/media:description') as IXMLDOMElement;
-                  if y=nil then
-                    content:=''
-                  else
-                    content:=EncodeNonHTMLContent(y.text);
-                 end
-                else
-                  content:=y.text;
-                try
-                  y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:issued') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:modified') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
-                  if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
-                except
-                  pubDate:=UtcNow;
-                end;
-                regItem;
-
-                x:=xl.nextNode as IXMLDOMElement;
-               end;
-              feedresult:=Format('Atom %d/%d',[c2,c1]);
-             end
-            else
-
-            //RSS
-            if doc.documentElement.nodeName='rss' then
-             begin
-              doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
-
-              x:=doc.documentElement.selectSingleNode('channel/title') as IXMLDOMElement;
-              if x<>nil then feedname:=x.text;
-
-              xl:=doc.documentElement.selectNodes('channel/item');
-              x:=xl.nextNode as IXMLDOMElement;
-              while x<>nil do
-               begin
-                y:=x.selectSingleNode('guid') as IXMLDOMElement;
-                if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
-                itemid:=y.text;
-                itemurl:=x.selectSingleNode('link').text;
-                y:=x.selectSingleNode('title') as IXMLDOMElement;
-                if y=nil then title:='' else title:=y.text;
-                y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
-                if (y=nil) or IsSomeThingEmpty(y.text) then
-                  y:=x.selectSingleNode('content') as IXMLDOMElement;
-                if y=nil then
-                  y:=x.selectSingleNode('description') as IXMLDOMElement;
-                if y=nil then content:='' else content:=y.text;
-                try
-                  y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
-                  if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
-                except
-                  pubDate:=UtcNow;
-                end;
-                regItem;
-
-                x:=xl.nextNode as IXMLDOMElement;
-               end;
-              feedresult:=Format('RSS %d/%d',[c2,c1]);
-             end
-            else
-
-            //RDF
-            if doc.documentElement.nodeName='rdf:RDF' then
-             begin
-              doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
-               ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
-              x:=doc.documentElement.selectSingleNode('rss:channel/rss:title') as IXMLDOMElement;
-              if x<>nil then feedname:=x.text;
-
-              xl:=doc.documentElement.selectNodes('rss:item');
-              x:=xl.nextNode as IXMLDOMElement;
-              while x<>nil do
-               begin
-                itemid:=x.getAttribute('rdf:about');
-                itemurl:=x.selectSingleNode('rss:link').text;
-                y:=x.selectSingleNode('rss:title') as IXMLDOMElement;
-                if y=nil then title:='' else title:=y.text;
-                y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
-                if y=nil then content:='' else content:=y.text;
-                try
-                  y:=x.selectSingleNode('rss:pubDate') as IXMLDOMElement;
+                  y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
+                  if y=nil then title:='' else title:=y.text;
+                  y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
                   if y=nil then
                    begin
-                    y:=x.selectSingleNode('dc:date') as IXMLDOMElement;
-                    if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                    y:=x.selectSingleNode('media:group/media:description') as IXMLDOMElement;
+                    if y=nil then
+                      content:=''
+                    else
+                      content:=EncodeNonHTMLContent(y.text);
                    end
-                  else pubDate:=ConvDate2(y.text);
-                except
-                  pubDate:=UtcNow;
-                end;
-                regItem;
-                x:=xl.nextNode as IXMLDOMElement;
-               end;
+                  else
+                    content:=y.text;
+                  try
+                    y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
+                    if y=nil then y:=x.selectSingleNode('atom:issued') as IXMLDOMElement;
+                    if y=nil then y:=x.selectSingleNode('atom:modified') as IXMLDOMElement;
+                    if y=nil then y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
+                    if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                  except
+                    pubDate:=UtcNow;
+                  end;
+                  regItem;
 
-              if c2=0 then
+                  x:=xl.nextNode as IXMLDOMElement;
+                 end;
+                feedresult:=Format('Atom %d/%d',[c2,c1]);
+               end
+              else
+
+              //RSS
+              if doc.documentElement.nodeName='rss' then
                begin
-                doc.setProperty('SelectionNamespaces',
-                 'xmlns:rdf=''http://www.w3.org/1999/02/22-rdf-syntax-ns#'''+
-                 ' xmlns:schema=''http://schema.org/''');
-                xl:=doc.documentElement.selectNodes('rdf:Description/schema:hasPart/rdf:Description');
+                doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
+
+                x:=doc.documentElement.selectSingleNode('channel/title') as IXMLDOMElement;
+                if x<>nil then feedname:=x.text;
+
+                xl:=doc.documentElement.selectNodes('channel/item');
+                x:=xl.nextNode as IXMLDOMElement;
+                while x<>nil do
+                 begin
+                  y:=x.selectSingleNode('guid') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
+                  itemid:=y.text;
+                  itemurl:=x.selectSingleNode('link').text;
+                  y:=x.selectSingleNode('title') as IXMLDOMElement;
+                  if y=nil then title:='' else title:=y.text;
+                  y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
+                  if (y=nil) or IsSomeThingEmpty(y.text) then
+                    y:=x.selectSingleNode('content') as IXMLDOMElement;
+                  if y=nil then
+                    y:=x.selectSingleNode('description') as IXMLDOMElement;
+                  if y=nil then content:='' else content:=y.text;
+                  try
+                    y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
+                    if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
+                  except
+                    pubDate:=UtcNow;
+                  end;
+                  regItem;
+
+                  x:=xl.nextNode as IXMLDOMElement;
+                 end;
+                feedresult:=Format('RSS %d/%d',[c2,c1]);
+               end
+              else
+
+              //RDF
+              if doc.documentElement.nodeName='rdf:RDF' then
+               begin
+                doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
+                 ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
+                x:=doc.documentElement.selectSingleNode('rss:channel/rss:title') as IXMLDOMElement;
+                if x<>nil then feedname:=x.text;
+
+                xl:=doc.documentElement.selectNodes('rss:item');
                 x:=xl.nextNode as IXMLDOMElement;
                 while x<>nil do
                  begin
                   itemid:=x.getAttribute('rdf:about');
-                  y:=x.selectSingleNode('schema:url') as IXMLDOMElement;
-                  if y=nil then itemurl:=itemid else
-                    itemurl:=VarToStr(y.getAttribute('rdf:resource'));
-                  y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
+                  itemurl:=x.selectSingleNode('rss:link').text;
+                  y:=x.selectSingleNode('rss:title') as IXMLDOMElement;
                   if y=nil then title:='' else title:=y.text;
-                  y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
-                  if y<>nil then title:=title+' '#$2014' '+y.text;
-
-
-                  y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
+                  y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
                   if y=nil then content:='' else content:=y.text;
                   try
-                    y:=x.selectSingleNode('schema:datePublished') as IXMLDOMElement;
+                    y:=x.selectSingleNode('rss:pubDate') as IXMLDOMElement;
+                    if y=nil then
+                     begin
+                      y:=x.selectSingleNode('dc:date') as IXMLDOMElement;
+                      if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                     end
+                    else pubDate:=ConvDate2(y.text);
+                  except
+                    pubDate:=UtcNow;
+                  end;
+                  regItem;
+                  x:=xl.nextNode as IXMLDOMElement;
+                 end;
+
+                if c2=0 then
+                 begin
+                  doc.setProperty('SelectionNamespaces',
+                   'xmlns:rdf=''http://www.w3.org/1999/02/22-rdf-syntax-ns#'''+
+                   ' xmlns:schema=''http://schema.org/''');
+                  xl:=doc.documentElement.selectNodes('rdf:Description/schema:hasPart/rdf:Description');
+                  x:=xl.nextNode as IXMLDOMElement;
+                  while x<>nil do
+                   begin
+                    itemid:=x.getAttribute('rdf:about');
+                    y:=x.selectSingleNode('schema:url') as IXMLDOMElement;
+                    if y=nil then itemurl:=itemid else
+                      itemurl:=VarToStr(y.getAttribute('rdf:resource'));
+                    y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
+                    if y=nil then title:='' else title:=y.text;
+                    y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
+                    if y<>nil then title:=title+' '#$2014' '+y.text;
+
+
+                    y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
+                    if y=nil then content:='' else content:=y.text;
+                    try
+                      y:=x.selectSingleNode('schema:datePublished') as IXMLDOMElement;
+                      pubDate:=ConvDate1(y.text);
+                    except
+                      pubDate:=UtcNow;
+                    end;
+                    regItem;
+                    x:=xl.nextNode as IXMLDOMElement;
+                   end;
+                 end;
+
+
+                feedresult:=Format('RDF %d/%d',[c2,c1]);
+               end
+              else
+
+              //SPARQL
+              if doc.documentElement.nodeName='sparql' then
+               begin
+                doc.setProperty('SelectionNamespaces',
+                 'xmlns:s=''http://www.w3.org/2005/sparql-results#''');
+
+                //feedname:=??
+                xl:=doc.documentElement.selectNodes('s:results/s:result');
+                x:=xl.nextNode as IXMLDOMElement;
+                while x<>nil do
+                 begin
+                  itemid:=x.selectSingleNode('s:binding[@name="news"]/s:uri').text;
+                  itemurl:=x.selectSingleNode('s:binding[@name="url"]/s:uri').text;
+                  title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
+
+                  y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
+                  if y<>nil then title:=title+' '#$2014' '+y.text;
+
+                  y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
+                  if y=nil then content:='' else content:=y.text;
+                  try
+                    y:=x.selectSingleNode('s:binding[@name="pubDate"]/s:literal') as IXMLDOMElement;
                     pubDate:=ConvDate1(y.text);
                   except
                     pubDate:=UtcNow;
@@ -1223,58 +1338,23 @@ begin
                   regItem;
                   x:=xl.nextNode as IXMLDOMElement;
                  end;
-               end;
 
+                feedresult:=Format('SPARQL %d/%d',[c2,c1]);
+               end
+              else
 
-              feedresult:=Format('RDF %d/%d',[c2,c1]);
+              //unknown
+                if not((rt='text/html') and findFeedURL(rw)) then
+                feedresult:='Unkown "'+doc.documentElement.tagName+'" ('
+                  +rt+')';
+
              end
             else
-
-            //SPARQL
-            if doc.documentElement.nodeName='sparql' then
-             begin
-              doc.setProperty('SelectionNamespaces',
-               'xmlns:s=''http://www.w3.org/2005/sparql-results#''');
-
-              //feedname:=??
-              xl:=doc.documentElement.selectNodes('s:results/s:result');
-              x:=xl.nextNode as IXMLDOMElement;
-              while x<>nil do
-               begin
-                itemid:=x.selectSingleNode('s:binding[@name="news"]/s:uri').text;
-                itemurl:=x.selectSingleNode('s:binding[@name="url"]/s:uri').text;
-                title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
-
-                y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
-                if y<>nil then title:=title+' '#$2014' '+y.text;
-
-                y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
-                if y=nil then content:='' else content:=y.text;
-                try
-                  y:=x.selectSingleNode('s:binding[@name="pubDate"]/s:literal') as IXMLDOMElement;
-                  pubDate:=ConvDate1(y.text);
-                except
-                  pubDate:=UtcNow;
-                end;
-                regItem;
-                x:=xl.nextNode as IXMLDOMElement;
-               end;
-
-              feedresult:=Format('SPARQL %d/%d',[c2,c1]);
-             end
-            else
-
-            //unknown
+            //XML parse failed
               if not((rt='text/html') and findFeedURL(rw)) then
-              feedresult:='Unkown "'+doc.documentElement.tagName+'" ('
-                +rt+')';
-
-           end
-          else
-          //XML parse failed
-            if not((rt='text/html') and findFeedURL(rw)) then
-              feedresult:='[XML'+IntToStr(doc.parseError.line)+':'+
-                IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
+                feedresult:='[XML'+IntToStr(doc.parseError.line)+':'+
+                  IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
+           end;
 
         except
           on e:Exception do
