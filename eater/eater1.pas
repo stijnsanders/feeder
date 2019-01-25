@@ -1091,7 +1091,8 @@ begin
 
               if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
               content:=
-                '<img src="'+HTMLEncode(VarToStr(jn1['display_url']))+'" /><br />'#13#10+
+                '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
+                HTMLEncode(VarToStr(jn1['display_url']))+'" border="0" /></a><br />'#13#10+
                 HTMLEncode(content);
 
               jd1:=JSON(jn1['location']);

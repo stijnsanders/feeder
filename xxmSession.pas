@@ -192,12 +192,7 @@ begin
     Connection.BeginTrans;
     try
       //TODO: more checks? hash user-agent?
-try      
       qr:=TQueryResult.Create(Connection,'select U.*, L.id as LogonID from "UserLogon" L inner join "User" U on U.id=L.user_id where L.key=?',[s]);
-except
-on e:Exception do
-Context.Send('['+e.Message+']'+e.ClassName);
-end;
       try
         if qr.Read then
          begin
