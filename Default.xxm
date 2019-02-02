@@ -66,7 +66,7 @@ else
       &nbsp;
       <a href="#" onclick="return doClose();" style="width:4em;"><img src="img_x.png" width="16" height="16" alt="close post view" /></a>
     </div>
-    <iframe id="postview" name="postview" style="z-index:7;position:fixed;display:none;left:1em;top:2em;background-color:white;border:1px solid black;" onload="doPostLoad();" src="about:blank"></iframe>
+    <iframe id="postview" name="postview" style="z-index:7;position:fixed;display:none;left:1em;top:2em;background-color:#DDDDDD;border:1px solid black;" onload="doPostLoad();" src="about:blank"></iframe>
     <script>
     window.open("about:blank","postview");
     document.body.onscroll=doScroll;
