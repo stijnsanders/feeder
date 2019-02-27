@@ -655,6 +655,8 @@ const
     b:boolean;
     i:integer;
   begin
+    if itemurl='' then itemurl:=itemid;//assert Copy(itemid,1,4)='http'
+
     if Copy(itemid,1,7)='http://' then
       itemid:=Copy(itemid,8,Length(itemid)-7)
     else
