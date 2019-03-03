@@ -25,7 +25,8 @@ constraint FK_Post_Feed foreign key (feed_id) references "Feed" (id)
 );
 
 create index IX_Post on "Post" (feed_id,pubdate);
-create index IX_PostGuid on "Post" (feed_id,guid);
+create index IX_PostGuid on "Post" (guid,feed_id);
+
 
 create table "User" (
 id integer primary key autoincrement,
@@ -61,6 +62,8 @@ constraint FK_Subscription_User foreign key (user_id) references "User" (id),
 constraint FK_Subscription_Feed foreign key (feed_id) references "Feed" (id)
 );
 
+create index IX_Subscription on Subscription (user_id,category,feed_id);
+
 create table "UserPost" (
 id integer primary key autoincrement,
 user_id int not null,
@@ -73,3 +76,4 @@ create unique index IX_UserPost on "UserPost" (user_id,post_id);
 
 insert into "Feed" (id,name,url,created) values (0,'[system messages]','',
   julianday()-julianday('1900-01-01')-2);
+

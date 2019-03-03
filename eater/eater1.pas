@@ -629,7 +629,7 @@ begin
    end;
 end;
 
-procedure DoFeed(db,db1:TDataConnection;qr:TQueryResult;oldPostDate:TDateTime;
+procedure DoFeed(dbA,dbX:TDataConnection;qr:TQueryResult;oldPostDate:TDateTime;
   sl:TStringList);
 var
   r:ServerXMLHTTP60;
@@ -678,7 +678,7 @@ const
     if pubDate<OldPostsCutOff then b:=false else
      begin
       if feedglobal then
-        qr:=TQueryResult.Create(db,
+        qr:=TQueryResult.Create(dbX,
           'select P.id from "Post" P'
           +' inner join "Feed" F on F.id=P.feed_id'
           //+' and coalesce(F.flags,0)&1=1'
@@ -686,7 +686,7 @@ const
           +' where P.guid=?'
           ,[itemid])
       else
-        qr:=TQueryResult.Create(db,
+        qr:=TQueryResult.Create(dbX,
           'select id from "Post" where feed_id=? and guid=?'
           ,[feedid,itemid]);
       try
@@ -700,17 +700,32 @@ const
      begin
       inc(c2);
       if IsSomethingEmpty(title) then title:='['+itemid+']';
-      postid:=db.Insert('Post',
-        ['feed_id',feedid
-        ,'guid',itemid
-        ,'title',SanitizeTitle(title)
-        ,'content',content
-        ,'url',itemurl
-        ,'pubdate',pubDate
-        ,'created',UtcNow
-        ],'id');
-      db.Execute('insert into "UserPost" (user_id,post_id)'+
-        ' select S.user_id,? from "Subscription" S where S.feed_id=?',[postid,feedid]);
+      dbA.BeginTrans;
+      try
+        postid:=dbA.Insert('Post',
+          ['feed_id',feedid
+          ,'guid',itemid
+          ,'title',SanitizeTitle(title)
+          ,'content',content
+          ,'url',itemurl
+          ,'pubdate',pubDate
+          ,'created',UtcNow
+          ],'id');
+        dbA.Execute('insert into "UserPost" (user_id,post_id)'+
+          ' select S.user_id,? from "Subscription" S where S.feed_id=?',[postid,feedid]);
+        dbA.CommitTrans;
+      except
+        dbA.RollbackTrans;
+        raise;
+      end;
+      dbX.BeginTrans;
+      try
+        dbX.Insert('Post',['id',postid,'feed_id',feedid,'guid',itemid,'pubdate',pubDate]);
+        dbX.CommitTrans;
+      except
+        dbX.RollbackTrans;
+        raise;
+      end;
      end;
   end;
 
@@ -844,7 +859,7 @@ begin
   sl.Add('<td style="text-align:right;">'+VarToStr(qr['scount'])+'</td>');
 
   //check feed timing and regime
-  qr1:=TQueryResult.Create(db1,
+  qr1:=TQueryResult.Create(dbX,
     'select id from "Post" where feed_id=? order by 1 desc limit 1000,1',[feedid]);
   try
     if qr1.EOF then
@@ -860,7 +875,7 @@ begin
   finally
     qr1.Free;
   end;
-  qr1:=TQueryResult.Create(db1,UTF8Encode(
+  qr1:=TQueryResult.Create(dbX,UTF8Encode(
      'select max(X.pubdate) as postlast, avg(X.pd) as postavg'
     +' from('
     +'  select'
@@ -1038,302 +1053,263 @@ begin
         else ;//leave as-is
       end;
 
-    db.BeginTrans;
-    try
+    if feedresult='' then
+      try
 
-      if feedresult='' then
-        try
+        if Copy(feedurl,1,26)='https://www.instagram.com/' then
+         begin
 
-          if Copy(feedurl,1,26)='https://www.instagram.com/' then
+          i:=1;
+          while (i<Length(rw)-8) and (Copy(rw,i,11)<>'"graphql":{') do
+            inc(i);
+          inc(i,10);
+
+          jnodes:=JSONDocArray;
+          jdoc:=JSON(['user{'
+            ,'edge_felix_video_timeline{','edges',jnodes,'}'
+            ,'edge_owner_to_timeline_media{','edges',jnodes,'}'
+            ,'edge_saved_media{','edges',jnodes,'}'
+            ,'edge_media_collections{','edges',jnodes,'}'
+            ]);
+          try
+            jdoc.Parse(Copy(rw,i,Length(rw)-i+1));
+          except
+            on EJSONDecodeException do
+              ;//ignore "data past end"
+          end;
+
+          jd1:=JSON(jdoc['user']);
+          if jd1<>nil then
+            feedname:='Instagram: '+VarToStr(jd1['full_name'])+' (@'+VarToStr(jd1['username'])+')';
+
+          jcaption:=JSONDocArray;
+          jn1:=JSON(['edge_media_to_caption{','edges',jcaption]);
+          jn0:=JSON(['node',jn1]);
+          jc1:=JSON;
+          jc0:=JSON(['node',jc1]);
+          for i:=0 to jnodes.Count-1 do
            begin
+            jnodes.LoadItem(i,jn0);
 
-            i:=1;
-            while (i<Length(rw)-8) and (Copy(rw,i,11)<>'"graphql":{') do
-              inc(i);
-            inc(i,10);
+            itemid:=VarToStr(jn1['id']);
+            if itemid='' then raise Exception.Create('edge node without ID');
+            itemurl:='https://www.instagram.com/p/'+VarToStr(jn1['shortcode'])+'/';
+            pubDate:=int64(jn1['taken_at_timestamp'])/SecsPerDay+UnixDateDelta;//is UTC?
 
-            jnodes:=JSONDocArray;
-            jdoc:=JSON(['user{'
-              ,'edge_felix_video_timeline{','edges',jnodes,'}'
-              ,'edge_owner_to_timeline_media{','edges',jnodes,'}'
-              ,'edge_saved_media{','edges',jnodes,'}'
-              ,'edge_media_collections{','edges',jnodes,'}'
-              ]);
-            try
-              jdoc.Parse(Copy(rw,i,Length(rw)-i+1));
-            except
-              on EJSONDecodeException do
-                ;//ignore "data past end"
-            end;
-
-            jd1:=JSON(jdoc['user']);
-            if jd1<>nil then
-              feedname:='Instagram: '+VarToStr(jd1['full_name'])+' (@'+VarToStr(jd1['username'])+')';
-
-            jcaption:=JSONDocArray;
-            jn1:=JSON(['edge_media_to_caption{','edges',jcaption]);
-            jn0:=JSON(['node',jn1]);
-            jc1:=JSON;
-            jc0:=JSON(['node',jc1]);
-            for i:=0 to jnodes.Count-1 do
+            content:=VarToStr(jn1['title'])+' ';
+            for j:=0 to jcaption.Count-1 do
              begin
-              jnodes.LoadItem(i,jn0);
-
-              itemid:=VarToStr(jn1['id']);
-              if itemid='' then raise Exception.Create('edge node without ID');
-              itemurl:='https://www.instagram.com/p/'+VarToStr(jn1['shortcode'])+'/';
-              pubDate:=int64(jn1['taken_at_timestamp'])/SecsPerDay+UnixDateDelta;//is UTC?
-
-              content:=VarToStr(jn1['title'])+' ';
-              for j:=0 to jcaption.Count-1 do
-               begin
-                jcaption.LoadItem(j,jc0);
-                content:=content+VarToStr(jc1['text'])+#13#10;
-               end;
-
-              if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
-              content:=
-                '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
-                HTMLEncode(VarToStr(jn1['display_url']))+'" border="0" /></a><br />'#13#10+
-                HTMLEncode(content);
-
-              jd1:=JSON(jn1['location']);
-              if jd1<>nil then
-                content:='<i>'+HTMLEncode(jd1['name'])+'</i><br />'#13#10+content;
-
-              //TODO: likes, views, owner?
-
-              regItem;
-
+              jcaption.LoadItem(j,jc0);
+              content:=content+VarToStr(jc1['text'])+#13#10;
              end;
 
-            feedresult:=Format('Instagram %d/%d',[c2,c1]);
+            if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
+            content:=
+              '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
+              HTMLEncode(VarToStr(jn1['display_url']))+'" border="0" /></a><br />'#13#10+
+              HTMLEncode(content);
 
-           end
+            jd1:=JSON(jn1['location']);
+            if jd1<>nil then
+              content:='<i>'+HTMLEncode(jd1['name'])+'</i><br />'#13#10+content;
+
+            //TODO: likes, views, owner?
+
+            regItem;
+
+           end;
+
+          feedresult:=Format('Instagram %d/%d',[c2,c1]);
+
+         end
+        else
+         begin
+
+
+          doc:=CoDOMDocument60.Create;
+          doc.async:=false;
+          doc.validateOnParse:=false;
+          doc.resolveExternals:=false;
+          doc.preserveWhiteSpace:=true;
+          doc.setProperty('ProhibitDTD',false);
+
+          {
+          if loadext then
+            b:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
           else
+          }
+            b:=doc.loadXML(rw);
+
+          if b then
            begin
 
-
-            doc:=CoDOMDocument60.Create;
-            doc.async:=false;
-            doc.validateOnParse:=false;
-            doc.resolveExternals:=false;
-            doc.preserveWhiteSpace:=true;
-            doc.setProperty('ProhibitDTD',false);
-
-            {
-            if loadext then
-              b:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
-            else
-            }
-              b:=doc.loadXML(rw);
-
-            if b then
+            //atom
+            if doc.documentElement.nodeName='feed' then
              begin
-
-              //atom
-              if doc.documentElement.nodeName='feed' then
+              if doc.namespaces.length=0 then
+                s:='xmlns:atom="http://www.w3.org/2005/Atom"'
+              else
                begin
-                if doc.namespaces.length=0 then
-                  s:='xmlns:atom="http://www.w3.org/2005/Atom"'
+                i:=0;
+                while (i<doc.namespaces.length) and (doc.namespaces[i]<>'http://www.w3.org/2005/Atom') do inc(i);
+                if i=doc.namespaces.length then i:=0;
+                s:='xmlns:atom="'+doc.namespaces[i]+'"';
+               end;
+              s:=s+' xmlns:media="http://search.yahoo.com/mrss/"';
+              doc.setProperty('SelectionNamespaces',s);
+
+              x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
+              if x<>nil then feedname:=x.text;
+
+              xl:=doc.documentElement.selectNodes('atom:entry');
+              x:=xl.nextNode as IXMLDOMElement;
+              while x<>nil do
+               begin
+                itemid:=x.selectSingleNode('atom:id').text;
+                if Copy(itemid,1,4)='http' then
+                  itemurl:=itemid
                 else
                  begin
-                  i:=0;
-                  while (i<doc.namespaces.length) and (doc.namespaces[i]<>'http://www.w3.org/2005/Atom') do inc(i);
-                  if i=doc.namespaces.length then i:=0;
-                  s:='xmlns:atom="'+doc.namespaces[i]+'"';
-                 end;
-                s:=s+' xmlns:media="http://search.yahoo.com/mrss/"';
-                doc.setProperty('SelectionNamespaces',s);
-
-                x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
-                if x<>nil then feedname:=x.text;
-
-                xl:=doc.documentElement.selectNodes('atom:entry');
-                x:=xl.nextNode as IXMLDOMElement;
-                while x<>nil do
-                 begin
-                  itemid:=x.selectSingleNode('atom:id').text;
-                  if Copy(itemid,1,4)='http' then
+                  xl1:=x.selectNodes('atom:link');
+                  y:=xl1.nextNode as IXMLDOMElement;
+                  if y=nil then
                     itemurl:=itemid
                   else
+                    itemurl:=y.getAttribute('href');//default
+                  while y<>nil do
                    begin
-                    xl1:=x.selectNodes('atom:link');
+                    //'rel'?
+                    if y.getAttribute('type')='text/html' then
+                      itemurl:=y.getAttribute('href');
                     y:=xl1.nextNode as IXMLDOMElement;
-                    if y=nil then
-                      itemurl:=itemid
-                    else
-                      itemurl:=y.getAttribute('href');//default
-                    while y<>nil do
-                     begin
-                      //'rel'?
-                      if y.getAttribute('type')='text/html' then
-                        itemurl:=y.getAttribute('href');
-                      y:=xl1.nextNode as IXMLDOMElement;
-                     end;
                    end;
-                  y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
-                  if y=nil then title:='' else title:=y.text;
-                  y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
+                 end;
+                y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
+                if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
+                if y=nil then title:='' else title:=y.text;
+                y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
+                if y=nil then y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
+                if y=nil then
+                 begin
+                  y:=x.selectSingleNode('media:group/media:description') as IXMLDOMElement;
+                  if y=nil then
+                    content:=''
+                  else
+                    content:=EncodeNonHTMLContent(y.text);
+                 end
+                else
+                  content:=y.text;
+                try
+                  y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:issued') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:modified') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
+                  if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                except
+                  pubDate:=UtcNow;
+                end;
+                regItem;
+
+                x:=xl.nextNode as IXMLDOMElement;
+               end;
+              feedresult:=Format('Atom %d/%d',[c2,c1]);
+             end
+            else
+
+            //RSS
+            if doc.documentElement.nodeName='rss' then
+             begin
+              doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
+
+              x:=doc.documentElement.selectSingleNode('channel/title') as IXMLDOMElement;
+              if x<>nil then feedname:=x.text;
+
+              xl:=doc.documentElement.selectNodes('channel/item');
+              x:=xl.nextNode as IXMLDOMElement;
+              while x<>nil do
+               begin
+                y:=x.selectSingleNode('guid') as IXMLDOMElement;
+                if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
+                itemid:=y.text;
+                itemurl:=x.selectSingleNode('link').text;
+                y:=x.selectSingleNode('title') as IXMLDOMElement;
+                if y=nil then title:='' else title:=y.text;
+                y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
+                if (y=nil) or IsSomeThingEmpty(y.text) then
+                  y:=x.selectSingleNode('content') as IXMLDOMElement;
+                if y=nil then
+                  y:=x.selectSingleNode('description') as IXMLDOMElement;
+                if y=nil then content:='' else content:=y.text;
+                try
+                  y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
+                  if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
+                except
+                  pubDate:=UtcNow;
+                end;
+                regItem;
+
+                x:=xl.nextNode as IXMLDOMElement;
+               end;
+              feedresult:=Format('RSS %d/%d',[c2,c1]);
+             end
+            else
+
+            //RDF
+            if doc.documentElement.nodeName='rdf:RDF' then
+             begin
+              doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
+               ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
+              x:=doc.documentElement.selectSingleNode('rss:channel/rss:title') as IXMLDOMElement;
+              if x<>nil then feedname:=x.text;
+
+              xl:=doc.documentElement.selectNodes('rss:item');
+              x:=xl.nextNode as IXMLDOMElement;
+              while x<>nil do
+               begin
+                itemid:=x.getAttribute('rdf:about');
+                itemurl:=x.selectSingleNode('rss:link').text;
+                y:=x.selectSingleNode('rss:title') as IXMLDOMElement;
+                if y=nil then title:='' else title:=y.text;
+                y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
+                if y=nil then content:='' else content:=y.text;
+                try
+                  y:=x.selectSingleNode('rss:pubDate') as IXMLDOMElement;
                   if y=nil then
                    begin
-                    y:=x.selectSingleNode('media:group/media:description') as IXMLDOMElement;
-                    if y=nil then
-                      content:=''
-                    else
-                      content:=EncodeNonHTMLContent(y.text);
-                   end
-                  else
-                    content:=y.text;
-                  try
-                    y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
-                    if y=nil then y:=x.selectSingleNode('atom:issued') as IXMLDOMElement;
-                    if y=nil then y:=x.selectSingleNode('atom:modified') as IXMLDOMElement;
-                    if y=nil then y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
+                    y:=x.selectSingleNode('dc:date') as IXMLDOMElement;
                     if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
-                  except
-                    pubDate:=UtcNow;
-                  end;
-                  regItem;
-
-                  x:=xl.nextNode as IXMLDOMElement;
-                 end;
-                feedresult:=Format('Atom %d/%d',[c2,c1]);
-               end
-              else
-
-              //RSS
-              if doc.documentElement.nodeName='rss' then
-               begin
-                doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
-
-                x:=doc.documentElement.selectSingleNode('channel/title') as IXMLDOMElement;
-                if x<>nil then feedname:=x.text;
-
-                xl:=doc.documentElement.selectNodes('channel/item');
+                   end
+                  else pubDate:=ConvDate2(y.text);
+                except
+                  pubDate:=UtcNow;
+                end;
+                regItem;
                 x:=xl.nextNode as IXMLDOMElement;
-                while x<>nil do
-                 begin
-                  y:=x.selectSingleNode('guid') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
-                  itemid:=y.text;
-                  itemurl:=x.selectSingleNode('link').text;
-                  y:=x.selectSingleNode('title') as IXMLDOMElement;
-                  if y=nil then title:='' else title:=y.text;
-                  y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
-                  if (y=nil) or IsSomeThingEmpty(y.text) then
-                    y:=x.selectSingleNode('content') as IXMLDOMElement;
-                  if y=nil then
-                    y:=x.selectSingleNode('description') as IXMLDOMElement;
-                  if y=nil then content:='' else content:=y.text;
-                  try
-                    y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
-                    if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
-                  except
-                    pubDate:=UtcNow;
-                  end;
-                  regItem;
+               end;
 
-                  x:=xl.nextNode as IXMLDOMElement;
-                 end;
-                feedresult:=Format('RSS %d/%d',[c2,c1]);
-               end
-              else
-
-              //RDF
-              if doc.documentElement.nodeName='rdf:RDF' then
+              if c2=0 then
                begin
-                doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
-                 ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
-                x:=doc.documentElement.selectSingleNode('rss:channel/rss:title') as IXMLDOMElement;
-                if x<>nil then feedname:=x.text;
-
-                xl:=doc.documentElement.selectNodes('rss:item');
+                doc.setProperty('SelectionNamespaces',
+                 'xmlns:rdf=''http://www.w3.org/1999/02/22-rdf-syntax-ns#'''+
+                 ' xmlns:schema=''http://schema.org/''');
+                xl:=doc.documentElement.selectNodes('rdf:Description/schema:hasPart/rdf:Description');
                 x:=xl.nextNode as IXMLDOMElement;
                 while x<>nil do
                  begin
                   itemid:=x.getAttribute('rdf:about');
-                  itemurl:=x.selectSingleNode('rss:link').text;
-                  y:=x.selectSingleNode('rss:title') as IXMLDOMElement;
+                  y:=x.selectSingleNode('schema:url') as IXMLDOMElement;
+                  if y=nil then itemurl:=itemid else
+                    itemurl:=VarToStr(y.getAttribute('rdf:resource'));
+                  y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
                   if y=nil then title:='' else title:=y.text;
-                  y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
-                  if y=nil then content:='' else content:=y.text;
-                  try
-                    y:=x.selectSingleNode('rss:pubDate') as IXMLDOMElement;
-                    if y=nil then
-                     begin
-                      y:=x.selectSingleNode('dc:date') as IXMLDOMElement;
-                      if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
-                     end
-                    else pubDate:=ConvDate2(y.text);
-                  except
-                    pubDate:=UtcNow;
-                  end;
-                  regItem;
-                  x:=xl.nextNode as IXMLDOMElement;
-                 end;
-
-                if c2=0 then
-                 begin
-                  doc.setProperty('SelectionNamespaces',
-                   'xmlns:rdf=''http://www.w3.org/1999/02/22-rdf-syntax-ns#'''+
-                   ' xmlns:schema=''http://schema.org/''');
-                  xl:=doc.documentElement.selectNodes('rdf:Description/schema:hasPart/rdf:Description');
-                  x:=xl.nextNode as IXMLDOMElement;
-                  while x<>nil do
-                   begin
-                    itemid:=x.getAttribute('rdf:about');
-                    y:=x.selectSingleNode('schema:url') as IXMLDOMElement;
-                    if y=nil then itemurl:=itemid else
-                      itemurl:=VarToStr(y.getAttribute('rdf:resource'));
-                    y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
-                    if y=nil then title:='' else title:=y.text;
-                    y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
-                    if y<>nil then title:=title+' '#$2014' '+y.text;
-
-
-                    y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
-                    if y=nil then content:='' else content:=y.text;
-                    try
-                      y:=x.selectSingleNode('schema:datePublished') as IXMLDOMElement;
-                      pubDate:=ConvDate1(y.text);
-                    except
-                      pubDate:=UtcNow;
-                    end;
-                    regItem;
-                    x:=xl.nextNode as IXMLDOMElement;
-                   end;
-                 end;
-
-
-                feedresult:=Format('RDF %d/%d',[c2,c1]);
-               end
-              else
-
-              //SPARQL
-              if doc.documentElement.nodeName='sparql' then
-               begin
-                doc.setProperty('SelectionNamespaces',
-                 'xmlns:s=''http://www.w3.org/2005/sparql-results#''');
-
-                //feedname:=??
-                xl:=doc.documentElement.selectNodes('s:results/s:result');
-                x:=xl.nextNode as IXMLDOMElement;
-                while x<>nil do
-                 begin
-                  itemid:=x.selectSingleNode('s:binding[@name="news"]/s:uri').text;
-                  itemurl:=x.selectSingleNode('s:binding[@name="url"]/s:uri').text;
-                  title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
-
-                  y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
+                  y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
                   if y<>nil then title:=title+' '#$2014' '+y.text;
 
-                  y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
+
+                  y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
                   if y=nil then content:='' else content:=y.text;
                   try
-                    y:=x.selectSingleNode('s:binding[@name="pubDate"]/s:literal') as IXMLDOMElement;
+                    y:=x.selectSingleNode('schema:datePublished') as IXMLDOMElement;
                     pubDate:=ConvDate1(y.text);
                   except
                     pubDate:=UtcNow;
@@ -1341,69 +1317,108 @@ begin
                   regItem;
                   x:=xl.nextNode as IXMLDOMElement;
                  end;
+               end;
 
-                feedresult:=Format('SPARQL %d/%d',[c2,c1]);
-               end
-              else
 
-              //unknown
-                if not((rt='text/html') and findFeedURL(rw)) then
-                feedresult:='Unkown "'+doc.documentElement.tagName+'" ('
-                  +rt+')';
-
+              feedresult:=Format('RDF %d/%d',[c2,c1]);
              end
             else
-            //XML parse failed
+
+            //SPARQL
+            if doc.documentElement.nodeName='sparql' then
+             begin
+              doc.setProperty('SelectionNamespaces',
+               'xmlns:s=''http://www.w3.org/2005/sparql-results#''');
+
+              //feedname:=??
+              xl:=doc.documentElement.selectNodes('s:results/s:result');
+              x:=xl.nextNode as IXMLDOMElement;
+              while x<>nil do
+               begin
+                itemid:=x.selectSingleNode('s:binding[@name="news"]/s:uri').text;
+                itemurl:=x.selectSingleNode('s:binding[@name="url"]/s:uri').text;
+                title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
+
+                y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
+                if y<>nil then title:=title+' '#$2014' '+y.text;
+
+                y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
+                if y=nil then content:='' else content:=y.text;
+                try
+                  y:=x.selectSingleNode('s:binding[@name="pubDate"]/s:literal') as IXMLDOMElement;
+                  pubDate:=ConvDate1(y.text);
+                except
+                  pubDate:=UtcNow;
+                end;
+                regItem;
+                x:=xl.nextNode as IXMLDOMElement;
+               end;
+
+              feedresult:=Format('SPARQL %d/%d',[c2,c1]);
+             end
+            else
+
+            //unknown
               if not((rt='text/html') and findFeedURL(rw)) then
-                feedresult:='[XML'+IntToStr(doc.parseError.line)+':'+
-                  IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
-           end;
+              feedresult:='Unkown "'+doc.documentElement.tagName+'" ('
+                +rt+')';
 
-        except
-          on e:Exception do
-            feedresult:='['+e.ClassName+']'+e.Message;
-        end;
+           end
+          else
+          //XML parse failed
+            if not((rt='text/html') and findFeedURL(rw)) then
+              feedresult:='[XML'+IntToStr(doc.parseError.line)+':'+
+                IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
+         end;
 
-      if (feedresult<>'') and (feedresult[1]='[') then
+      except
+        on e:Exception do
+          feedresult:='['+e.ClassName+']'+e.Message;
+      end;
+
+    if (feedresult<>'') and (feedresult[1]='[') then
+     begin
+      Writeln(' !!!');
+      ErrLn(feedresult);
+     end
+    else
+     begin
+      //stale? update regime
+      if (c2=0) and (c1<>0) then
        begin
-        Writeln(' !!!');
-        ErrLn(feedresult);
+        i:=0;
+        if feedregime>=0 then
+         begin
+          while (i<regimesteps) and (feedregime>=regimestep[i]) do inc(i);
+          if (i<regimesteps) and ((postlast=0.0)
+            or (postlast+regimestep[i]*2<feedload)) then
+           begin
+            feedresult:=feedresult+' (stale? r:'+IntToStr(feedregime)+
+              '->'+IntToStr(regimestep[i])+')';
+            feedregime:=regimestep[i];
+           end;
+         end;
        end
       else
        begin
-        //stale? update regime
-        if (c2=0) and (c1<>0) then
+        //not stale: update regime to apparent post average period
+        if feedregime<>0 then
          begin
-          i:=0;
-          if feedregime>=0 then
-           begin
-            while (i<regimesteps) and (feedregime>=regimestep[i]) do inc(i);
-            if (i<regimesteps) and ((postlast=0.0)
-              or (postlast+regimestep[i]*2<feedload)) then
-             begin
-              feedresult:=feedresult+' (stale? r:'+IntToStr(feedregime)+
-                '->'+IntToStr(regimestep[i])+')';
-              feedregime:=regimestep[i];
-             end;
-           end;
-         end
-        else
-         begin
-          //not stale: update regime to apparent post average period
-          if feedregime<>0 then
-           begin
-            i:=regimesteps;
-            while (i<>0) and (postavg<regimestep[i-1]) do dec(i);
-            if i=0 then feedregime:=0 else feedregime:=regimestep[i-1];
-           end;
+          i:=regimesteps;
+          while (i<>0) and (postavg<regimestep[i-1]) do dec(i);
+          if i=0 then feedregime:=0 else feedregime:=regimestep[i-1];
          end;
-
-        Writeln(' '+feedresult);
        end;
+
+      Writeln(' '+feedresult);
+     end;
+
+    dbA.BeginTrans;
+    try
 
       if qr.IsNull('itemcount') or
         (feedurl<>qr.GetStr('url')) or (feedname<>qr.GetStr('name')) then
-        db.Update('Feed',
+        dbA.Update('Feed',
           ['id',feedid
           ,'name',feedname
           ,'url',feedurl
@@ -1414,7 +1429,7 @@ begin
           ,'regime',feedregime
           ])
       else
-        db.Update('Feed',
+        dbA.Update('Feed',
           ['id',feedid
           ,'loadlast',feedload
           ,'result',feedresult
@@ -1423,9 +1438,9 @@ begin
           ,'regime',feedregime
           ]);
 
-      db.CommitTrans;
+      dbA.CommitTrans;
     except
-      db.RollbackTrans;
+      dbA.RollbackTrans;
       raise;
     end;
    end
@@ -1575,21 +1590,22 @@ end;
 
 procedure DoUpdateFeeds;
 var
-  db,db1:TDataConnection;
+  dbA,dbX:TDataConnection;
   qr:TQueryResult;
   i,j,r:integer;
   sql:UTF8String;
   d:TDateTime;
   sl:TStringList;
+  newdb:boolean;
 begin
   try
     LastRun:=UtcNow;
-    OutLn('Opening database...');
+    OutLn('Opening databases...');
 
-    db:=TDataConnection.Create('..\feeder.db');
+    dbA:=TDataConnection.Create('..\feeder.db');
     sl:=TStringList.Create;
     try
-      db.BusyTimeout:=30000;
+      dbA.BusyTimeout:=30000;
 
       sl.Add('<style>');
       sl.Add('TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
@@ -1613,12 +1629,98 @@ begin
       sl.Add('<th>load:items</th>');
       sl.Add('</tr>');
 
-      OutLn('Copy for queries...');
-      BackupSQLite(db.Handle,'feederX.db');
+      //OutLn('Copy for queries...');
+      //BackupSQLite(dbA.Handle,'feederX.db');
 
-      db1:=TDataConnection.Create('feederX.db');
+      newdb:=not(FileExists('feederXX.db'));
+      dbX:=TDataConnection.Create('feederXX.db');
       try
-        db1.BusyTimeout:=30000;
+        dbX.BusyTimeout:=30000;
+
+        //previous dbX? check post count
+        if not newdb then
+         begin
+          qr:=TQueryResult.Create(dbA,'select count(*) from "Post"',[]);
+          try
+            i:=qr.GetInt(0);
+          finally
+            qr.Free;
+          end;
+          qr:=TQueryResult.Create(dbX,'select count(*) from "Post"',[]);
+          try
+            j:=qr.GetInt(0);
+          finally
+            qr.Free;
+          end;
+          if i<>j then
+           begin
+            dbX.Free;
+            DeleteFile(PChar('feederXX.db'));
+            dbX:=TDataConnection.Create('feederXX.db');
+            newdb:=true;
+           end;
+         end;
+
+        if newdb then
+         begin
+          OutLn('Copy for queries...');
+          dbX.Execute('create table "Post" (id integer,'
+            +'feed_id integer not null,'
+            +'guid varchar(500) not null,'
+            +'pubdate datetime not null)');
+          dbX.Execute('create index IX_Post on "Post" (feed_id,pubdate)');
+          dbX.Execute('create index IX_PostGuid on "Post" (guid,feed_id)');
+
+          dbX.Execute('create table "Feed" (id integer,flags int null)');
+
+          qr:=TQueryResult.Create(dbA,'select id,feed_id,guid,pubdate from "Post" order by id',[]);
+          try
+            i:=0;
+            dbX.BeginTrans;
+            try
+              while qr.Read do
+               begin
+                dbX.Insert('Post',
+                  ['id',qr['id']
+                  ,'feed_id',qr['feed_id']
+                  ,'guid',qr['guid']
+                  ,'pubdate',qr['pubdate']
+                  ]);
+                inc(i);
+                Write(#13+IntToStr(i)+' posts... ');
+               end;
+              dbX.CommitTrans;
+            except
+              dbX.RollbackTrans;
+              raise;
+            end;
+          finally
+            qr.Free;
+          end;
+          Writeln(#13+IntToStr(i)+' posts    ');
+         end;
+
+        dbX.BeginTrans;
+        try
+          dbX.Execute('delete from "Feed"',[]);
+          qr:=TQueryResult.Create(dbA,'select * from "Feed" where id>0 order by id',[]);
+          try
+            i:=0;
+            while qr.Read do
+             begin
+              dbX.Insert('Feed',['id',qr['id'],'flags',qr['flags']]);
+              inc(i);
+              Write(#13+IntToStr(i)+' feeds... ');
+             end;
+          finally
+            qr.Free;
+          end;
+          Writeln(#13+IntToStr(i)+' feeds    ');
+          dbX.CommitTrans;
+        except
+          dbX.RollbackTrans;
+          raise;
+        end;
 
         i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
         if LastClean<>i then
@@ -1627,23 +1729,31 @@ begin
 
           Out0('Clean-up old...');
           OldPostsCutOff:=UtcNow-OldPostsDays;
-          qr:=TQueryResult.Create(db1,'select id from "Post" where pubdate<?',[OldPostsCutOff]);
+          qr:=TQueryResult.Create(dbX,'select id from "Post" where pubdate<?',[OldPostsCutOff]);
           try
 
             j:=0;
             while qr.Read do
              begin
               i:=qr.GetInt('id');
-              db.BeginTrans;
+              dbA.BeginTrans;
               try
-                db.Execute('delete from "UserPost" where post_id=?',[i]);
-                db.Execute('delete from "Post" where id=?',[i]);
-                inc(j);
-                db.CommitTrans;
+                dbA.Execute('delete from "UserPost" where post_id=?',[i]);
+                dbA.Execute('delete from "Post" where id=?',[i]);
+                dbA.CommitTrans;
               except
-                db.RollbackTrans;
+                dbA.RollbackTrans;
                 raise;
               end;
+              dbX.BeginTrans;
+              try
+                dbX.Execute('delete from "Post" where id=?',[i]);
+                dbX.CommitTrans;
+              except
+                dbX.RollbackTrans;
+                raise;
+              end;
+              inc(j);
              end;
             Writeln(' '+IntToStr(j)+' posts cleaned      ');
 
@@ -1652,24 +1762,33 @@ begin
           end;
 
           Out0('Clean-up unused...');
-          qr:=TQueryResult.Create(db1,'select id from "Feed" where id<>0 and not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
+          qr:=TQueryResult.Create(dbA,'select id from "Feed" where id>0'+
+            ' and not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
           try
             j:=0;
             while qr.Read do
              begin
               i:=qr.GetInt('id');
               Write(#13'... #'+IntToStr(i)+'   ');
-              db.BeginTrans;
+              dbA.BeginTrans;
               try
-                db.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id=?)',[i]);
-                db.Execute('delete from "Post" where feed_id=?',[i]);
-                db.Execute('delete from "Feed" where id=?',[i]);
-                inc(j);
-                db.CommitTrans;
+                dbA.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id=?)',[i]);
+                dbA.Execute('delete from "Post" where feed_id=?',[i]);
+                dbA.Execute('delete from "Feed" where id=?',[i]);
+                dbA.CommitTrans;
               except
-                db.RollbackTrans;
+                dbA.RollbackTrans;
                 raise;
               end;
+              dbX.BeginTrans;
+              try
+                dbX.Execute('delete from "Post" where feed_id=?',[i]);
+                dbX.CommitTrans;
+              except
+                dbX.RollbackTrans;
+                raise;
+              end;
+              inc(j);
              end;
             Writeln(' '+IntToStr(j)+' feeds cleaned      ');
 
@@ -1679,9 +1798,9 @@ begin
          end;
 
         OutLn('Listing feeds...');
-        if FeedID=0 then sql:=' where F.id<>0' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
+        if FeedID=0 then sql:=' where F.id>0' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
         d:=UtcNow-AvgPostsDays;
-        qr:=TQueryResult.Create(db1,'select *'
+        qr:=TQueryResult.Create(dbA,'select *'
            +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
            +' from "Feed" F'+sql+FeedOrderBy,[]);
         try
@@ -1690,7 +1809,7 @@ begin
             r:=5;
             while r<>0 do
               try
-                DoFeed(db,db1,qr,d,sl);
+                DoFeed(dbA,dbX,qr,d,sl);
                 r:=0;
               except
                 on e:ESQLiteException do
@@ -1710,14 +1829,14 @@ begin
         end;
 
       finally
-        db1.Free;
+        dbX.Free;
       end;
 
       sl.Add('</table>');
       sl.SaveToFile('..\Load.html');
 
     finally
-      db.Free;
+      dbA.Free;
       sl.Free;
     end;
   except
