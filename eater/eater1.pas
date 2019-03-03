@@ -552,7 +552,7 @@ begin
   if not CreateProcess(nil,PChar(
     'wget.exe -nv --no-cache --max-redirect 8 --no-http-keep-alive --no-check-certificate'+
     ' -A "Accept: application/rss+xml, application/atom+xml, application/xml, text/xml"'+
-    ' --user-agent="FeedEater/1.0"'+
+    ' --user-agent="FeedEater/1.0" --compression=auto'+
     ' -O "'+FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
   r:=WaitForSingleObject(pi.hProcess,30000);
