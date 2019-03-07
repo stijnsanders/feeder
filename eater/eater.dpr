@@ -28,6 +28,7 @@ begin
       DoProcessParams;
       repeat
         DoUpdateFeeds;
+        DoAnalyze;
       until DoCheckRunDone;
     finally
       CloseHandle(h);

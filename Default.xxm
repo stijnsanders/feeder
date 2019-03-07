@@ -77,10 +77,10 @@ else
 
   sql:=
     'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
-    +' from "UserPost" X'
-    +' inner join "Post" P on P.id=X.post_id'
-    +' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'
-    +' where X.user_id=?';
+    +' from "Post" P'
+    +' inner join "UserPost" X on X.post_id=P.id and X.user_id=?'
+    +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'
+    ;
 
   if loadMore then lx:=3 else lx:=0;
 
@@ -115,51 +115,43 @@ else
            end;
 
           //query: no extra criteria
-          SetLength(xx,1+lx);
+          SetLength(xx,2+lx);
           xx[0]:=Session.UserID;
+          xx[1]:=Session.UserID;
          end
         else
          begin
-          sql:=
-            'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
-            ' from "Subscription" S'+
-            ' inner join "Post" P on P.feed_id=S.feed_id'+
-            ' left outer join "UserPost" X on X.post_id=P.id and X.user_id=S.user_id'+
-            ' where S.user_id=? and (P.pubdate-?::timestamp) between ''-4 hours''::interval and ''4 hours''::interval';
-          SetLength(xx,2+lx);
+          sql:=sql+' where P.pubdate>? and P.pubdate<?';
+          SetLength(xx,4+lx);
           xx[0]:=Session.UserID;
-          xx[1]:=VarFromDateTime(UtcNow-Context['d'].AsInteger);
+          xx[1]:=Session.UserID;
+          d1:=UtcNow-Context['d'].AsInteger;
+          xx[2]:=VarFromDateTime(d1-4.0/24.0);
+          xx[3]:=VarFromDateTime(d1+4.0/24.0);
          end
       else
        begin
-        sql:=
-          'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
-          ' from "Subscription" S'+
-          ' inner join "Post" P on P.feed_id=S.feed_id'+
-          ' left outer join "UserPost" X on X.post_id=P.id and X.user_id=S.user_id'+
-          ' where S.user_id=? and P.title||'' ''||P.content like ?';
-        SetLength(xx,2+lx);
+        sql:=sql+' where P.title||'' ''||P.content like ?';
+        SetLength(xx,3+lx);
         xx[0]:=Session.UserID;
-        xx[1]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
+        xx[1]:=Session.UserID;
+        xx[2]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
        end
     else
      begin
-      sql:=
-        'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'+
-        ' from "Subscription" S'+
-        ' inner join "Post" P on P.feed_id=S.feed_id'+
-        ' left outer join "UserPost" X on X.post_id=P.id and X.user_id=S.user_id'+
-        ' where S.user_id=? and P.feed_id=?';
-      SetLength(xx,2+lx);
+      sql:=sql+' where P.feed_id=?';
+      SetLength(xx,3+lx);
       xx[0]:=Session.UserID;
-      xx[1]:=f;
+      xx[1]:=Session.UserID;
+      xx[2]:=f;
      end
   else 
    begin
-    sql:=sql+' and S.category=?';
-    SetLength(xx,2+lx);
+    sql:=sql+' where S.category=?';
+    SetLength(xx,3+lx);
     xx[0]:=Session.UserID;
-    xx[1]:=cat;
+    xx[1]:=Session.UserID;
+    xx[2]:=cat;
    end;
 
   if Context['q'].Value='' then l:=0 else l:=Context['q'].AsInteger;
@@ -175,11 +167,12 @@ else
       qr.Free;
     end;
     d:=Trunc(d1+Session.TimeBias);
-    sql:=sql+' and ((P.pubdate=? and P.id>?) or (P.pubdate<?))';
+    if Length(xx)=5 then sql:=sql+' where' else sql:=' and';
+    sql:=sql+' ((P.pubdate=? and P.id>?) or (P.pubdate<?))';
     xx[Length(xx)-3]:=d1;
     xx[Length(xx)-2]:=id0;
     xx[Length(xx)-1]:=d1;
-  end
+   end
   else
     d:=0;
 

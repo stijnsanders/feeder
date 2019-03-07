@@ -9,6 +9,7 @@ procedure ErrLn(const x:string);
 
 procedure DoProcessParams;
 procedure DoUpdateFeeds;
+procedure DoAnalyze;
 function DoCheckRunDone:boolean;
 
 //TODO: from ini
@@ -39,7 +40,7 @@ end;
 
 
 var
-  OldPostsCutOff,LastRun:TDateTime;
+  OldPostsCutOff,LastRun,NextAnalyze:TDateTime;
   SaveData,FeedAll,WasLockedDB:boolean;
   FeedID,RunContinuous,LastClean:integer;
   FeedOrderBy:UTF8String;
@@ -1478,6 +1479,7 @@ begin
   FeedAll:=false;
   FeedOrderBy:=' order by F.id';
   WasLockedDB:=false;
+  NextAnalyze:=Trunc(UtcNow)+1.0;
 
   for i:=1 to ParamCount do
    begin
@@ -1657,6 +1659,7 @@ begin
             dbX.Free;
             DeleteFile(PChar('feederXX.db'));
             dbX:=TDataConnection.Create('feederXX.db');
+            dbX.BusyTimeout:=30000;
             newdb:=true;
            end;
          end;
@@ -1848,6 +1851,27 @@ begin
       ExitCode:=1;
      end;
   end;
+end;
+
+procedure DoAnalyze;
+var
+  db:TDataConnection;
+begin
+  if (RunContinuous<>0) and (NextAnalyze<UtcNow) then
+   begin
+     OutLn('Analyze...');
+
+      db:=TDataConnection.Create('..\feeder.db');
+      try
+        db.BusyTimeout:=120000;//?
+        db.Execute('analyze');
+      finally
+        db.Free;
+      end;
+
+     OutLn('Analyze:done');
+     NextAnalyze:=NextAnalyze+1.0;//:=Trunc(UtcNow)+1.0;
+   end;
 end;
 
 initialization

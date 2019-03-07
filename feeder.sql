@@ -24,9 +24,8 @@ created datetime not null,
 constraint FK_Post_Feed foreign key (feed_id) references "Feed" (id)
 );
 
-create index IX_Post on "Post" (feed_id,pubdate);
-create index IX_PostGuid on "Post" (guid,feed_id);
-
+create index IX_Post on "Post" (feed_id,pubdate desc,id asc);
+--create index IX_PostGuid on "Post" (guid,feed_id);--//moved to index db kept by eater
 
 create table "User" (
 id integer primary key autoincrement,
@@ -62,7 +61,8 @@ constraint FK_Subscription_User foreign key (user_id) references "User" (id),
 constraint FK_Subscription_Feed foreign key (feed_id) references "Feed" (id)
 );
 
-create index IX_Subscription on Subscription (user_id,category,feed_id);
+create index IX_Subscription on Subscription (user_id,feed_id);
+create index IX_Subscription_Cat on Subscription (user_id,category,feed_id);
 
 create table "UserPost" (
 id integer primary key autoincrement,
