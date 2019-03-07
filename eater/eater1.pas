@@ -42,7 +42,7 @@ end;
 var
   OldPostsCutOff,LastRun,NextAnalyze:TDateTime;
   SaveData,FeedAll,WasLockedDB:boolean;
-  FeedID,RunContinuous,LastClean:integer;
+  FeedID,RunContinuous,LastClean,LastFeedCount,LastPostCount:integer;
   FeedOrderBy:UTF8String;
 
 function ConvDate1(const x:string):TDateTime;
@@ -727,6 +727,7 @@ const
         dbX.RollbackTrans;
         raise;
       end;
+      inc(LastPostCount);
      end;
   end;
 
@@ -1372,6 +1373,8 @@ begin
                 IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
          end;
 
+        inc(LastFeedCount);
+
       except
         on e:Exception do
           feedresult:='['+e.ClassName+']'+e.Message;
@@ -1554,6 +1557,17 @@ begin
               d:=RunNext;
               FeedAll:=true;
              end;
+            'a'://analyze on next
+              if NextAnalyze<UtcNow then
+               begin
+                NextAnalyze:=Trunc(UtcNow)+1.0;
+                Writeln(#13'Analyze after next load: disabled');
+               end
+              else
+               begin
+                NextAnalyze:=Trunc(UtcNow);
+                Writeln(#13'Analyze after next load: enabled');
+               end;
             'q'://quit
              begin
               Writeln(#13'User abort    ');
@@ -1640,6 +1654,7 @@ begin
         dbX.BusyTimeout:=30000;
 
         //previous dbX? check post count
+        OutLn('Checking index DB...');
         if not newdb then
          begin
           qr:=TQueryResult.Create(dbA,'select count(*) from "Post"',[]);
@@ -1656,6 +1671,7 @@ begin
           end;
           if i<>j then
            begin
+            OutLn('Out of date: start new index DB...');
             dbX.Free;
             DeleteFile(PChar('feederXX.db'));
             dbX:=TDataConnection.Create('feederXX.db');
@@ -1666,7 +1682,6 @@ begin
 
         if newdb then
          begin
-          OutLn('Copy for queries...');
           dbX.Execute('create table "Post" (id integer,'
             +'feed_id integer not null,'
             +'guid varchar(500) not null,'
@@ -1703,6 +1718,7 @@ begin
           Writeln(#13+IntToStr(i)+' posts    ');
          end;
 
+        OutLn('List feeds for index...');
         dbX.BeginTrans;
         try
           dbX.Execute('delete from "Feed"',[]);
@@ -1800,7 +1816,9 @@ begin
           end;
          end;
 
-        OutLn('Listing feeds...');
+        OutLn('List feeds for loading...');
+        LastFeedCount:=0;
+        LastPostCount:=0;
         if FeedID=0 then sql:=' where F.id>0' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
         d:=UtcNow-AvgPostsDays;
         qr:=TQueryResult.Create(dbA,'select *'
@@ -1826,6 +1844,8 @@ begin
                     raise;
               end;
            end;
+
+          OutLn(Format('%d posts loaded from %d feeds',[LastPostCount,LastFeedCount]));
 
         finally
           qr.Free;
