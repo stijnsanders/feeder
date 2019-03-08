@@ -129,7 +129,7 @@ begin
    begin
     s:=Utf8ToAnsi(e);
     sqlite3_free(e);
-    raise ESQLiteDataException.Create(s);//TODO: prefix?
+    raise ESQLiteDataException.Create('sqlite_exec:'+s);//TODO: prefix?
    end;
   Result:=sqlite3_changes(FHandle);
 end;

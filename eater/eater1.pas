@@ -40,8 +40,8 @@ end;
 
 
 var
-  OldPostsCutOff,LastRun,NextAnalyze:TDateTime;
-  SaveData,FeedAll,WasLockedDB:boolean;
+  OldPostsCutOff,LastRun:TDateTime;
+  SaveData,FeedAll,WasLockedDB,NextAnalyze:boolean;
   FeedID,RunContinuous,LastClean,LastFeedCount,LastPostCount:integer;
   FeedOrderBy:UTF8String;
 
@@ -1482,7 +1482,7 @@ begin
   FeedAll:=false;
   FeedOrderBy:=' order by F.id';
   WasLockedDB:=false;
-  NextAnalyze:=Trunc(UtcNow)+1.0;
+  NextAnalyze:=false;//?
 
   for i:=1 to ParamCount do
    begin
@@ -1558,16 +1558,18 @@ begin
               FeedAll:=true;
              end;
             'a'://analyze on next
-              if NextAnalyze<UtcNow then
+              if NextAnalyze then
                begin
-                NextAnalyze:=Trunc(UtcNow)+1.0;
+                NextAnalyze:=false;
                 Writeln(#13'Analyze after next load: disabled');
                end
               else
                begin
-                NextAnalyze:=Trunc(UtcNow);
+                NextAnalyze:=true;
                 Writeln(#13'Analyze after next load: enabled');
                end;
+            'v'://version
+              Writeln('sqlite3_libversion:'+sqlite3_libversion);
             'q'://quit
              begin
               Writeln(#13'User abort    ');
@@ -1877,7 +1879,7 @@ procedure DoAnalyze;
 var
   db:TDataConnection;
 begin
-  if (RunContinuous<>0) and (NextAnalyze<UtcNow) then
+  if (RunContinuous<>0) and NextAnalyze then
    begin
      OutLn('Analyze...');
 
@@ -1890,7 +1892,7 @@ begin
       end;
 
      OutLn('Analyze:done');
-     NextAnalyze:=NextAnalyze+1.0;//:=Trunc(UtcNow)+1.0;
+     NextAnalyze:=false;
    end;
 end;
 
