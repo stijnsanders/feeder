@@ -24,7 +24,7 @@ created datetime not null,
 constraint FK_Post_Feed foreign key (feed_id) references "Feed" (id)
 );
 
-create index IX_Post on "Post" (feed_id,pubdate);
+create index IX_Post on "Post" (feed_id);
 --create index IX_PostGuid on "Post" (guid,feed_id);--//moved to index db kept by eater
 
 create table "User" (
@@ -72,7 +72,7 @@ constraint FK_UserPost_User foreign key (user_id) references "User" (id),
 constraint FK_UserPost_Post foreign key (post_id) references "Post" (id)
 );
 
-create unique index IX_UserPost on "UserPost" (user_id,post_id);
+create unique index IX_UserPost on "UserPost" (user_id);--,post_id);
 
 insert into "Feed" (id,name,url,created) values (0,'[system messages]','',
   julianday()-julianday('1900-01-01')-2);
