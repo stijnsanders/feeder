@@ -654,7 +654,7 @@ const
   var
     qr:TQueryResult;
     b:boolean;
-    i:integer;
+    i,l:integer;
   begin
     if itemurl='' then itemurl:=itemid;//assert Copy(itemid,1,4)='http'
 
@@ -701,6 +701,16 @@ const
      begin
       inc(c2);
       if IsSomethingEmpty(title) then title:='['+itemid+']';
+
+      //content starts with <img>? inject a <br />
+      l:=Length(content);
+      if (l>4) and (Copy(content,1,5)='<img ') then
+       begin
+        i:=5;
+        while (i<=l) and (content[i]<>'>') do inc(i);
+        content:=Copy(content,1,i)+'<br />'+Copy(content,i+1,l-i-1);
+       end;
+
       dbA.BeginTrans;
       try
         postid:=dbA.Insert('Post',
