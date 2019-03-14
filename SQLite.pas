@@ -9,6 +9,10 @@ unit SQLite;
 
 //based on sqlite.h 3.24.0 2018-07-30
 
+//debugging: prevent step-into when debugging
+{$D-}
+{$L-}
+
 interface
 
 uses SysUtils;

@@ -155,7 +155,7 @@ else
    end;
 
   if Context['q'].Value='' then l:=0 else l:=Context['q'].AsInteger;
-  if l=0 then l:=100;//default
+  if l=0 then l:=Session.DefaultBatchSize;//default
 
   if loadMore then
    begin
@@ -174,25 +174,10 @@ else
     xx[Length(xx)-1]:=d1;
    end
   else
+   begin
     d:=0;
-
-  if Context['xx'].Value<>'' then
-   begin
-    qr:=TQueryResult.Create(Session.Connection,'explain query plan '+sql+' order by P.pubdate desc, P.id limit '+IntToStr(l),xx);
-    try
-      <<table border="1">
-      <tr><th>id</th><th>parent</th><th>notused</th><th>detail</th></tr>>
-      while qr.Read do
-       begin
-        <<tr><td>>.id<</td><td>>.parent<</td><td>>.notused<</td><td>>.detail<</td></tr>>
-       end;
-      <</table>>
-    finally
-      qr.Free;
-    end;
-   end
-  else
-   begin
+    Context.Flush;
+   end;
 
   qr:=TQueryResult.Create(Session.Connection,
     sql+' order by P.pubdate desc, P.id limit '+IntToStr(l),xx);
@@ -236,8 +221,6 @@ else
   finally
     qr.Free;
   end;
-
-   end;
 
  end;
 

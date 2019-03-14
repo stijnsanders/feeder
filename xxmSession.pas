@@ -14,7 +14,7 @@ type
   public
 
     Name:string;
-    UserID:integer;
+    UserID,DefaultBatchSize:integer;
     TimeBias:TDateTime;
 
     constructor Create(const ID: WideString; Context: IXxmContext);
@@ -171,20 +171,21 @@ var
 begin
   inherited Create;
   FID:=ID;
-  FKey:=base64encode(SHA3_224(UTF8Encode(Format('[feeder]%d:%d:%d:%d:%d[%s]',
+  FKey:=string(base64encode(SHA3_224(UTF8Encode(Format('[feeder]%d:%d:%d:%d:%d[%s]',
     [GetTickCount
     ,GetCurrentThreadID
     ,GetCurrentProcessID
     ,integer(pointer(Self))
     ,integer(pointer(Context))
     ,ID
-    ]))));
+    ])))));
   //TODO: initiate expiry
 
   //default values
   Name:='';
   UserID:=0;
   TimeBias:=0.0;
+  DefaultBatchSize:=100;
 
   s:=Context.Cookie['feederAutoLogon'];
   if s<>'' then
@@ -201,6 +202,7 @@ begin
           //:=qr.GetStr('email');?
           tz:=qr.GetInt('timezone');
           TimeBias:=(tz div 100)/24.0+(tz mod 100)/1440.0;
+          if not qr.IsNull('batchsize') then DefaultBatchSize:=qr.GetInt('batchsize');
           Connection.Execute('update "UserLogon" set last=?,address=?,useragent=? where id=?',
             [UtcNow
             ,Context.ContextString(csRemoteAddress)

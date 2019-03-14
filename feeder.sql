@@ -33,6 +33,7 @@ login varchar(200) not null,
 name varchar(200) not null,
 email varchar(200) not null,
 timezone int null,
+batchsize int null,
 created datetime not null
 );
 

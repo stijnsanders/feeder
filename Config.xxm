@@ -46,6 +46,11 @@ case Context['x'].AsInteger of
       <</select>
       //TODO: full list, DST support
       </dd>
+      <dt>default post load batch size</dt>
+      [[
+      if qr.IsNull('batchsize') then i:=Session.DefaultBatchSize else i:=qr.GetInt('batchsize');
+      ]]
+      <dd><input type="text" name="batchsize" value="[[=i]]" /></dd>
       <p><input type="submit" value=" Apply " /></p>
       </form>>
     finally
@@ -87,12 +92,15 @@ case Context['x'].AsInteger of
     db.BeginTrans;
     try
       tz:=Context['z1'].AsInteger;
+      i:=Context['batchsize'].AsInteger;
       if tz<0 then tz:=tz*100-Context['z2'].AsInteger else tz:=tz*100+Context['z2'].AsInteger;
-      db.Execute('update "User" set timezone=? where id=?',
+      db.Execute('update "User" set timezone=?, batchsize=? where id=?',
         [tz
-        ,Session.UserID  
+        ,i
+        ,Session.UserID
         ]);
       Session.TimeBias:=(tz div 100)/24.0+(tz mod 100)/1440.0;
+      Session.DefaultBatchSize:=i;
       db.CommitTrans;
     except
       db.RollbackTrans;
