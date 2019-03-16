@@ -4,7 +4,7 @@ xx:array of OleVariant;
 s,sql,cat:string;
 d,d0,f,l,id,id0,lx:integer;
 d1:TDateTime;
-loadMore:boolean;
+loadMore,sqlWhere:boolean;
 ]][[
 if Session.UserID=0 then
  begin
@@ -78,9 +78,10 @@ else
   sql:=
     'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
     +' from "Post" P'
-    +' inner join "UserPost" X on X.post_id=P.id and X.user_id=?'
     +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'
+    +' inner join "UserPost" X on X.post_id=P.id and X.user_id=?'
     ;
+  sqlWhere:=false;
 
   if loadMore then lx:=3 else lx:=0;
 
@@ -122,6 +123,7 @@ else
         else
          begin
           sql:=sql+' where P.pubdate>? and P.pubdate<?';
+          sqlWhere:=true;
           SetLength(xx,4+lx);
           xx[0]:=Session.UserID;
           xx[1]:=Session.UserID;
@@ -131,7 +133,13 @@ else
          end
       else
        begin
-        sql:=sql+' where P.title||'' ''||P.content like ?';
+        sql:=
+          'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
+          +' from "Post" P'
+          +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'
+          +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=?'
+          +' where P.title||'' ''||P.content like ?';
+        sqlWhere:=true;
         SetLength(xx,3+lx);
         xx[0]:=Session.UserID;
         xx[1]:=Session.UserID;
@@ -139,7 +147,13 @@ else
        end
     else
      begin
-      sql:=sql+' where P.feed_id=?';
+      sql:=
+        'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
+        +' from "Post" P'
+        +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'
+        +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=?'
+        +' where P.feed_id=?';
+      sqlWhere:=true;
       SetLength(xx,3+lx);
       xx[0]:=Session.UserID;
       xx[1]:=Session.UserID;
@@ -148,6 +162,7 @@ else
   else 
    begin
     sql:=sql+' where S.category=?';
+    sqlWhere:=true;
     SetLength(xx,3+lx);
     xx[0]:=Session.UserID;
     xx[1]:=Session.UserID;
@@ -167,7 +182,7 @@ else
       qr.Free;
     end;
     d:=Trunc(d1+Session.TimeBias);
-    if Length(xx)=5 then sql:=sql+' where' else sql:=' and';
+    if sqlWhere then sql:=sql+' and' else sql:=sql+' where';
     sql:=sql+' ((P.pubdate=? and P.id>?) or (P.pubdate<?))';
     xx[Length(xx)-3]:=d1;
     xx[Length(xx)-2]:=id0;
@@ -175,7 +190,7 @@ else
    end
   else
    begin
-    d:=0;
+    d:=Trunc(UtcNow+Session.TimeBias);
     Context.Flush;
    end;
 

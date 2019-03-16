@@ -1542,7 +1542,7 @@ begin
     while d<RunNext do
      begin
       i:=Round((RunNext-d)*86400.0);
-      Write(Format(#13'Waiting %.2d:%.2d',[i div 60,i mod 60]));
+      Write(Format(#13'Waiting %.2d:%.2d  ',[i div 60,i mod 60]));
       //TODO: check std-in?
       //Result:=Eof(Input);
       Sleep(1000);//?
