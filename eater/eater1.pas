@@ -1352,7 +1352,8 @@ begin
                 title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
 
                 y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
-                if y<>nil then title:=title+' '#$2014' '+y.text;
+                if (y<>nil) and (y.text<>title) then
+                  title:=title+' '#$2014' '+y.text;
 
                 y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
                 if y=nil then content:='' else content:=y.text;
