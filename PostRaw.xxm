@@ -23,7 +23,7 @@ try
   <div>>=qr['content']<</div>
   <div style="height:75vh;margin-top:4pt;border-top:4px solid gold;color:#9999AA;font-size:0.8em;">
   [[=qr['url']]]
-  <a class="raw" target="postview" href="Post.xxm?[[=Context.ContextString(csQueryString)]]">#</a>
+  <a class="raw" target="postview" href="Post.xxm?[[=Context.ContextString(csQueryString)]]">&emsp;&#x2139;&emsp;</a>
   </div>>
 finally
   qr.Free;

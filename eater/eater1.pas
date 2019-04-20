@@ -430,7 +430,7 @@ end;
 
 
 var
-  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhLFs:RegExp;
+  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhLFs,rhStartImg:RegExp;
 
 procedure SanitizeInit;
 begin
@@ -465,6 +465,10 @@ begin
   rhLFs:=CoRegExp.Create;
   rhLFs.Pattern:='(\x0D?\x0A)+';
   rhLFs.Global:=true;
+
+  rhStartImg:=CoRegExp.Create;
+  rhStartImg.Pattern:='^\s*?(<img[^>]*?>)\s*(?!<br)';
+  rhStartImg.IgnoreCase:=true;
 end;
 
 function SanitizeTitle(const title:WideString):WideString;
@@ -654,7 +658,7 @@ const
   var
     qr:TQueryResult;
     b:boolean;
-    i,l:integer;
+    i:integer;
   begin
     if itemurl='' then itemurl:=itemid;//assert Copy(itemid,1,4)='http'
 
@@ -703,13 +707,8 @@ const
       if IsSomethingEmpty(title) then title:='['+itemid+']';
 
       //content starts with <img>? inject a <br />
-      l:=Length(content);
-      if (l>4) and (Copy(content,1,5)='<img ') then
-       begin
-        i:=5;
-        while (i<=l) and (content[i]<>'>') do inc(i);
-        content:=Copy(content,1,i)+'<br />'+Copy(content,i+1,l-i-1);
-       end;
+      if rhStartImg.Test(content) then
+        content:=rhStartImg.Replace(content,'$1<br />');
 
       dbA.BeginTrans;
       try
