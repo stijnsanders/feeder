@@ -5,6 +5,9 @@ s,sql,cat:string;
 d,d0,f,l,id,id0,lx:integer;
 d1:TDateTime;
 loadMore,sqlWhere:boolean;
+const
+descasc:array[boolean] of string=('desc','asc');
+lessthan:array[boolean] of string=('<','>');
 ]][[
 if Session.UserID=0 then
  begin
@@ -183,7 +186,7 @@ else
     end;
     d:=Trunc(d1+Session.TimeBias);
     if sqlWhere then sql:=sql+' and' else sql:=sql+' where';
-    sql:=sql+' ((P.pubdate=? and P.id>?) or (P.pubdate<?))';
+    sql:=sql+' ((P.pubdate=? and P.id>?) or (P.pubdate'+lessthan[Context['a'].AsInteger<>0]+'?))';
     xx[Length(xx)-3]:=d1;
     xx[Length(xx)-2]:=id0;
     xx[Length(xx)-1]:=d1;
@@ -195,7 +198,7 @@ else
    end;
 
   qr:=TQueryResult.Create(Session.Connection,
-    sql+' order by P.pubdate desc, P.id limit '+IntToStr(l),xx);
+    sql+' order by P.pubdate '+descasc[Context['a'].AsInteger<>0]+', P.id limit '+IntToStr(l),xx);
   try
     if qr.EOF then
      begin

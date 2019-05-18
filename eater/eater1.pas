@@ -492,6 +492,7 @@ begin
       ,'<$1>$2</$1>')//rh6
       ,'&$1;')//rh7
   ;
+  if Length(Result)<5 then Result:=Result+'&nbsp;&nbsp;&nbsp;';  
 end;
 
 function EncodeNonHTMLContent(const title:WideString):WideString;
