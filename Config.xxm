@@ -8,7 +8,7 @@ s,t:string;
 Context.Include('dHead.xxmi');
 
 <<div style="position:fixed;top:0;left:0em;background-color:gold;padding:4pt;user-select:none;">
-<a href="Feeds.xxm"><img src="img_l.png" width="16" height="16" border="0" style="margin-bottom:-2pt;" alt="Back" /></a>
+<a href="Feeds.xxm"><img src="img_l.png" width="16" height="16" border="0" alt="Back" /></a>
 &nbsp;
 <b>Settings</b>
 &nbsp;
@@ -66,7 +66,7 @@ case Context['x'].AsInteger of
         <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',qr.GetDate('last')+Session.TimeBias)<</div>
         [[=qr['address']]]
         "[[=qr['useragent']]]"
-        [[if s=qr.GetStr('key') then begin <<img src="img_l.png" width="16" height="16" alt="current session" style="margin-bottom:-2pt;" />> end;]]
+        [[if s=qr.GetStr('key') then begin <<img src="img_l.png" width="16" height="16" alt="current session" />> end;]]
         <a href="[[?'x',2,'id',qr['id']]]" style="color:#0000CC;">[revoke]</a>
         </div>>
        end;

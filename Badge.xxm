@@ -12,7 +12,7 @@ id,f,p:integer;
 <style type="text/css">
 BODY{font-family:"PT Sans",Calibri,sans-serif;padding:2pt;margin:0;background-color:gold;white-space:nowrap;overflow:hidden;user-select:none;text-align:center;}
 A{text-decoration:none;color:#000020;}
-IMG{border:0;margin-bottom:-2pt;}
+IMG{border:0;}
 </style>
 <base target="_blank">
 </head>

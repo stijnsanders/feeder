@@ -11,12 +11,12 @@ if id=0 then
  begin
 
   <<div style="position:fixed;top:0;left:0em;background-color:gold;padding:4pt;user-select:none;">
-  <a href="."><img src="img_l.png" width="16" height="16" border="0" style="margin-bottom:-2pt;" alt="Back" /></a>
+  <a href="."><img src="img_l.png" width="16" height="16" border="0" alt="Back" /></a>
   &nbsp;
   <b>Feeds</b>:
   &nbsp;<a href="New.xxm">Add</a>
   &nbsp;<a href="OPML.xxm">OPML</a>
-  &nbsp;<a href="Config.xxm"><img src="img_c.png" width="16" height="16" border="0" style="margin-bottom:-2pt;" alt="Settings..." /> Settings</a>
+  &nbsp;<a href="Config.xxm"><img src="img_c.png" width="16" height="16" border="0" alt="Settings..." /> Settings</a>
   &nbsp;
   |
   &nbsp;<a href="Logoff.xxm">Logoff</a>
