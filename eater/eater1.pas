@@ -467,7 +467,7 @@ begin
   rhLFs.Global:=true;
 
   rhStartImg:=CoRegExp.Create;
-  rhStartImg.Pattern:='^\s*?(<img[^>]*?>)\s*(?!<br)';
+  rhStartImg.Pattern:='^\s*?(<div[^>]*?>\s*?)?(<img[^>]*?>)\s*(?!<br)';
   rhStartImg.IgnoreCase:=true;
 end;
 
@@ -709,7 +709,7 @@ const
 
       //content starts with <img>? inject a <br />
       if rhStartImg.Test(content) then
-        content:=rhStartImg.Replace(content,'$1<br />');
+        content:=rhStartImg.Replace(content,'$1$2<br />');
 
       dbA.BeginTrans;
       try
@@ -1002,16 +1002,15 @@ begin
           if Pos('tumblr.com',feedurl)<>0 then
            begin
             r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x'+
-              '64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safar'+
-              'i/537.36');
-            r.setRequestHeader('Cookie','_ga=GA1.2.23714421.1433010142; rxx=2kenj37'+
-              'frug.zcwv3sm&v=1; __utma=189990958.23714421.1433010142.1515355375.15'+
-              '15513281.39; tmgioct=5b490b2e517e660612702270; pfg=324066a0306b92f0b'+
-              '5346487b1309edb56a909231a6bc33a78f47993e4b695ef%23%7B%22eu_resident%'+
-              '22%3A1%2C%22gdpr_is_acceptable_age%22%3A1%2C%22gdpr_consent_core%22%'+
-              '3A1%2C%22gdpr_consent_first_party_ads%22%3A1%2C%22gdpr_consent_third'+
-              '_party_ads%22%3A1%2C%22gdpr_consent_search_history%22%3A1%2C%22exp%2'+
-              '2%3A1563049750%2C%22vc%22%3A%22%22%7D%238216174849');
+              '64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36');
+            r.setRequestHeader('Cookie','_ga=GA1.2.23714421.1433010142; rxx=1tcxhdz'+
+              'ww7.1lckhv27&v=1; tmgioct=5d2ce7032975560097163000; pfg=1fd4f3446c5c'+
+              'c43c229f7759a039c1f03c54916c6dbe1ad54d36c333d0cf0ed4%23%7B%22eu_resi'+
+              'dent%22%3A1%2C%22gdpr_is_acceptable_age%22%3A1%2C%22gdpr_consent_cor'+
+              'e%22%3A1%2C%22gdpr_consent_first_party_ads%22%3A1%2C%22gdpr_consent_'+
+              'third_party_ads%22%3A1%2C%22gdpr_consent_search_history%22%3A1%2C%22'+
+              'exp%22%3A1594760108%2C%22vc%22%3A%22granted_vendor_oids%3D%26oath_ve'+
+              'ndor_list_version%3D18%26vendor_list_version%3D154%22%7D%233273090316');
            end
           else
             r.setRequestHeader('User-Agent','FeedEater/1.0');
@@ -1621,8 +1620,8 @@ procedure DoUpdateFeeds;
 var
   dbA,dbX:TDataConnection;
   qr:TQueryResult;
-  i,j,r:integer;
-  sql:UTF8String;
+  i,j,r,l:integer;
+  ids:array of integer;
   d:TDateTime;
   sl:TStringList;
   newdb:boolean;
@@ -1832,37 +1831,66 @@ begin
         OutLn('List feeds for loading...');
         LastFeedCount:=0;
         LastPostCount:=0;
-        if FeedID=0 then sql:=' where F.id>0' else sql:=UTF8Encode(' where F.id='+IntToStr(FeedID));
+        if FeedID<>0 then
+         begin
+          l:=1;
+          SetLength(ids,1);
+          ids[0]:=FeedID;
+         end
+        else
+         begin
+          qr:=TQueryResult.Create(dbA,'select F.id from "Feed" F where F.id>0'+FeedOrderBy,[]);
+          try
+            l:=0;
+            i:=0;
+            while qr.Read do
+             begin
+              if i=l then
+               begin
+                inc(l,$400);
+                SetLength(ids,l);
+               end;
+              ids[i]:=qr.GetInt('id');
+              inc(i);
+             end;
+            l:=i;
+          finally
+            qr.Free;
+          end;
+         end;
+
         d:=UtcNow-AvgPostsDays;
-        qr:=TQueryResult.Create(dbA,'select *'
-           +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
-           +' from "Feed" F'+sql+FeedOrderBy,[]);
-        try
-          while qr.Read do
-           begin
-            r:=5;
-            while r<>0 do
+        i:=0;
+        while i<l do
+         begin
+          r:=5;
+          while r<>0 do
+            try
+              qr:=TQueryResult.Create(dbA,'select *'
+                 +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
+                 +' from "Feed" F where F.id=?',[ids[i]]);
               try
                 DoFeed(dbA,dbX,qr,d,sl);
-                r:=0;
-              except
-                on e:ESQLiteException do
-                  if e.ErrorCode=SQLITE_BUSY then
-                   begin
-                    ErrLn('['+e.ClassName+'#'+IntToStr(r)+']'+e.Message);
-                    dec(r);
-                    if r=0 then raise;
-                   end
-                  else
-                    raise;
+              finally
+                qr.Free;
               end;
-           end;
+              r:=0;
+            except
+              on e:ESQLiteException do
+                if e.ErrorCode=SQLITE_BUSY then
+                 begin
+                  ErrLn('['+e.ClassName+'#'+IntToStr(r)+']'+e.Message);
+                  Sleep(2000);
+                  dec(r);
+                  if r=0 then raise;
+                 end
+                else
+                  raise;
+            end;
+          inc(i);
+         end;
 
-          OutLn(Format('%d posts loaded from %d feeds',[LastPostCount,LastFeedCount]));
-
-        finally
-          qr.Free;
-        end;
+        OutLn(Format('%d posts loaded from %d feeds',[LastPostCount,LastFeedCount]));
 
       finally
         dbX.Free;
