@@ -467,7 +467,7 @@ begin
   rhLFs.Global:=true;
 
   rhStartImg:=CoRegExp.Create;
-  rhStartImg.Pattern:='^\s*?(<div[^>]*?>\s*?)?(<img[^>]*?>)\s*(?!<br)';
+  rhStartImg.Pattern:='^\s*?(<(div|p)[^>]*?>\s*?)?(<img[^>]*?>)\s*(?!<br)';
   rhStartImg.IgnoreCase:=true;
 end;
 
@@ -709,7 +709,26 @@ const
 
       //content starts with <img>? inject a <br />
       if rhStartImg.Test(content) then
-        content:=rhStartImg.Replace(content,'$1$2<br />');
+        content:=rhStartImg.Replace(content,'$1$3<br />');
+
+      //relative url
+      if (itemurl<>'') and (Copy(itemurl,1,4)<>'http') then
+        if itemurl[1]='/' then
+         begin
+          i:=5;
+          while (i<=Length(feedurl)) and (feedurl[i]<>':') do inc(i);
+          inc(i);
+          if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+          if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+          while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
+          itemurl:=Copy(feedurl,1,i-1)+itemurl;
+         end
+        else
+         begin
+          i:=Length(feedurl);
+          while (i<>0) and (feedurl[i]<>'/') do dec(i);
+          itemurl:=Copy(feedurl,1,i)+itemurl;
+         end;
 
       dbA.BeginTrans;
       try
