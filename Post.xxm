@@ -75,10 +75,11 @@ finally
   qr.Free;
 end;
 Context.Include('dFoot.xxmi');
+
 db.BeginTrans;
 try
   if db.Execute('delete from "UserPost" where user_id=? and post_id=?',[Session.UserID,id])=1 then
-    db.Execute('update "Subscription" set postsopened=ifnull(postsopened,0)+1 where id=?',[sid]);
+    db.Execute('update "Subscription" set postsopened=coalesce(postsopened,0)+1 where id=?',[sid]);
   db.CommitTrans;
 except
   db.RollbackTrans;

@@ -76,11 +76,6 @@
 			"path": "Badge.xxm",
 			"unitName": "badge_xxm1",
 			"unitPath": ""
-		},
-		"test_xxm": {
-			"path": "Test.xxm",
-			"unitName": "test_xxm1",
-			"unitPath": ""
 		}
 	},
 	"units": {

@@ -180,7 +180,7 @@ else
     id0:=Context['x'].AsInteger;
     qr:=TQueryResult.Create(Session.Connection,'select pubdate from "Post" where id=?',[id0]);
     try
-      d1:=qr.GetDate(0);
+      d1:=double(qr[0]);
     finally
       qr.Free;
     end;

@@ -63,7 +63,7 @@ case Context['x'].AsInteger of
       while qr.Read do
        begin
         <<div class="post">
-        <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',qr.GetDate('last')+Session.TimeBias)<</div>
+        <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',double(qr['last'])+Session.TimeBias)<</div>
         [[=qr['address']]]
         "[[=qr['useragent']]]"
         [[if s=qr.GetStr('key') then begin <<img src="img_l.png" width="16" height="16" alt="current session" />> end;]]

@@ -1640,7 +1640,7 @@ end;
 
 procedure DoUpdateFeeds;
 var
-  dbA:TDataConnection;
+  dbA,dbB:TDataConnection;
   qr:TQueryResult;
   i,j,l:integer;
   ids:array of integer;
@@ -1655,6 +1655,7 @@ begin
     try
       sl.LoadFromFile('..\..\feeder.ini');
       dbA:=TDataConnection.Create(sl.Text);
+      dbB:=TDataConnection.Create(sl.Text);
     finally
       sl.Free;
     end;
@@ -1691,7 +1692,7 @@ begin
 
         Out0('Clean-up old...');
         OldPostsCutOff:=UtcNow-OldPostsDays;
-        qr:=TQueryResult.Create(dbA,'select id from "Post" where pubdate<?',[double(OldPostsCutOff)]);
+        qr:=TQueryResult.Create(dbB,'select id from "Post" where pubdate<?',[double(OldPostsCutOff)]);
         try
 
           j:=0;
@@ -1716,7 +1717,7 @@ begin
         end;
 
         Out0('Clean-up unused...');
-        qr:=TQueryResult.Create(dbA,'select id from "Feed" where id>0'+
+        qr:=TQueryResult.Create(dbB,'select id from "Feed" where id>0'+
           ' and not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
         try
           j:=0;
@@ -1778,7 +1779,7 @@ begin
       i:=0;
       while i<l do
        begin
-        qr:=TQueryResult.Create(dbA,'select *'
+        qr:=TQueryResult.Create(dbB,'select *'
            +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
            +' from "Feed" F where F.id=?',[ids[i]]);
         try
@@ -1796,6 +1797,7 @@ begin
 
     finally
       dbA.Free;
+      dbB.Free;
       sl.Free;
     end;
   except
