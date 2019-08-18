@@ -40,7 +40,7 @@ begin
        begin
         //nope, add it
         if t='' then t:=NameFromFeedURL(s);
-        id:=db.Insert('Feed',['name',t,'url',s,'created',UtcNow],'id');
+        id:=db.Insert('Feed',['name',t,'url',s,'created',double(UtcNow)],'id');
         id1:=0;
        end
       else
@@ -72,7 +72,7 @@ begin
           ,'color',feedcolor
           ,'category',Group
           ,'readwidth',rw
-          ,'created',UtcNow
+          ,'created',double(UtcNow)
           ],'id');
        end
       else

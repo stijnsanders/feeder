@@ -84,7 +84,7 @@ var
   db:TDataConnection;
   qr:TQueryResult;
   s:TXxmSession;
-  fn:string;
+  fn,n1,n2:string;
   f:TFileStream;
   fd:AnsiString;
   fl:integer;
@@ -101,6 +101,7 @@ begin
     try
       if qr.EOF then
        begin
+        FreeAndNil(qr);
         s.UserID:=db.Insert('User',
           ['login',Login
           ,'name',Name
@@ -130,8 +131,8 @@ begin
               ,'title','Welcome! (click here)'
               ,'content',fd
               ,'url',PublicURL+'welcome.html'
-              ,'pubdate',UtcNow
-              ,'created',UtcNow
+              ,'pubdate',double(UtcNow)
+              ,'created',double(UtcNow)
               ],'id')
             ],'id');
          end;
@@ -139,18 +140,21 @@ begin
       else
        begin
         s.UserID:=qr.GetInt('id');
-        if qr.GetStr('name')<>Name then
+        tz:=qr.GetInt('timezone');
+        n1:=qr.GetStr('name');
+        n2:=qr.GetStr('email');
+        FreeAndNil(qr);
+        if n1<>Name then
          begin
           db.Execute('update "User" set name=? where id=?',[Name,s.UserID]);
           s.Name:=Name;
          end;
-        if qr.GetStr('email')<>Email then
+        if n2<>Email then
          begin
           db.Execute('update "User" set email=? where id=?',[Email,s.UserID]);
           //?:=Email;
          end;
         //TODO: central LoadUser(qr)
-        tz:=qr.GetInt('timezone');
         s.TimeBias:=(tz div 100)/24.0+(tz mod 100)/1440.0;
        end;
     finally
@@ -167,7 +171,7 @@ constructor TXxmSession.Create(const ID: WideString; Context: IXxmContext);
 var
   qr:TQueryResult;
   s:string;
-  tz:integer;
+  tz,LogonID:integer;
 begin
   inherited Create;
   FID:=ID;
@@ -186,6 +190,7 @@ begin
   UserID:=0;
   TimeBias:=0.0;
   DefaultBatchSize:=100;
+  LogonID:=0;
 
   s:=Context.Cookie['feederAutoLogon'];
   if s<>'' then
@@ -203,15 +208,19 @@ begin
           tz:=qr.GetInt('timezone');
           TimeBias:=(tz div 100)/24.0+(tz mod 100)/1440.0;
           if not qr.IsNull('batchsize') then DefaultBatchSize:=qr.GetInt('batchsize');
-          Connection.Execute('update "UserLogon" set last=?,address=?,useragent=? where id=?',
-            [UtcNow
-            ,Context.ContextString(csRemoteAddress)
-            ,Context.ContextString(csUserAgent)
-            ,qr.GetInt('LogonID')]);
+          LogonID:=qr.GetInt('LogonID');
          end;
       finally
         qr.Free;
       end;
+      if UserID<>0 then
+       begin
+        Connection.Execute('update "UserLogon" set last=?,address=?,useragent=? where id=?',
+          [double(UtcNow)
+          ,Context.ContextString(csRemoteAddress)
+          ,Context.ContextString(csUserAgent)
+          ,LogonID]);
+       end;
       Connection.CommitTrans;
     except
       Connection.RollbackTrans;

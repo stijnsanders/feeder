@@ -24,8 +24,8 @@ if verb<>'POST' then
       db.Insert('UserLogon',
         ['user_id',Session.UserID
         ,'key',s
-        ,'created',UtcNow
-        ,'last',UtcNow
+        ,'created',double(UtcNow)
+        ,'last',double(UtcNow)
         ,'address',Context.ContextString(csRemoteAddress)
         ,'useragent',Context.ContextString(csUserAgent)
         ]);

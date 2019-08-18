@@ -14,7 +14,7 @@ qr:=TQueryResult.Create(db,
   ' where P.id=?',[Session.UserID,id]);
 try
   //TODO: sanitize HTML (either here or in eater)
-  d1:=qr.GetDate('pubdate')+Session.TimeBias;
+  d1:=double(qr['pubdate'])+Session.TimeBias;
   <<div style="padding-bottom:4pt;">
   <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('mm-dd hh:nn',d1)<</div>
   [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]

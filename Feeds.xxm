@@ -46,7 +46,7 @@ if id=0 then
         c:=c1;
        end;
       <<div class="post">
-      <div class="date">>=FormatDateTime('yyyy-mm-dd',qr.GetDate('created')+Session.TimeBias)<</div>
+      <div class="date">>=FormatDateTime('yyyy-mm-dd',double(qr['created'])+Session.TimeBias)<</div>
       [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
       <a href="?id=[[.id]]">"[[.name]]"</a>
       <a href=".?f=[[.feed_id]]" id="pc[[.id]]" style="color:#0000CC;">...</a>
@@ -111,7 +111,7 @@ else
     <dt>URL</dt>
     <dd>>.url]]&nbsp;<a href="[[.url]]" style="text-decoration:none;"><img src="img_r.png" width="16" height="16" alt="feed link" /></a></dd>
     <dt>since</dt>
-    <dd>>=FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created')+Session.TimeBias)<</dd>
+    <dd>>=FormatDateTime('yyyy-mm-dd hh:nn',double(qr['created'])+Session.TimeBias)<</dd>
     <dt>category</dt>
     <dd>
       <select name="category">>

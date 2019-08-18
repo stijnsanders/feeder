@@ -103,7 +103,7 @@ case Context['x'].AsInteger of
         ,'category',cat
         ,'color',c
         ,'readwidth',rw
-        ,'created',UtcNow
+        ,'created',double(UtcNow)
         ],'id');
       <<p>Subscription added</p>>
      end

@@ -15,10 +15,10 @@ regime int null
 create table "Post" (
 id serial primary key,
 feed_id integer not null,
-guid varchar(500) not null,
+guid varchar(800) not null,
 title varchar(1000) not null,
 content text not null,
-url varchar(500) not null,
+url varchar(800) not null,
 pubdate float not null,
 created float not null,
 constraint FK_Post_Feed foreign key (feed_id) references "Feed" (id)

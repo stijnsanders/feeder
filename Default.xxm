@@ -1,6 +1,6 @@
 [[@DataLank,xxmSession,fCommon,Variants]][[!var
 qr:TQueryResult;
-xx:array of OleVariant;
+xx:array of Variant;
 s,sql,cat:string;
 d,d0,f,l,id,id0,lx:integer;
 d1:TDateTime;
@@ -131,8 +131,8 @@ else
           xx[0]:=Session.UserID;
           xx[1]:=Session.UserID;
           d1:=UtcNow-Context['d'].AsInteger;
-          xx[2]:=VarFromDateTime(d1-4.0/24.0);
-          xx[3]:=VarFromDateTime(d1+4.0/24.0);
+          xx[2]:=double(VarFromDateTime(d1-4.0/24.0));
+          xx[3]:=double(VarFromDateTime(d1+4.0/24.0));
          end
       else
        begin
@@ -187,9 +187,9 @@ else
     d:=Trunc(d1+Session.TimeBias);
     if sqlWhere then sql:=sql+' and' else sql:=sql+' where';
     sql:=sql+' ((P.pubdate=? and P.id>?) or (P.pubdate'+lessthan[Context['a'].AsInteger<>0]+'?))';
-    xx[Length(xx)-3]:=d1;
+    xx[Length(xx)-3]:=double(d1);
     xx[Length(xx)-2]:=id0;
-    xx[Length(xx)-1]:=d1;
+    xx[Length(xx)-1]:=double(d1);
    end
   else
    begin
@@ -213,7 +213,7 @@ else
       while qr.Read do
        begin
         id:=qr.GetInt('id');
-        d1:=qr.GetDate('pubdate')+Session.TimeBias;
+        d1:=double(qr['pubdate'])+Session.TimeBias;
         d0:=Trunc(d1);
         if d0<>d then
          begin
