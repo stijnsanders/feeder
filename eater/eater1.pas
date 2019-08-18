@@ -9,7 +9,7 @@ procedure ErrLn(const x:string);
 
 procedure DoProcessParams;
 procedure DoUpdateFeeds;
-procedure DoAnalyze;
+//procedure DoAnalyze;
 function DoCheckRunDone:boolean;
 
 //TODO: from ini
@@ -41,9 +41,9 @@ end;
 
 var
   OldPostsCutOff,LastRun:TDateTime;
-  SaveData,FeedAll,WasLockedDB,NextAnalyze:boolean;
+  SaveData,FeedAll,NextAnalyze:boolean;
   FeedID,RunContinuous,LastClean,LastFeedCount,LastPostCount:integer;
-  FeedOrderBy:UTF8String;
+  FeedOrderBy:WideString;//UTF8String;
 
 function ConvDate1(const x:string):TDateTime;
 var
@@ -635,7 +635,15 @@ begin
    end;
 end;
 
-procedure DoFeed(dbA,dbX:TDataConnection;qr:TQueryResult;oldPostDate:TDateTime;
+function qrDate(qr:TQueryResult;const Idx:Variant):TDateTime;
+var
+  d:double;
+begin
+  d:=qr[Idx];
+  Result:=d;
+end;
+
+procedure DoFeed(dbA:TDataConnection;qr0:TQueryResult;oldPostDate:TDateTime;
   sl:TStringList);
 var
   r:ServerXMLHTTP60;
@@ -645,8 +653,8 @@ var
   xl,xl1:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
   feedid:integer;
-  feedurl,feedurlskip,feedresult,itemid,itemurl:string;
-  feedname,title,content:WideString;
+  feedurl,feedurl0,feedurlskip,feedresult,itemid,itemurl:string;
+  feedname,feedname0,title,content:WideString;
   feedload,pubDate:TDateTime;
   feedregime:integer;
   feedglobal,b:boolean;
@@ -678,13 +686,32 @@ const
       if i<>0 then itemid:=Copy(itemid,1,i-1);
      end;
 
+    //relative url
+    if (itemurl<>'') and (Copy(itemurl,1,4)<>'http') then
+      if itemurl[1]='/' then
+       begin
+        i:=5;
+        while (i<=Length(feedurl)) and (feedurl[i]<>':') do inc(i);
+        inc(i);
+        if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+        if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+        while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
+        itemurl:=Copy(feedurl,1,i-1)+itemurl;
+       end
+      else
+       begin
+        i:=Length(feedurl);
+        while (i<>0) and (feedurl[i]<>'/') do dec(i);
+        itemurl:=Copy(feedurl,1,i)+itemurl;
+       end;
+
     //TODO: switch: allow future posts?
     if pubDate>feedload+2.0/24.0 then pubDate:=feedload;
 
     if pubDate<OldPostsCutOff then b:=false else
      begin
       if feedglobal then
-        qr:=TQueryResult.Create(dbX,
+        qr:=TQueryResult.Create(dbA,
           'select P.id from "Post" P'
           +' inner join "Feed" F on F.id=P.feed_id'
           //+' and coalesce(F.flags,0)&1=1'
@@ -692,7 +719,7 @@ const
           +' where P.guid=?'
           ,[itemid])
       else
-        qr:=TQueryResult.Create(dbX,
+        qr:=TQueryResult.Create(dbA,
           'select id from "Post" where feed_id=? and guid=?'
           ,[feedid,itemid]);
       try
@@ -711,25 +738,6 @@ const
       if rhStartImg.Test(content) then
         content:=rhStartImg.Replace(content,'$1$3<br />');
 
-      //relative url
-      if (itemurl<>'') and (Copy(itemurl,1,4)<>'http') then
-        if itemurl[1]='/' then
-         begin
-          i:=5;
-          while (i<=Length(feedurl)) and (feedurl[i]<>':') do inc(i);
-          inc(i);
-          if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
-          if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
-          while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
-          itemurl:=Copy(feedurl,1,i-1)+itemurl;
-         end
-        else
-         begin
-          i:=Length(feedurl);
-          while (i<>0) and (feedurl[i]<>'/') do dec(i);
-          itemurl:=Copy(feedurl,1,i)+itemurl;
-         end;
-
       dbA.BeginTrans;
       try
         postid:=dbA.Insert('Post',
@@ -738,22 +746,14 @@ const
           ,'title',SanitizeTitle(title)
           ,'content',content
           ,'url',itemurl
-          ,'pubdate',pubDate
-          ,'created',UtcNow
+          ,'pubdate',double(pubDate)
+          ,'created',double(UtcNow)
           ],'id');
         dbA.Execute('insert into "UserPost" (user_id,post_id)'+
           ' select S.user_id,? from "Subscription" S where S.feed_id=?',[postid,feedid]);
         dbA.CommitTrans;
       except
         dbA.RollbackTrans;
-        raise;
-      end;
-      dbX.BeginTrans;
-      try
-        dbX.Insert('Post',['id',postid,'feed_id',feedid,'guid',itemid,'pubdate',pubDate]);
-        dbX.CommitTrans;
-      except
-        dbX.RollbackTrans;
         raise;
       end;
       inc(LastPostCount);
@@ -859,23 +859,30 @@ var
   d:TDateTime;
   i,j:integer;
   loadlast,postlast,postavg,margin:double;
-  loadext:boolean;
+  loadext,newfeed:boolean;
   rw,rt,s,sql1,sql2:WideString;
   rf:TFileStream;
   qr1:TQueryResult;
+  feedresult0:string;
 begin
-  feedid:=qr.GetInt('id');
-  feedurl:=qr.GetStr('url');
-  feedurlskip:=qr.GetStr('urlskip');
+  feedid:=qr0.GetInt('id');
+  feedurl:=qr0.GetStr('url');
+  feedurlskip:=qr0.GetStr('urlskip');
   feedload:=UtcNow;
-  feedname:=qr.GetStr('name');
-  feedregime:=qr.GetInt('regime');
+  feedname:=qr0.GetStr('name');
+  feedregime:=qr0.GetInt('regime');
   feedresult:='';
+  newfeed:=qr0.IsNull('itemcount');
+  feedurl0:=feedurl;
+  feedname0:=feedname;
+  feedresult0:=qr0.GetStr('result');
+  c1:=qr0.GetInt('itemcount');
+  c2:=qr0.GetInt('loadcount');
 
   Out0(IntToStr(feedid)+':'+feedurl);
 
   //flags
-  i:=qr.GetInt('flags');
+  i:=qr0.GetInt('flags');
   //feedglobal:=(i and 1)<>0;
   feedglobal:=i=1;
   //TODO: more?
@@ -886,12 +893,17 @@ begin
   if feedglobal then
     sl.Add('<div class="flag" style="background-color:red;">g</div>&nbsp;');
   sl.Add('<a href="'+HTMLEncode(feedurl)+'" title="'+HTMLEncode(feedname)+'">'+HTMLEncode(feedname)+'</a></td>');
-  sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',qr.GetDate('created'))+'</td>');
-  sl.Add('<td style="text-align:right;">'+VarToStr(qr['scount'])+'</td>');
+  sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',qrDate(qr0,'created'))+'</td>');
+  sl.Add('<td style="text-align:right;">'+VarToStr(qr0['scount'])+'</td>');
+
+  if qr0.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr0['loadlast'];
+
+  qr0.Free;
+
 
   //check feed timing and regime
-  qr1:=TQueryResult.Create(dbX,
-    'select id from "Post" where feed_id=? order by 1 desc limit 1000,1',[feedid]);
+  qr1:=TQueryResult.Create(dbA,
+    'select id from "Post" where feed_id=? order by 1 desc limit 1 offset 1000',[feedid]);
   try
     if qr1.EOF then
      begin
@@ -906,7 +918,7 @@ begin
   finally
     qr1.Free;
   end;
-  qr1:=TQueryResult.Create(dbX,UTF8Encode(
+  qr1:=TQueryResult.Create(dbA,(//UTF8Encode(
      'select max(X.pubdate) as postlast, avg(X.pd) as postavg'
     +' from('
     +'  select'
@@ -916,14 +928,13 @@ begin
     +'  where P1.feed_id=?'+sql1+' and P1.pubdate>?'
     +'  group by P2.pubdate'
     +' ) X')
-  ,[feedid,oldPostDate]);
+  ,[feedid,double(oldPostDate)]);
   try
     if qr1.EOF or qr1.IsNull('postlast') then postlast:=0.0 else postlast:=qr1['postlast'];
     if qr1.EOF or qr1.IsNull('postavg') then postavg:=0.0 else postavg:=qr1['postavg'];
   finally
     qr1.Free;
   end;
-  if qr.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr['loadlast'];
 
   margin:=(RunContinuous+5)/1440.0;
   if postlast=0.0 then
@@ -954,7 +965,7 @@ begin
     sl.Add('<td class="empty">&nbsp;</td>')
   else
     sl.Add('<td style="text-align:right;">'+IntToStr(feedregime)+'</td>');
-  if qr.IsNull('loadlast') then
+  if loadlast=0.0 then
     sl.Add('<td class="empty">&nbsp;</td><td class="empty">&nbsp;</td>')
   else
    begin
@@ -968,10 +979,10 @@ begin
 
   //Write(?
 
-  c1:=0;
-  c2:=0;
   if b then
    begin
+    c1:=0;
+    c2:=0;
     try
 
       loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
@@ -1449,13 +1460,13 @@ begin
     dbA.BeginTrans;
     try
 
-      if qr.IsNull('itemcount') or
-        (feedurl<>qr.GetStr('url')) or (feedname<>qr.GetStr('name')) then
+      if newfeed or
+        (feedurl<>feedurl0) or (feedname<>feedname0) then
         dbA.Update('Feed',
           ['id',feedid
           ,'name',feedname
           ,'url',feedurl
-          ,'loadlast',feedload
+          ,'loadlast',double(feedload)
           ,'result',feedresult
           ,'loadcount',c2
           ,'itemcount',c1
@@ -1464,7 +1475,7 @@ begin
       else
         dbA.Update('Feed',
           ['id',feedid
-          ,'loadlast',feedload
+          ,'loadlast',double(feedload)
           ,'result',feedresult
           ,'loadcount',c2
           ,'itemcount',c1
@@ -1481,10 +1492,9 @@ begin
    begin
     Writeln(' Skip '+
       IntToStr(Round((d-feedload)*1440.0))+''' regime:'+IntToStr(feedregime));
-    feedresult:=qr.GetStr('result');
-    c1:=qr.GetInt('itemcount');
-    c2:=qr.GetInt('loadcount');
-    feedload:=qr.GetDate('loadlast');
+    feedresult:=feedresult0;
+    //c1,c2: see above
+    feedload:=loadlast;
    end;
 
   if (feedresult+'-')[1]='[' then
@@ -1510,7 +1520,6 @@ begin
   FeedID:=0;
   FeedAll:=false;
   FeedOrderBy:=' order by F.id';
-  WasLockedDB:=false;
   NextAnalyze:=false;//?
 
   for i:=1 to ParamCount do
@@ -1544,14 +1553,6 @@ var
 begin
   if RunContinuous=0 then
     Result:=true
-  else
-  if WasLockedDB then
-   begin
-    WasLockedDB:=false;
-    Sleep(2500);
-    Writeln(#13'>>> '+FormatDateTime('yyyy-mm-dd hh:nn:ss',UtcNow));
-    Result:=false;
-   end
   else
    begin
 
@@ -1616,6 +1617,7 @@ begin
    end;
 end;
 
+{
 procedure BackupSQLite(db1:HSQLiteDB;const db2:AnsiString);
 var
   b:HSQLiteDB;
@@ -1631,28 +1633,34 @@ begin
     Write(#13);//Writeln(#13'Done');
     sqlite3_check(sqlite3_backup_finish(b1));
   finally
-    {sqlite3_check}(sqlite3_close(b));
+    sqlite3_close(b);
   end;
 end;
+}
 
 procedure DoUpdateFeeds;
 var
-  dbA,dbX:TDataConnection;
+  dbA:TDataConnection;
   qr:TQueryResult;
-  i,j,r,l:integer;
+  i,j,l:integer;
   ids:array of integer;
   d:TDateTime;
   sl:TStringList;
-  newdb:boolean;
 begin
   try
     LastRun:=UtcNow;
     OutLn('Opening databases...');
 
-    dbA:=TDataConnection.Create('..\feeder.db');
     sl:=TStringList.Create;
     try
-      dbA.BusyTimeout:=30000;
+      sl.LoadFromFile('..\..\feeder.ini');
+      dbA:=TDataConnection.Create(sl.Text);
+    finally
+      sl.Free;
+    end;
+
+    sl:=TStringList.Create;
+    try
 
       sl.Add('<style>');
       sl.Add('TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
@@ -1676,244 +1684,112 @@ begin
       sl.Add('<th>load:items</th>');
       sl.Add('</tr>');
 
-      //OutLn('Copy for queries...');
-      //BackupSQLite(dbA.Handle,'feederX.db');
+      i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
+      if LastClean<>i then
+       begin
+        LastClean:=i;
 
-      newdb:=not(FileExists('feederXX.db'));
-      dbX:=TDataConnection.Create('feederXX.db');
-      try
-        dbX.BusyTimeout:=30000;
+        Out0('Clean-up old...');
+        OldPostsCutOff:=UtcNow-OldPostsDays;
+        qr:=TQueryResult.Create(dbA,'select id from "Post" where pubdate<?',[double(OldPostsCutOff)]);
+        try
 
-        //previous dbX? check post count
-        OutLn('Checking index DB...');
-        if not newdb then
-         begin
-          qr:=TQueryResult.Create(dbA,'select count(*) from "Post"',[]);
-          try
-            i:=qr.GetInt(0);
-          finally
-            qr.Free;
-          end;
-          qr:=TQueryResult.Create(dbX,'select count(*) from "Post"',[]);
-          try
-            j:=qr.GetInt(0);
-          finally
-            qr.Free;
-          end;
-          if i<>j then
+          j:=0;
+          while qr.Read do
            begin
-            OutLn('Out of date: start new index DB...');
-            dbX.Free;
-            DeleteFile(PChar('feederXX.db'));
-            dbX:=TDataConnection.Create('feederXX.db');
-            dbX.BusyTimeout:=30000;
-            newdb:=true;
-           end;
-         end;
-
-        if newdb then
-         begin
-          dbX.Execute('create table "Post" (id integer,'
-            +'feed_id integer not null,'
-            +'guid varchar(500) not null,'
-            +'pubdate datetime not null)');
-          dbX.Execute('create index IX_Post on "Post" (feed_id,pubdate)');
-          dbX.Execute('create index IX_PostGuid on "Post" (guid,feed_id)');
-
-          dbX.Execute('create table "Feed" (id integer,flags int null)');
-
-          qr:=TQueryResult.Create(dbA,'select id,feed_id,guid,pubdate from "Post" order by id',[]);
-          try
-            i:=0;
-            dbX.BeginTrans;
+            i:=qr.GetInt('id');
+            dbA.BeginTrans;
             try
-              while qr.Read do
-               begin
-                dbX.Insert('Post',
-                  ['id',qr['id']
-                  ,'feed_id',qr['feed_id']
-                  ,'guid',qr['guid']
-                  ,'pubdate',qr['pubdate']
-                  ]);
-                inc(i);
-                Write(#13+IntToStr(i)+' posts... ');
-               end;
-              dbX.CommitTrans;
+              dbA.Execute('delete from "UserPost" where post_id=?',[i]);
+              dbA.Execute('delete from "Post" where id=?',[i]);
+              dbA.CommitTrans;
             except
-              dbX.RollbackTrans;
+              dbA.RollbackTrans;
               raise;
             end;
-          finally
-            qr.Free;
-          end;
-          Writeln(#13+IntToStr(i)+' posts    ');
-         end;
+            inc(j);
+           end;
+          Writeln(' '+IntToStr(j)+' posts cleaned      ');
 
-        OutLn('List feeds for index...');
-        dbX.BeginTrans;
-        try
-          dbX.Execute('delete from "Feed"',[]);
-          qr:=TQueryResult.Create(dbA,'select * from "Feed" where id>0 order by id',[]);
-          try
-            i:=0;
-            while qr.Read do
-             begin
-              dbX.Insert('Feed',['id',qr['id'],'flags',qr['flags']]);
-              inc(i);
-              Write(#13+IntToStr(i)+' feeds... ');
-             end;
-          finally
-            qr.Free;
-          end;
-          Writeln(#13+IntToStr(i)+' feeds    ');
-          dbX.CommitTrans;
-        except
-          dbX.RollbackTrans;
-          raise;
+        finally
+          qr.Free;
         end;
 
-        i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
-        if LastClean<>i then
-         begin
-          LastClean:=i;
-
-          Out0('Clean-up old...');
-          OldPostsCutOff:=UtcNow-OldPostsDays;
-          qr:=TQueryResult.Create(dbX,'select id from "Post" where pubdate<?',[OldPostsCutOff]);
-          try
-
-            j:=0;
-            while qr.Read do
-             begin
-              i:=qr.GetInt('id');
-              dbA.BeginTrans;
-              try
-                dbA.Execute('delete from "UserPost" where post_id=?',[i]);
-                dbA.Execute('delete from "Post" where id=?',[i]);
-                dbA.CommitTrans;
-              except
-                dbA.RollbackTrans;
-                raise;
-              end;
-              dbX.BeginTrans;
-              try
-                dbX.Execute('delete from "Post" where id=?',[i]);
-                dbX.CommitTrans;
-              except
-                dbX.RollbackTrans;
-                raise;
-              end;
-              inc(j);
-             end;
-            Writeln(' '+IntToStr(j)+' posts cleaned      ');
-
-          finally
-            qr.Free;
-          end;
-
-          Out0('Clean-up unused...');
-          qr:=TQueryResult.Create(dbA,'select id from "Feed" where id>0'+
-            ' and not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
-          try
-            j:=0;
-            while qr.Read do
-             begin
-              i:=qr.GetInt('id');
-              Write(#13'... #'+IntToStr(i)+'   ');
-              dbA.BeginTrans;
-              try
-                dbA.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id=?)',[i]);
-                dbA.Execute('delete from "Post" where feed_id=?',[i]);
-                dbA.Execute('delete from "Feed" where id=?',[i]);
-                dbA.CommitTrans;
-              except
-                dbA.RollbackTrans;
-                raise;
-              end;
-              dbX.BeginTrans;
-              try
-                dbX.Execute('delete from "Post" where feed_id=?',[i]);
-                dbX.CommitTrans;
-              except
-                dbX.RollbackTrans;
-                raise;
-              end;
-              inc(j);
-             end;
-            Writeln(' '+IntToStr(j)+' feeds cleaned      ');
-
-          finally
-            qr.Free;
-          end;
-         end;
-
-        OutLn('List feeds for loading...');
-        LastFeedCount:=0;
-        LastPostCount:=0;
-        if FeedID<>0 then
-         begin
-          l:=1;
-          SetLength(ids,1);
-          ids[0]:=FeedID;
-         end
-        else
-         begin
-          qr:=TQueryResult.Create(dbA,'select F.id from "Feed" F where F.id>0'+FeedOrderBy,[]);
-          try
-            l:=0;
-            i:=0;
-            while qr.Read do
-             begin
-              if i=l then
-               begin
-                inc(l,$400);
-                SetLength(ids,l);
-               end;
-              ids[i]:=qr.GetInt('id');
-              inc(i);
-             end;
-            l:=i;
-          finally
-            qr.Free;
-          end;
-         end;
-
-        d:=UtcNow-AvgPostsDays;
-        i:=0;
-        while i<l do
-         begin
-          r:=5;
-          while r<>0 do
+        Out0('Clean-up unused...');
+        qr:=TQueryResult.Create(dbA,'select id from "Feed" where id>0'+
+          ' and not exists (select S.id from "Subscription" S where S.feed_id="Feed".id)',[]);
+        try
+          j:=0;
+          while qr.Read do
+           begin
+            i:=qr.GetInt('id');
+            Write(#13'... #'+IntToStr(i)+'   ');
+            dbA.BeginTrans;
             try
-              qr:=TQueryResult.Create(dbA,'select *'
-                 +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
-                 +' from "Feed" F where F.id=?',[ids[i]]);
-              try
-                DoFeed(dbA,dbX,qr,d,sl);
-              finally
-                qr.Free;
-              end;
-              r:=0;
+              dbA.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id=?)',[i]);
+              dbA.Execute('delete from "Post" where feed_id=?',[i]);
+              dbA.Execute('delete from "Feed" where id=?',[i]);
+              dbA.CommitTrans;
             except
-              on e:ESQLiteException do
-                if e.ErrorCode=SQLITE_BUSY then
-                 begin
-                  ErrLn('['+e.ClassName+'#'+IntToStr(r)+']'+e.Message);
-                  Sleep(2000);
-                  dec(r);
-                  if r=0 then raise;
-                 end
-                else
-                  raise;
+              dbA.RollbackTrans;
+              raise;
             end;
-          inc(i);
-         end;
+            inc(j);
+           end;
+          Writeln(' '+IntToStr(j)+' feeds cleaned      ');
 
-        OutLn(Format('%d posts loaded from %d feeds',[LastPostCount,LastFeedCount]));
+        finally
+          qr.Free;
+        end;
+       end;
 
-      finally
-        dbX.Free;
-      end;
+      OutLn('List feeds for loading...');
+      LastFeedCount:=0;
+      LastPostCount:=0;
+      if FeedID<>0 then
+       begin
+        l:=1;
+        SetLength(ids,1);
+        ids[0]:=FeedID;
+       end
+      else
+       begin
+        qr:=TQueryResult.Create(dbA,'select F.id from "Feed" F where F.id>0'+FeedOrderBy,[]);
+        try
+          l:=0;
+          i:=0;
+          while qr.Read do
+           begin
+            if i=l then
+             begin
+              inc(l,$400);
+              SetLength(ids,l);
+             end;
+            ids[i]:=qr.GetInt('id');
+            inc(i);
+           end;
+          l:=i;
+        finally
+          qr.Free;
+        end;
+       end;
+
+      d:=UtcNow-AvgPostsDays;
+      i:=0;
+      while i<l do
+       begin
+        qr:=TQueryResult.Create(dbA,'select *'
+           +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
+           +' from "Feed" F where F.id=?',[ids[i]]);
+        try
+          DoFeed(dbA,qr,d,sl);
+        finally
+          //qr.Free;
+        end;
+        inc(i);
+       end;
+
+      OutLn(Format('%d posts loaded from %d feeds',[LastPostCount,LastFeedCount]));
 
       sl.Add('</table>');
       sl.SaveToFile('..\Load.html');
@@ -1925,34 +1801,42 @@ begin
   except
     on e:Exception do
      begin
-      if (e is ESQLiteException) and ((e as ESQLiteException).ErrorCode=SQLITE_BUSY) then
-        WasLockedDB:=true;
       ErrLn('['+e.ClassName+']'+e.Message);
       ExitCode:=1;
      end;
   end;
 end;
 
+{
 procedure DoAnalyze;
 var
   db:TDataConnection;
+  sl:TStringList;
 begin
   if (RunContinuous<>0) and NextAnalyze then
    begin
-     OutLn('Analyze...');
+    OutLn('Analyze...');
 
-      db:=TDataConnection.Create('..\feeder.db');
-      try
-        db.BusyTimeout:=120000;//?
-        db.Execute('analyze');
-      finally
-        db.Free;
-      end;
+    sl:=TStringList.Create;
+    try
+      sl.LoadFromFile('..\..\feeder.ini');
+      db:=TDataConnection.Create(sl.Text);
+    finally
+      sl.Free;
+    end;
 
-     OutLn('Analyze:done');
-     NextAnalyze:=false;
+    try
+      //db.BusyTimeout:=120000;//?
+      db.Execute('analyze');
+    finally
+      db.Free;
+    end;
+
+    OutLn('Analyze:done');
+    NextAnalyze:=false;
    end;
 end;
+}
 
 initialization
   LastClean:=0;

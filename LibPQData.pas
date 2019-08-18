@@ -11,11 +11,11 @@ Include following files in the folder that contains the executable,
 or in a folder included in the default DLL search path.
 They are provided with the Windows PostgreSQL server install.
 
-  ssleay32.dll
-  libeay32.dll
+  libpq.dll
+  libssl-1_1.dll
+  libcrypto-1_1.dll
   libiconv-2.dll
   libintl-8.dll
-  libpq.dll
 
 }
 
@@ -128,7 +128,7 @@ var
 const
   NullStr:AnsiString=#0;
 begin
-  rds:=@{$IFDEF DELPHIXE_UP}FormatSettings.{$ENDIF}DecimalSeparator;
+  rds:=@{$IF Declared(FormatSettings)}FormatSettings.{$IFEND}DecimalSeparator;
   Result:=true;//default
   //TODO: varArray
   case VarType(v) of
@@ -143,7 +143,7 @@ begin
     varSmallint,varShortInt,varByte,varWord:
      begin
       vt:=Oid_int2;
-      vs:=AnsiString(VarToStr(v));//IntToStr?
+      vs:=UTF8String(VarToStr(v));//IntToStr?
       vv:=@vs[1];
       vl:=Length(vs);
       vf:=0;
@@ -151,7 +151,7 @@ begin
     varInteger,varLongWord:
      begin
       vt:=Oid_int4;
-      vs:=AnsiString(VarToStr(v));//IntToStr?
+      vs:=UTF8String(VarToStr(v));//IntToStr?
       vv:=@vs[1];
       vl:=Length(vs);
       vf:=0;
@@ -159,7 +159,7 @@ begin
     varInt64,$15{varUInt64}:
      begin
       vt:=Oid_int8;
-      vs:=AnsiString(VarToStr(v));//IntToStr64?
+      vs:=UTF8Encode(VarToWideStr(v));//IntToStr64?
       vv:=@vs[1];
       vl:=Length(vs);
       vf:=0;
@@ -170,7 +170,7 @@ begin
       rds^:='.';
       try
         vt:=Oid_float4;
-        vs:=AnsiString(FloatToStr(v));
+        vs:=UTF8String(FloatToStr(v));
         vv:=@vs[1];
         vl:=Length(vs);
         vf:=0;
@@ -184,7 +184,7 @@ begin
       rds^:='.';
       try
         vt:=Oid_float8;
-        vs:=AnsiString(FloatToStr(v));
+        vs:=UTF8String(FloatToStr(v));
         vv:=@vs[1];
         vl:=Length(vs);
         vf:=0;
@@ -198,7 +198,7 @@ begin
       rds^:='.';
       try
         vt:=Oid_money;
-        vs:=AnsiString(FloatToStr(v));
+        vs:=UTF8String(FloatToStr(v));
         vv:=@vs[1];
         vl:=Length(vs);
         vf:=0;
@@ -218,13 +218,13 @@ begin
        end
       else
        begin
-        vs:=AnsiString(FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz',d));
+        vs:=UTF8String(FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz',d));
         vv:=@vs[1];
         vl:=Length(vs);
        end;
       vf:=0;
      end;
-    varOleStr,varString,$0102://,varUString:
+    varOleStr,varString,$0102{varUString}:
      begin
       vt:=Oid_varchar;//?Oid_text?
       vs:=UTF8Encode(VarToWideStr(v));
@@ -516,7 +516,7 @@ begin
       if not AddParam(Values[i],pt[pn],ps[pn],pv[pn],pl[pn],pf[pn]) then
         raise Exception.Create('Unsupported Parameter Type: TableName="'+string(TableName)+'" #'+IntToStr((i div 2)+1));
       inc(pn);
-      sql2:=sql2+',$'+AnsiString(IntToStr(pn));
+      sql2:=sql2+',$'+UTF8String(IntToStr(pn));
      end;
     inc(i,2);
    end;
@@ -542,7 +542,7 @@ begin
   if e<>'' then
     raise EPostgres.Create(UTF8ToWideString(e));
 
-  if PKFieldName='' then
+  if PQntuples(r)=0 then
     Result:=-1
   else
    begin
@@ -593,7 +593,7 @@ begin
       if pn=1 then
         sql2:=' where '+UTF8Encode(VarToWideStr(Values[i-1]))+'=$1'//'+IntToStr(i)
       else
-        sql1:=sql1+','+UTF8Encode(VarToWideStr(Values[i-1]))+'=$'+AnsiString(IntToStr(pn));
+        sql1:=sql1+','+UTF8Encode(VarToWideStr(Values[i-1]))+'=$'+UTF8String(IntToStr(pn));
      end;
     inc(i,2);
    end;
@@ -640,13 +640,16 @@ begin
     if e<>'' then
       raise EPostgres.Create(UTF8ToWideString(e));
     FFirstRead:=true;
-  finally
+  except
+    if FRecordSet.Handle<>nil then
+      PQclear(FRecordSet);
     r:=PQgetResult(FDB);
     while r.Handle<>nil do
      begin
       PQclear(r);
       r:=PQgetResult(FDB);
      end;
+    raise;
   end;
 end;
 
@@ -690,9 +693,10 @@ var
   i:integer;
   s:UTF8String;
 begin
+  if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
   if VarIsNumeric(Idx) then i:=Idx else
    begin
-    s:=AnsiString(VarToStr(Idx));
+    s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
    end;
   if i=-1 then
@@ -708,9 +712,10 @@ var
   i:integer;
   s:UTF8String;
 begin
+  if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
   if VarIsNumeric(Idx) then i:=Idx else
    begin
-    s:=AnsiString(VarToStr(Idx));
+    s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
    end;
   if i=-1 then
@@ -736,9 +741,10 @@ var
      end;
   end;
 begin
+  if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
   if VarIsNumeric(Idx) then i:=Idx else
    begin
-    s:=AnsiString(VarToStr(Idx));
+    s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
    end;
   if i=-1 then
@@ -793,9 +799,10 @@ var
      end;
   end;
 begin
+  if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
   if VarIsNumeric(Idx) then i:=Idx else
    begin
-    s:=AnsiString(VarToStr(Idx));
+    s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
    end;
   if i=-1 then
@@ -856,10 +863,11 @@ var
   ods:char;
   rds:PChar;
 begin
-  rds:=@{$IFDEF DELPHIXE_UP}FormatSettings.{$ENDIF}DecimalSeparator;
+  if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
+  rds:=@{$IF Declared(FormatSettings)}FormatSettings.{$IFEND}DecimalSeparator;
   if VarIsNumeric(Idx) then i:=Idx else
    begin
-    s:=AnsiString(VarToStr(Idx));
+    s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
    end;
   if i=-1 then
@@ -925,9 +933,10 @@ var
   i:integer;
   s:UTF8String;
 begin
+  if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
   if VarIsNumeric(Idx) then i:=Idx else
    begin
-    s:=AnsiString(VarToStr(Idx));
+    s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
    end;
   if i=-1 then

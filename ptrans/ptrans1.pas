@@ -8,26 +8,31 @@ implementation
 
 uses SysUtils, SQLiteData, LibPQData, Classes;
 
+function d(dd:TDateTime):double;
+begin
+  Result:=dd;
+end;
+
 procedure DoTrans;
 var
-  db1:TPostgresConnection;
-  db2:TSQLiteConnection;
+  db1:TSQLiteConnection;
+  db2:TPostgresConnection;
   sl:TStringList;
 
-  qr:TPostgresCommand;
+  qr:TSQLiteStatement;
   id,id1,c:integer;
 begin
+  db1:=TSQLiteConnection.Create('..\..\..\feeder.db');
+  db1.BusyTimeout:=30000;
+
   sl:=TStringList.Create;
   sl.LoadFromFile('feeder.ini');
-  db1:=TPostgresConnection.Create(sl.Text);
+  db2:=TPostgresConnection.Create(sl.Text);
   sl.Free;
-  db2:=TSQLiteConnection.Create('..\..\..\feeder.db');
-
-  db1.BeginTrans;
 
   id1:=0;
   c:=0;
-  qr:=TPostgresCommand.Create(db1,'select * from "Feed" order by id',[]);
+  qr:=TSQLiteStatement.Create(db1,'select * from "Feed" where id<>0 order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -37,9 +42,9 @@ begin
       ['id',qr['id']
       ,'name',qr['name']
       ,'url',qr['url']
-      ,'created',qr.GetDate('created')
+      ,'created',d(qr.GetDate('created'))
       ,'flags',qr['flags']
-      ,'loadlast',qr.GetDate('loadlast')
+      ,'loadlast',d(qr.GetDate('loadlast'))
       ,'result',qr['result']
       ,'loadcount',qr['loadcount']
       ,'itemcount',qr['itemcount']
@@ -49,12 +54,11 @@ begin
    end;
   Writeln(#13'Feeds:'+IntToStr(c));
 
-  db1.CommitTrans;
-  db1.BeginTrans;
+  db2.Execute('alter sequence "Feed_id_seq" restart with '+IntToStr(id1+1),[]);
 
   id1:=0;
   c:=0;
-  qr:=TPostgresCommand.Create(db1,'select * from "Post" order by id',[]);
+  qr:=TSQLiteStatement.Create(db1,'select * from "Post" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -67,19 +71,18 @@ begin
       ,'title',qr['title']
       ,'content',qr['content']
       ,'url',qr['url']
-      ,'pubdate',qr.GetDate('pubdate')
-      ,'created',qr.GetDate('created')
+      ,'pubdate',d(qr.GetDate('pubdate'))
+      ,'created',d(qr.GetDate('created'))
       ]);
     inc(c);
    end;
   Writeln(#13'Posts:'+IntToStr(c));
 
-  db1.CommitTrans;
-  db1.BeginTrans;
+  db2.Execute('alter sequence "Post_id_seq" restart with '+IntToStr(id1+1),[]);
 
   id1:=0;
   c:=0;
-  qr:=TPostgresCommand.Create(db1,'select * from "User" order by id',[]);
+  qr:=TSQLiteStatement.Create(db1,'select * from "User" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -91,15 +94,17 @@ begin
       ,'name',qr['name']
       ,'email',qr['email']
       ,'timezone',qr['timezone']
-      ,'created',qr.GetDate('created')
+      ,'created',d(qr.GetDate('created'))
       ]);
     inc(c);
    end;
   Writeln(#13'Users:'+IntToStr(c));
 
+  db2.Execute('alter sequence "User_id_seq" restart with '+IntToStr(id1+1),[]);
+
   id1:=0;
   c:=0;
-  qr:=TPostgresCommand.Create(db1,'select * from "UserLogon" order by id',[]);
+  qr:=TSQLiteStatement.Create(db1,'select * from "UserLogon" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -109,8 +114,8 @@ begin
       ['id',qr['id']
       ,'user_id',qr['user_id']
       ,'key',qr['key']
-      ,'created',qr.GetDate('created')
-      ,'last',qr.GetDate('last')
+      ,'created',d(qr.GetDate('created'))
+      ,'last',d(qr.GetDate('last'))
       ,'address',qr['address']
       ,'useragent',qr['useragent']
       ]);
@@ -118,9 +123,11 @@ begin
    end;
   Writeln(#13'UserLogons:'+IntToStr(c));
 
+  db2.Execute('alter sequence "UserLogon_id_seq" restart with '+IntToStr(id1+1),[]);
+
   id1:=0;
   c:=0;
-  qr:=TPostgresCommand.Create(db1,'select * from "Subscription" order by id',[]);
+  qr:=TSQLiteStatement.Create(db1,'select * from "Subscription" order by id',[]);
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -134,30 +141,32 @@ begin
       ,'category',qr['category']
       ,'color',qr['color']
       ,'readwidth',qr['readwidth']
-      ,'created',qr.GetDate('created')
+      ,'created',d(qr.GetDate('created'))
       ]);
     inc(c);
    end;
   Writeln(#13'Subscriptions:'+IntToStr(c));
 
+  db2.Execute('alter sequence "Subscription_id_seq" restart with '+IntToStr(id1+1),[]);
+
   id1:=0;
   c:=0;
-  qr:=TPostgresCommand.Create(db1,'select * from "UserPost" order by id',[]);
+  qr:=TSQLiteStatement.Create(db1,'select * from "UserPost" order by id',[]);
   while qr.Read do
    begin
-    id:=qr.GetInt('id');
+    //id:=qr.GetInt('id');
     if id1<id then id1:=id;
     Write(#13'UserPost:'+IntToStr(id));
     db2.Insert('UserPost',
-      ['id',qr['id']
-      ,'user_id',qr['user_id']
+      //['id',qr['id']
+      ['user_id',qr['user_id']
       ,'post_id',qr['post_id']
       ]);
     inc(c);
    end;
   Writeln(#13'UserPosts:'+IntToStr(c));
 
-  db1.CommitTrans;
+  //db2.Execute('alter sequence "UserPost_id_seq" restart with '+IntToStr(id1+1),[]);
 
 end;
 

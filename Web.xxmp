@@ -86,8 +86,8 @@
 	"units": {
 		"xxmSession": {},
 		"MSXML2_TLB": {},
-		"SQLite": {},
-		"SQLiteData": {},
+		"LibPQ": {},
+		"LibPQData": {},
 		"DataLank": {},
 		"sha3": {},
 		"base64": {},

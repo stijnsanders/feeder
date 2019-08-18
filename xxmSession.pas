@@ -247,13 +247,19 @@ threadvar
 class function TXxmSession.Connection: TDataConnection;
 var
   s:string;
+  sl:TStringList;
 begin
   if WorkerThreadConnection=nil then
    begin
     SetLength(s,MAX_PATH);
     SetLength(s,GetModuleFileName(HInstance,PChar(s),MAX_PATH));
-    WorkerThreadConnection:=TDataConnection.Create(ExtractFilePath(s)+'feeder.db');
-    WorkerThreadConnection.BusyTimeout:=30000;
+    sl:=TStringList.Create;
+    try
+      sl.LoadFromFile(ExtractFilePath(s)+'..\feeder.ini');
+      WorkerThreadConnection:=TDataConnection.Create(sl.Text);
+    finally
+      sl.Free;
+    end;
    end;
   Result:=WorkerThreadConnection;
 end;

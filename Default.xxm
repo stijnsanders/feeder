@@ -141,7 +141,7 @@ else
           +' from "Post" P'
           +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'
           +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=?'
-          +' where P.title||'' ''||P.content like ?';
+          +' where P.title||'' ''||P.content ilike ?';
         sqlWhere:=true;
         SetLength(xx,3+lx);
         xx[0]:=Session.UserID;
