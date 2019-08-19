@@ -72,13 +72,13 @@ case Context['x'].AsInteger of
     if id=0 then
      begin
       if t='' then t:=NameFromFeedURL(s);
-      id:=Session.Connection.Insert('Feed',['name',t,'url',s,'created',UtcNow],'id');
+      id:=Session.Connection.Insert('Feed',['name',t,'url',s,'created',double(UtcNow)],'id');
       <<p>Feed added. Posts may not appear until first time the fetching schedule loaded current posts.</p>>
      end
     else
      begin
       Session.Connection.Execute('insert into "UserPost" (user_id,post_id) select ?,id from "Post" where feed_id=? and pubDate>?',
-        [Session.UserID,id,UtcNow-366.0]);
+        [Session.UserID,id,double(UtcNow-366.0)]);
       <<p>Feed found, listing posts up to one year old as unread.</p>>
      end;
 
