@@ -1,7 +1,7 @@
-[[@xxmSession,DataLank,fCommon]][[!var
-qr,qr1:TQueryResult;
-s,c,c1:string;
-id:integer;
+[[@xxmSession,DataLank,fCommon,Variants]][[!var
+qr:TQueryResult;
+category,feedlabel,readwidth,feedcolor,c,c1:string;
+id,feedid:integer;
 ]][[
 if Session.UserID=0 then Context.Redirect('.',true);
 Context.Include('dHead.xxmi');
@@ -53,11 +53,11 @@ if id=0 then
       [[
       if not(qr.IsNull('itemcount')) and (qr.GetInt('itemcount')=0) then
        begin
-        <<span style="color:#CC0000;">Error reading feed</span>>
+        <<span style="color:#CC0000;">Error reading feed </span>>
        end;
       if qr.GetInt('regime')>20 then
        begin
-        <<span style="color:#660000;" title="Feed reading on a regime of once every [[.regime]] days">Stale?</span>>
+        <<span style="color:#660000;" title="Feed reading on a regime of once every [[.regime]] days">Stale? </span>>
        end;
       ]]
       <span style="color:#CCCCCC;">>.url<</span>
@@ -113,45 +113,49 @@ else
     <dt>URL</dt>
     <dd>>.url]]&nbsp;<a href="[[.url]]" style="text-decoration:none;"><img src="img_r.png" width="16" height="16" alt="feed link" /></a></dd>
     <dt>since</dt>
-    <dd>>=FormatDateTime('yyyy-mm-dd hh:nn',double(qr['created'])+Session.TimeBias)<</dd>
-    <dt>category</dt>
-    <dd>
-      <select name="category">>
-      s:=qr.GetStr('category');
-      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from "Subscription" where user_id=? order by 1',[Session.UserID]);
-      try
-        while qr1.Read do
-         begin
-          <<option[[
-          if s=qr1.GetStr(0) then Context.SendHTML(' selected="1"');
-          ]]>>=qr1[0]<</option>>
-         end;
-      finally
-        qr1.Free;
-      end;
-      <<option value="---" style="color:#006600;">&rarr; new category</option>
-      </select>
-      <input type="text" name="categoryNew" />
-    </dd>
-    <dt>label text</dt>
-    <dd><input type="text" name="label" value="[[.label]]" /></dd>
-    <dt>label color</dt>
-    <dd>>#ColorPicker(qr.GetStr('color'))<</dd>
-   <dt>read width</dt>
-    <dd><input type="text" name="readwidth" value="[[.readwidth]]" style="width:4em;" /> M-width</dd>
-    </dl>
-    <p><input type="submit" value="Update" /></p>
-    </form>
-    <p><a href=".?f=[[.feed_id]]">view posts from this feed...</a></p>
-    <form method="post" action="Feed.xxm" onsubmit="return confirm('Are you sure to unsubscribe from this feed?');">
-    <input type="hidden" name="x" value="2" />
-    <input type="hidden" name="id" value="[[=id]]" />
-    <p style="border:2px solid red;"><input type="submit" value="Remove feed..." /></p>
-    </form>
-    <p><a href="?">back...</a></p>>
+    <dd>>=FormatDateTime('yyyy-mm-dd hh:nn',double(qr['created'])+Session.TimeBias)<</dd>>
+    category:=qr.GetStr('category');
+    feedlabel:=qr.GetStr('label');
+    readwidth:=VarToStr(qr['readwidth']);
+    feedcolor:=qr.GetStr('color');
+    feedid:=qr.GetInt('feed_id');
   finally
     qr.Free;
   end;
+  <<dt>category</dt>
+  <dd>
+    <select name="category">>
+    qr:=TQueryResult.Create(Session.Connection,'select distinct category from "Subscription" where user_id=? order by 1',[Session.UserID]);
+    try
+      while qr.Read do
+        begin
+        <<option[[
+        if category=qr.GetStr(0) then Context.SendHTML(' selected="1"');
+        ]]>>=qr[0]<</option>>
+        end;
+    finally
+      qr.Free;
+    end;
+    <<option value="---" style="color:#006600;">&rarr; new category</option>
+    </select>
+    <input type="text" name="categoryNew" />
+  </dd>
+  <dt>label text</dt>
+  <dd><input type="text" name="label" value="[[=feedlabel]]" /></dd>
+  <dt>label color</dt>
+  <dd>>#ColorPicker(feedcolor)<</dd>
+  <dt>read width</dt>
+  <dd><input type="text" name="readwidth" value="[[=readwidth]]" style="width:4em;" /> M-width</dd>
+  </dl>
+  <p><input type="submit" value="Update" /></p>
+  </form>
+  <p><a href=".?f=[[=feedid]]">view posts from this feed...</a></p>
+  <form method="post" action="Feed.xxm" onsubmit="return confirm('Are you sure to unsubscribe from this feed?');">
+  <input type="hidden" name="x" value="2" />
+  <input type="hidden" name="id" value="[[=id]]" />
+  <p style="border:2px solid red;"><input type="submit" value="Remove feed..." /></p>
+  </form>
+  <p><a href="?">back...</a></p>>
 
  end;
     

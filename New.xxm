@@ -1,7 +1,7 @@
 [[@xxmSession,DataLank,fCommon]][[!var
 s,t,lbl,cat,c:string;
 id,id1,rw:integer;
-qr,qr1:TQueryResult;
+qr:TQueryResult;
 const
 DefaultReadWidth=32;
 ]][[
@@ -22,14 +22,14 @@ case Context['x'].AsInteger of
     <dt>category</dt>
     <dd>
       <select name="category">>
-      qr1:=TQueryResult.Create(Session.Connection,'select distinct category from "Subscription" where user_id=? order by 1',[Session.UserID]);
+      qr:=TQueryResult.Create(Session.Connection,'select distinct category from "Subscription" where user_id=? order by 1',[Session.UserID]);
       try
-        while qr1.Read do
+        while qr.Read do
          begin
-          <<option>>=qr1[0]<</option>>
+          <<option>>=qr[0]<</option>>
          end;
       finally
-        qr1.Free;
+        qr.Free;
       end;
       <<option value="---" style="color:#006600;">&rarr; new category</option>
       </select>
