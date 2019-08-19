@@ -32,7 +32,7 @@ if id=0 then
     ' inner join "Feed" F on F.id=S.feed_id'+
     ' where S.user_id=?'+
     //' order by S.category, S.label, F.name, S.id',[Session.UserID]);
-    ' order by S.category collate nocase, S.label collate nocase, F.name collate nocase, S.id',[Session.UserID]);
+    ' order by S.category, S.label, F.name, S.id',[Session.UserID]);
   try
     c:='';
     while qr.Read do
@@ -72,11 +72,13 @@ if id=0 then
   Context.Flush;
   qr:=TQueryResult.Create(Session.Connection,
     'select S.id, S.postsopened'+
-    ', (select count(*) from "Post" P where P.feed_id=S.feed_id) as PostCount'+
+    //', (select count(*) from "Post" P where P.feed_id=S.feed_id) as PostCount'+
+    ', F.totalcount as PostCount'+
     ', (select count(*) from "UserPost" X inner join "Post" P on P.id=X.post_id where P.feed_id=S.feed_id and X.user_id=S.user_id) as UnreadCount'+
     ' from "Subscription" S'+
+    ' inner join "Feed" F on F.id=S.feed_id'+
     ' where S.user_id=?'
-    //+' order by S.category collate nocase, S.label collate nocase, F.name collate nocase, S.id'
+    //+' order by S.category, S.label, F.name, S.id'
     ,[Session.UserID]);
   try
     <<script>

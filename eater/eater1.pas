@@ -857,7 +857,7 @@ const
 
 var
   d:TDateTime;
-  i,j:integer;
+  i,j,totalcount:integer;
   loadlast,postlast,postavg,margin:double;
   loadext,newfeed:boolean;
   rw,rt,s,sql1,sql2:WideString;
@@ -873,6 +873,7 @@ begin
   feedregime:=qr0.GetInt('regime');
   feedresult:='';
   newfeed:=qr0.IsNull('itemcount');
+  totalcount:=qr0.GetInt('totalcount');
   feedurl0:=feedurl;
   feedname0:=feedname;
   feedresult0:=qr0.GetStr('result');
@@ -1470,6 +1471,7 @@ begin
           ,'result',feedresult
           ,'loadcount',c2
           ,'itemcount',c1
+          ,'totalcount',totalcount+c2
           ,'regime',feedregime
           ])
       else
@@ -1479,6 +1481,7 @@ begin
           ,'result',feedresult
           ,'loadcount',c2
           ,'itemcount',c1
+          ,'totalcount',totalcount+c2
           ,'regime',feedregime
           ]);
 

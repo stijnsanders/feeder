@@ -9,7 +9,8 @@ loadlast float null,
 result varchar(1000) null,
 loadcount int null,
 itemcount int null,
-regime int null
+regime int null,
+totalcount int null
 );
 
 create table "Post" (
@@ -77,3 +78,9 @@ create unique index IX_UserPost on "UserPost" (user_id,post_id);
 
 insert into "Feed" (id,name,url,created) values (0,'[system messages]','',0.0);
 
+/*
+alter table "Feed" add column totalcount int null;
+update "Feed" set totalcount=X.totalcount
+from (select P.feed_id, count(*) as totalcount
+from "Post" P group by P.feed_id) X where X.feed_id="Feed".id;
+*/
