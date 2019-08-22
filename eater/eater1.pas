@@ -430,7 +430,7 @@ end;
 
 
 var
-  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhLFs,rhStartImg:RegExp;
+  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhStartImg:RegExp;
 
 procedure SanitizeInit;
 begin
@@ -460,8 +460,12 @@ begin
   rh7.Pattern:='&amp;(#x?[0-9a-f]+?|[0-9]+?);';
   rh7.Global:=true;
   rh7.IgnoreCase:=true;
+
   rhUTM:=CoRegExp.Create;
   rhUTM.Pattern:='\?utm_[^\?]+?$';
+  rhCID:=CoRegExp.Create;
+  rhCID.Pattern:='\?cid=public-rss_\d{8}$';
+
   rhLFs:=CoRegExp.Create;
   rhLFs.Pattern:='(\x0D?\x0A)+';
   rhLFs.Global:=true;
@@ -679,6 +683,8 @@ const
 
     //strip '?utm_'... query string
     if rhUTM.Test(itemid) then itemid:=rhUTM.Replace(itemid,'');
+    if rhCID.Test(itemid) then itemid:=rhCID.Replace(itemid,'');
+
 
     if feedurlskip<>'' then
      begin
