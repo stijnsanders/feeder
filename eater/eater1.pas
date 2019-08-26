@@ -1213,7 +1213,8 @@ begin
               x:=xl.nextNode as IXMLDOMElement;
               while x<>nil do
                begin
-                itemid:=x.selectSingleNode('atom:id').text;
+                y:=x.selectSingleNode('atom:id') as IXMLDOMElement;
+                if y=nil then itemid:='' else itemid:=y.text;
                 if Copy(itemid,1,4)='http' then
                   itemurl:=itemid
                 else
@@ -1231,6 +1232,7 @@ begin
                       itemurl:=y.getAttribute('href');
                     y:=xl1.nextNode as IXMLDOMElement;
                    end;
+                  if itemid='' then itemid:=itemurl;                  
                  end;
                 y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
                 if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
