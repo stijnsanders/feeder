@@ -79,9 +79,9 @@ case Context['x'].AsInteger of
     <<textarea style="width:75vw;height:3em;" id="badge1" onmouseup="document.getElementById('badge1').select();"><iframe src="[[=PublicURL]]Badge.xxm?x=[[=Copy(Context.Cookie['feederAutoLogon'],1,12)
     ]]" style="border:1px solid black;width:100pt;height:20pt;"></iframe></textarea>>
 
-    qr:=TQueryResult.Create(db,'select sqlite_version()',[]);
+    qr:=TQueryResult.Create(db,'select version()',[]);
     try
-      <<p title="sqlite_version">>=qr[0]<</p>>
+      <<p style="color:silver;">>=Context.ContextString(csVersion)<<br />>=qr[0]<</p>>
     finally 
       qr.Free;
     end;
