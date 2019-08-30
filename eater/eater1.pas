@@ -846,6 +846,7 @@ const
           feedresult:='Feed URL found in content, updating (Atom)';
           Result:=true;
          end;
+        //TODO if sm[s1]='application/json'?
      end;
     //search for <meta http-equiv="refresh"> redirects
     if not(Result) then
@@ -871,6 +872,7 @@ var
   qr1:TQueryResult;
   feedresult0:string;
 begin
+  if qr0.EOF then raise Exception.Create('No feed found for this id.');
   feedid:=qr0.GetInt('id');
   feedurl:=qr0.GetStr('url');
   feedurlskip:=qr0.GetStr('urlskip');
@@ -1033,7 +1035,7 @@ begin
             if Pos('sparql',feedurl)<>0 then
               r.setRequestHeader('Accept','application/sparql-results+xml, application/xml, text/xml')
             else
-              r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, text/xml');
+              r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
            end;
           r.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
           if Pos('tumblr.com',feedurl)<>0 then
@@ -1169,6 +1171,78 @@ begin
 
           feedresult:=Format('Instagram %d/%d',[c2,c1]);
 
+         end
+        else
+        if (rt='application/json') and (Copy(StripWhiteSpace(Copy(rw,1,20)),1,8)='{"rss":{') then
+         begin
+          jnodes:=JSONDocArray;
+          jc1:=JSON(['item',jnodes]);
+          jc0:=JSON(['channel',jc1]);
+          jdoc:=JSON(['rss',jc0]);
+          jdoc.Parse(rw);
+          //jc0['version']='2.0'?
+          feedname:=VarToStr(jc1['title']);
+          //jc1['link']
+          jn0:=JSON;
+          for i:=0 to jnodes.Count-1 do
+           begin
+            jnodes.LoadItem(i,jn0);
+            itemid:=VarToStr(jn0['guid']);
+            itemurl:=VarToStr(jn0['link']);
+            title:=VarToStr(jn0['title']);
+            try
+              pubDate:=ConvDate2(VarToStr(jn0['pubDate']));
+            except
+              pubDate:=UtcNow;
+            end;
+            //TODO xmlns...=http://purl.org/rss/1.0/modules/content/ "...:encoded"?
+            if not VarIsNull(jn0['content']) then
+              content:=VarToStr(jn0['content'])
+            else
+            if not VarIsNull(jn0['description']) then
+              content:=VarToStr(jn0['description'])
+            else
+              content:='';
+            regItem;
+           end;
+          feedresult:=Format('RSS-in-JSON %d/%d',[c2,c1]);
+
+         end
+        else
+        if (rt='application/json') then
+         begin
+          //
+          jnodes:=JSONDocArray;
+          jdoc:=JSON(['items',jnodes]);
+          jdoc.Parse(rw);
+          //if jdoc['version']='https://jsonfeed.org/version/1' then
+          feedname:=VarToStr(jdoc['title']);
+          //jdoc['home_page_url']?
+          //jdoc['feed_url']?
+          jn0:=JSON;
+          for i:=0 to jnodes.Count-1 do
+           begin
+            jnodes.LoadItem(i,jn0);
+            itemid:=VarToStr(jn0['id']);
+            itemurl:=VarToStr(jn0['url']);
+            title:=VarToStr(jn0['title']);
+            try
+              pubDate:=ConvDate1(VarToStr(jn0['date_published']));
+            except
+              pubDate:=UtcNow;
+            end;
+            if not(VarIsNull(jn0['summary'])) then
+             begin
+              s:=VarToStr(jn0['summary']);
+              if (s<>'') and (s<>title) then title:=title+' '#$2014' '+s;
+             end;
+            if VarIsNull(jn0['content_html']) then
+              content:=HTMLEncode(VarToStr(jn0['content_text']))
+            else
+              content:=VarToStr(jn0['content_html']);
+            regItem;
+           end;
+          feedresult:=Format('JSONfeed %d/%d',[c2,c1]);
          end
         else
          begin
