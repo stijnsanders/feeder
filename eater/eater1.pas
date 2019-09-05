@@ -738,7 +738,8 @@ const
     if b then
      begin
       inc(c2);
-      if IsSomethingEmpty(title) then title:='['+itemid+']';
+      if IsSomethingEmpty(title) then title:='['+itemid+']('+
+        IntToStr(Length(content))+')';//TODO: count non-whitespace, non-HTML? words?
 
       //content starts with <img>? inject a <br />
       if rhStartImg.Test(content) then
@@ -995,7 +996,7 @@ begin
     try
 
       loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
-      if loadext then                  
+      if loadext then
        begin
         rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml');
         rt:='text/html';//?? here just to enable search for <link>s
@@ -1102,6 +1103,15 @@ begin
         9,10,13:;//leave as-is
         else ;//leave as-is
       end;
+
+    //TODO: "Feed".flags?
+    if FileExists('feeds\'+Format('%.4d',[feedid])+'ws.txt') then
+     begin
+      i:=1;
+      while (i<=Length(rw)) and (word(rw[i])<=32) do inc(i);
+      if i<>1 then rw:=Copy(rw,i,Length(rw)-i+1);
+     end;
+
 
     if feedresult='' then
       try
@@ -1542,6 +1552,20 @@ begin
 
     dbA.BeginTrans;
     try
+
+      if feedname='' then
+       begin
+        i:=5;
+        while (i<=Length(feedurl)) and (feedurl[i]<>':') do inc(i);
+        inc(i);
+        if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+        if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+        feedname:='['+Copy(feedurl,i,Length(feedurl)-i+1);
+        i:=2;
+        while (i<=Length(feedname)) and (feedname[i]<>'/') do inc(i);
+        SetLength(feedname,i);
+        feedname[i]:=']';
+       end;
 
       if newfeed or
         (feedurl<>feedurl0) or (feedname<>feedname0) then
