@@ -639,6 +639,52 @@ begin
    end;
 end;
 
+function StripHTML(const x:WideString;MaxLength:integer):WideString;
+var
+  i,r:integer;
+  b:boolean;
+begin
+  Result:=#$2039+x+'.....';
+  i:=1;
+  r:=1;
+  b:=false;
+  while (i<=length(x)) and (r<MaxLength) do
+   begin
+    if x[i]='<' then
+     begin
+      inc(i);
+      while (i<=Length(x)) and (x[i]<>'>') do inc(i);
+     end
+    else
+    if x[i]<=' ' then
+      b:=true
+    else
+     begin
+      if b then
+       begin
+        inc(r);
+        Result[r]:=' ';
+        b:=false;
+       end;
+      inc(r);
+      Result[r]:=x[i];
+     end;
+    inc(i);
+   end;
+  if (i<Length(x)) then
+   begin
+    while (r<>0) and (Result[r]<>' ') do dec(r);
+    Result[r]:='.';
+    inc(r);
+    Result[r]:='.';
+    inc(r);
+    Result[r]:='.';
+   end;
+  inc(r);
+  Result[r]:=#$203A;
+  SetLength(Result,r);
+end;
+
 function qrDate(qr:TQueryResult;const Idx:Variant):TDateTime;
 var
   d:double;
@@ -738,8 +784,11 @@ const
     if b then
      begin
       inc(c2);
-      if IsSomethingEmpty(title) then title:='['+itemid+']('+
-        IntToStr(Length(content))+')';//TODO: count non-whitespace, non-HTML? words?
+      if IsSomethingEmpty(title) then
+       begin
+        title:=StripHTML(content,200);
+        if Length(title)<5 then title:='['+itemid+']';
+       end;
 
       //content starts with <img>? inject a <br />
       if rhStartImg.Test(content) then
