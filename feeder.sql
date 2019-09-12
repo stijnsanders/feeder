@@ -84,3 +84,13 @@ update "Feed" set totalcount=X.totalcount
 from (select P.feed_id, count(*) as totalcount
 from "Post" P group by P.feed_id) X where X.feed_id="Feed".id;
 */
+
+create table "SubCount" (
+id serial primary key,
+month int not null,
+subscription_id int not null,
+postsopened int not null,
+constraint FK_SubCount_Subscription foreign key (subscription_id) references "Subscription" (id)
+);
+
+create unique index IX_SubCount on "SubCount" (month,subscription_id);

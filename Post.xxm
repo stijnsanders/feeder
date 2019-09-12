@@ -5,6 +5,7 @@ s,r:string;
 rp1,rp2,rp3:IRegExp2;
 db:TDataConnection;
 d1:TDateTime;
+dy,dm,dd:word;
 ]][[
 id:=Context['id'].AsInteger;
 
@@ -78,8 +79,12 @@ Context.Include('dFoot.xxmi');
 
 db.BeginTrans;
 try
+  DecodeDate(Date,dy,dm,dd);
   if db.Execute('delete from "UserPost" where user_id=? and post_id=?',[Session.UserID,id])=1 then
-    db.Execute('update "Subscription" set postsopened=coalesce(postsopened,0)+1 where id=?',[sid]);
+    //db.Execute('update "Subscription" set postsopened=coalesce(postsopened,0)+1 where id=?',[sid]);
+    db.Execute('insert into "SubCount" (month,subscription_id,postsopened) values (?,?,1)'+
+      ' on conflict (month,subscription_id) do update set postsopened="SubCount".postsopened+1',
+      [dy*100+dm,sid]);
   db.CommitTrans;
 except
   db.RollbackTrans;

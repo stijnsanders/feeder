@@ -787,7 +787,7 @@ const
       if IsSomethingEmpty(title) then
        begin
         title:=StripHTML(content,200);
-        if Length(title)<5 then title:='['+itemid+']';
+        if Length(title)<=8 then title:='['+itemid+']';
        end;
 
       //content starts with <img>? inject a <br />
