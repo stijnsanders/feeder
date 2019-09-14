@@ -685,6 +685,53 @@ begin
   SetLength(Result,r);
 end;
 
+function HTMLDecode(const w:WideString):WideString;
+var
+  i,j,l:integer;
+  c:word;
+begin
+  //just for wp/v2 feedname for now
+  //TODO: full HTMLDecode
+  Result:=w;
+  l:=Length(w);
+  i:=1;
+  j:=0;
+  while (i<=l) do
+   begin
+    if (i<l) and (w[i]='&') and (w[i+1]='#') then
+     begin
+      inc(i,2);
+      c:=0;
+      if w[i]='x' then
+       begin
+        inc(i);
+        while (i<=l) and (w[i]<>';') do
+         begin
+          if (word(w[i]) and $FFF0)=$0030 then //if w[i] in ['0'..'9'] then
+            c:=(c shl 4) or (word(w[i]) or $F)
+          else
+            c:=(c shl 4) or (9+word(w[i]) or 7);
+         end;
+       end
+      else
+        while (i<=l) and (w[i]<>';') do
+         begin
+          c:=c*10+(word(w[i]) and $F);
+          inc(i);
+         end;
+      inc(j);
+      Result[j]:=WideChar(c);
+     end
+    else
+     begin
+      inc(j);
+      Result[j]:=w[i];
+     end;
+    inc(i);
+   end;
+  SetLength(Result,j);
+end;
+
 function qrDate(qr:TQueryResult;const Idx:Variant):TDateTime;
 var
   d:double;
@@ -709,6 +756,7 @@ var
   feedregime:integer;
   feedglobal,b:boolean;
   rc,c1,c2,postid:integer;
+  v:Variant;
 const
   regimesteps=8;
   regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90);
@@ -857,8 +905,7 @@ const
     reLink.Global:=true;
     reLink.IgnoreCase:=true;
     //search for applicable <link type="" href="">
-    //TODO: <link rel="alternate"?
-    reLink.Pattern:='<link[^>]+?(type|href)=["'']([^"'']+?)["''][^>]+?(type|href)=["'']([^"'']+?)["''][^>]*?>';
+    reLink.Pattern:='<link[^>]+?(rel|type|href)=["'']([^"'']+?)["''][^>]+?(type|href)=["'']([^"'']+?)["''][^>]*?>';
     mc:=reLink.Execute(rd) as MatchCollection;
     i:=0;
     while (i<mc.Count) and not(Result) do
@@ -866,6 +913,23 @@ const
       m:=mc[i] as Match;
       inc(i);
       sm:=m.SubMatches as SubMatches;
+      //TODO: if (sm[0]='rel') and (sm[2]='href') and (sm[1]='alternate') then
+      if (sm[0]='rel') and (sm[2]='href') and (sm[1]='https://api.w.org/') then
+       begin
+        combineURL(sm[3]+'wp/v2/posts');
+        feedresult:='Feed URL found in content, updating (WPv2)';
+
+        //extract title
+        reLink.Pattern:='<title>([^<]+?)</title>';
+        mc:=reLink.Execute(rd) as MatchCollection;
+        if mc.Count>0 then
+          feedname:=HTMLDecode(((mc[0] as Match).SubMatches as SubMatches)[0]);
+
+        Result:=true;
+        s1:=0;//disable below
+        s2:=0;
+       end
+      else
       if (sm[0]='type') and (sm[2]='href') then
        begin
         s1:=1;
@@ -1103,6 +1167,7 @@ begin
            end
           else
             r.setRequestHeader('User-Agent','FeedEater/1.0');
+          //TODO: ...'/wp/v2/posts' param 'after' last load time?
           r.send(EmptyParam);
           if r.status=301 then //moved permanently
            begin
@@ -1266,6 +1331,34 @@ begin
            end;
           feedresult:=Format('RSS-in-JSON %d/%d',[c2,c1]);
 
+         end
+        else
+        if (rt='application/json') and (Copy(feedurl,Length(feedurl)-11,12)='/wp/v2/posts')
+          and (Copy(rw,1,7)='[{"id":') then
+         begin
+          jnodes:=JSONDocArray;
+          jdoc:=JSON(['items',jnodes]);
+          jdoc.Parse('{"items":'+rw+'}');
+          jn0:=JSON;
+          for i:=0 to jnodes.Count-1 do
+           begin
+            jnodes.LoadItem(i,jn0);
+            itemid:=VarToStr(jn0['id']);//'slug'?
+            if itemid='' then itemid:=VarToStr(JSON(jn0['guid'])['rendered']);
+            itemurl:=VarToStr(jn0['link']);
+            title:=VarToStr(JSON(jn0['title'])['rendered']);
+            try
+              v:=jn0['date_gmt'];
+              if VarIsNull(v) then v:=jn0['date'];//modified(_gmt)?
+              pubDate:=ConvDate1(VarToStr(v));
+            except
+              pubDate:=UtcNow;
+            end;
+            //'excerpt'?
+            content:=VarToStr(JSON(jn0['content'])['rendered']);
+            regItem;
+           end;
+          feedresult:=Format('WPv2 %d/%d',[c2,c1]);
          end
         else
         if (rt='application/json') then

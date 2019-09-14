@@ -64,6 +64,11 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 </tr>
 
 <tr>
+<td>WordPress API</td>
+<td>If HTML declares
+<code>&lt;link rel="https://api.w.org/"</code>, a suffix of <code>/wp/v2/posts</code> by default serves JSON for the 10 most recent posts
+
+<tr>
 <td>HTML</td>
 <td>Searches header for appropriate <code>&lt;link rel="alternative"</code> element to update feed URL</td>
 </tr>
