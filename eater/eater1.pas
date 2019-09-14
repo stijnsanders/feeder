@@ -41,7 +41,7 @@ end;
 
 var
   OldPostsCutOff,LastRun:TDateTime;
-  SaveData,FeedAll,NextAnalyze:boolean;
+  SaveData,FeedAll,FeedNew,NextAnalyze:boolean;
   FeedID,RunContinuous,LastClean,LastFeedCount,LastPostCount:integer;
   FeedOrderBy:WideString;//UTF8String;
 
@@ -1770,6 +1770,7 @@ begin
   RunContinuous:=0;
   FeedID:=0;
   FeedAll:=false;
+  FeedNew:=false;
   FeedOrderBy:=' order by F.id';
   NextAnalyze:=false;//?
 
@@ -1779,6 +1780,8 @@ begin
     if s='/a' then FeedOrderBy:=' order by X.postavg,X.postlast,F.id'
     else
     if s='/s' then SaveData:=true
+    else
+    if s='/n' then FeedNew:=true    
     else
     if s='/c' then RunContinuous:=15
     else
@@ -1832,9 +1835,15 @@ begin
               Writeln(#13'Manual skip    ');
               d:=RunNext;
              end;
+            'n'://skip + new
+             begin
+              Writeln(#13'Skip + new feeds   ');
+              d:=RunNext;
+              FeedNew:=true;
+             end;
             'x'://skip + run all
              begin
-              Writeln(#13'Skip + Feed all   ');
+              Writeln(#13'Skip + all feeds   ');
               d:=RunNext;
               FeedAll:=true;
              end;
@@ -2006,7 +2015,14 @@ begin
        end
       else
        begin
-        qr:=TQueryResult.Create(dbA,'select F.id from "Feed" F where F.id>0'+FeedOrderBy,[]);
+        if FeedNew then
+         begin
+          FeedNew:=false;//only once
+          qr:=TQueryResult.Create(dbA,'select F.id from "Feed" F where F.id>0'+
+            ' and F.created>?'+FeedOrderBy,[UtcNow-1.0]);
+         end
+        else
+          qr:=TQueryResult.Create(dbA,'select F.id from "Feed" F where F.id>0'+FeedOrderBy,[]);
         try
           l:=0;
           i:=0;
