@@ -36,6 +36,8 @@ case Context['x'].AsInteger of
         ' inner join "Post" P on P.id=X.post_id'+
         ' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'+
         ' where X.user_id=? and P.feed_id=?)',[Session.UserID,id]);
+      db.Execute('delete from "SubCount" where subscription_id in '+
+        '(select id from "Subscription" where id=? and user_id=?)',[id,Session.UserID]);
       db.Execute('delete from "Subscription" where id=? and user_id=?',[id,Session.UserID]);
       db.CommitTrans;
     except

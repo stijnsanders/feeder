@@ -1112,7 +1112,13 @@ begin
       if loadext then
        begin
         rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml');
-        rt:='text/html';//?? here just to enable search for <link>s
+        //TODO: extract content-type from LoadExternal response?
+        i:=1;
+        while (i<=Length(rw)) and (rw[i]<=' ') do inc(i);
+        if (rw[i]='{') or (rw[i]='[') then
+          rt:='application/json'
+        else
+          rt:='text/html';//enables search for <link>s below
        end
       else
        begin
