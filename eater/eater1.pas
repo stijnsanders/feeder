@@ -658,7 +658,7 @@ begin
      end
     else
     if x[i]<=' ' then
-      b:=true
+      b:=r>1
     else
      begin
       if b then
@@ -808,7 +808,17 @@ const
     //TODO: switch: allow future posts?
     if pubDate>feedload+2.0/24.0 then pubDate:=feedload;
 
-    if pubDate<OldPostsCutOff then b:=false else
+    inc(c1);
+
+    //check age, blacklist, already listed
+    b:=pubDate>=OldPostsCutOff;
+    i:=0;
+    while b and (i<blacklist.Count) do
+      if (blacklist[i]<>'') and (blacklist[i]=Copy(itemurl,1,Length(blacklist[i]))) then
+        b:=false
+      else
+        inc(i);
+    if b then
      begin
       if feedglobal then
         qr:=TQueryResult.Create(dbA,
@@ -828,13 +838,6 @@ const
         qr.Free;
       end;
      end;
-    inc(c1);
-    i:=0;
-    while b and (i<blacklist.Count) do
-      if (blacklist[i]<>'') and (blacklist[i]=Copy(itemurl,1,Length(blacklist[i]))) then
-        b:=false
-      else
-        inc(i);
     if b then
      begin
       inc(c2);
@@ -848,6 +851,7 @@ const
       if rhStartImg.Test(content) then
         content:=rhStartImg.Replace(content,'$1$3<br />');
 
+      //list the post
       dbA.BeginTrans;
       try
         postid:=dbA.Insert('Post',
