@@ -431,6 +431,7 @@ end;
 
 var
   rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhStartImg:RegExp;
+  blacklist:TStringList;
 
 procedure SanitizeInit;
 begin
@@ -779,7 +780,6 @@ const
     if rhUTM.Test(itemid) then itemid:=rhUTM.Replace(itemid,'');
     if rhCID.Test(itemid) then itemid:=rhCID.Replace(itemid,'');
 
-
     if feedurlskip<>'' then
      begin
       i:=Pos(feedurlskip,itemid);
@@ -829,6 +829,12 @@ const
       end;
      end;
     inc(c1);
+    i:=0;
+    while b and (i<blacklist.Count) do
+      if (blacklist[i]<>'') and (blacklist[i]=Copy(itemurl,1,Length(blacklist[i]))) then
+        b:=false
+      else
+        inc(i);
     if b then
      begin
       inc(c2);
@@ -1787,7 +1793,7 @@ begin
     else
     if s='/s' then SaveData:=true
     else
-    if s='/n' then FeedNew:=true    
+    if s='/n' then FeedNew:=true
     else
     if s='/c' then RunContinuous:=15
     else
@@ -1799,6 +1805,10 @@ begin
     else
       raise Exception.Create('Unknown parameter #'+IntToStr(i));
    end;
+
+  s:=ExtractFilePath(ParamStr(0))+'blacklist.txt';
+  if FileExists(s) then blacklist.LoadFromFile(s);
+
 
   SanitizeInit;
 end;
@@ -2115,4 +2125,7 @@ end;
 
 initialization
   LastClean:=0;
+  blacklist:=TStringList.Create;
+finalization
+  blacklist.Free;
 end.
