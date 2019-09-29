@@ -610,7 +610,15 @@ end;
 
 function StripWhiteSpace(const x:WideString):WideString;
 var
-  i,j,l:integer;
+  i,j,k,l:integer;
+  w:word;
+const
+  WhiteSpaceCodesCount=30;
+  WhiteSpaceCodes:array[0..WhiteSpaceCodesCount-1] of word=//WideChar=
+    ($0009,$000A,$000B,$000C,$000D,$0020,$0085,$00A0,
+     $1680,$180E,$2000,$2001,$2002,$2003,$2004,$2005,
+     $2006,$2007,$2008,$2009,$200A,$200B,$200C,$200D,
+     $2028,$2029,$202F,$205F,$2060,$3000);
 begin
   l:=Length(x);
   i:=1;
@@ -618,7 +626,10 @@ begin
   SetLength(Result,l);
   while i<=l do
    begin
-    if word(x[i])>32 then
+    w:=word(x[i]);
+    k:=0;
+    while (k<WhiteSpaceCodesCount) and (w<>WhiteSpaceCodes[k]) do inc(k);
+    if k=WhiteSpaceCodesCount then
      begin
       Result[j]:=x[i];
       inc(j);
