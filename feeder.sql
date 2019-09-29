@@ -76,6 +76,16 @@ constraint FK_UserPost_Post foreign key (post_id) references "Post" (id)
 
 create unique index IX_UserPost on "UserPost" (user_id,post_id);
 
+
+create table "UserBlock" (
+id serial primary key,
+user_id int not null,
+url varchar(200) not null,
+created float not null,
+constraint FK_UserBlock_User foreign key (user_id) references "User" (id)
+);
+
+
 insert into "Feed" (id,name,url,created) values (0,'[system messages]','',0.0);
 
 /*
@@ -94,3 +104,9 @@ constraint FK_SubCount_Subscription foreign key (subscription_id) references "Su
 );
 
 create unique index IX_SubCount on "SubCount" (month,subscription_id);
+
+--PostgreSQL:
+alter default privileges grant select,insert,delete,update on tables to feeder;
+alter default privileges grant usage,select,update on sequences to feeder;
+--grant select,insert,delete,update on all tables in schema public to feeder;
+--grant usage,select,update on all sequences in schema public to feeder;

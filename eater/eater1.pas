@@ -864,7 +864,9 @@ const
           ,'created',double(UtcNow)
           ],'id');
         dbA.Execute('insert into "UserPost" (user_id,post_id)'+
-          ' select S.user_id,? from "Subscription" S where S.feed_id=?',[postid,feedid]);
+          ' select S.user_id,? from "Subscription" S'+
+          ' left outer join "UserBlock" B on B.user_id=S.user_id and B.url=left(?,length(B.url))'+
+          ' where S.feed_id=? and B.id is null',[postid,itemurl,feedid]);
         dbA.CommitTrans;
       except
         dbA.RollbackTrans;

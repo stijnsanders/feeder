@@ -1,4 +1,4 @@
-[[@DataLank,xxmSession]][[!var
+[[@DataLank,xxmSession,fCommon]][[!var
 db:TDataConnection;
 qr:TQueryResult;
 i,tz:integer;
@@ -56,7 +56,34 @@ case Context['x'].AsInteger of
     finally
       qr.Free;
     end;
-    <<p><b>previous logins:</b></p>>
+    <<p><b>block specific URL&#x2019;s</b></p>>
+    qr:=TQueryResult.Create(db,'select * from "UserBlock" where user_id=? order by id',[Session.UserID]);
+    try
+      if not qr.EOF then
+       begin
+        <<script>
+        function rURL(){
+          return confirm('Are you sure to remove this URL block prefix?');
+        }
+        </script>>
+       end;
+      while qr.Read do
+       begin
+        <<div class="post">
+        <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',double(qr['created'])+Session.TimeBias)<</div>
+        [[=qr['url']]]
+        <a href="[[?'x',4,'id',qr['id']]]" style="color:#0000CC;" onclick="return rURL();">[remove]</a>
+        </div>>
+       end;
+    finally
+      qr.Free;
+    end;
+    <<p><form method="post">
+    <input type="hidden" name="x" value="3" />
+    <input type="text" name="url" style="width:12em;" />
+    <input type="submit" value="Add" />
+    </form></p>
+    <p><b>previous logins:</b></p>>
     s:=Context.Cookie['feederAutoLogon'];
     qr:=TQueryResult.Create(db,'select * from "UserLogon" where user_id=? order by last desc',[Session.UserID]);
     try
@@ -121,9 +148,40 @@ case Context['x'].AsInteger of
     end;
     //TODO: kill live sessions
     <<p>Auto-logon revoked</p>
-    <p><a href="?">Continue...</a></p>>
+    <p><a href="?">Continue...</a></p>
+    <script>document.location.replace('?');</script>>
    end;
-  //3:
+  3://add user block URL
+   begin
+    s:=Context['url'].Value;
+    if (Copy(s,1,4)<>'http') or (Length(s)<8) then
+      raise Exception.Create('Invalid Block URL prefix');
+    db.BeginTrans;
+    try
+      db.Insert('UserBlock',['user_id',Session.UserID,'url',s,'created',double(UtcNow)],'id');
+      db.CommitTrans;
+    except
+      db.RollbackTrans;
+      raise;
+    end;
+    <<script>document.location.replace('?');</script>
+    <p><a href="?">continue...</a></p>>
+   end;
+  4://remove user block URL
+   begin
+    db.BeginTrans;
+    try
+      db.Execute('delete from "UserBlock" where user_id=? and id=?',[Session.UserID,Context['id'].AsInteger]);
+      db.CommitTrans;
+    except
+      db.RollbackTrans;
+      raise;
+    end;
+    <<p>URL block removed</p>
+    <p><a href="?">Continue...</a></p>
+    <script>document.location.replace('?');</script>>
+   end;
+  //5:
   else raise Exception.Create('Unknown action');
 end;
 
