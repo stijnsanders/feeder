@@ -1451,7 +1451,10 @@ begin
             re.Pattern:='Reference to undeclared namespace prefix: ''([^'']+?)''.\r\n';
             if re.Test(doc.parseError.reason) then
              begin
-              s:=(((re.Execute(rw) as MatchCollection).Item[0] as Match).SubMatches as SubMatches).Item[0];
+              s:=(((re.Execute(doc.parseError.reason)
+                as MatchCollection).Item[0]
+                  as Match).SubMatches
+                    as SubMatches).Item[0];
               re.Pattern:='<('+s+':\S+?)[^>]*?[\u0000-\uFFFF]*?</\1>';
               re.Global:=true;
               rw:=re.Replace(rw,'');
