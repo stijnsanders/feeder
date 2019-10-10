@@ -769,6 +769,7 @@ var
   feedglobal,b:boolean;
   rc,c1,c2,postid:integer;
   v:Variant;
+  re:RegExp;
 const
   regimesteps=8;
   regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90);
@@ -1442,6 +1443,23 @@ begin
           else
           }
             b:=doc.loadXML(rw);
+
+          //fix Mashable (grr!)
+          if not(b) then
+           begin
+            re:=CoRegExp.Create;
+            re.Pattern:='Reference to undeclared namespace prefix: ''([^'']+?)''.\r\n';
+            if re.Test(doc.parseError.reason) then
+             begin
+              s:=(((re.Execute(rw) as MatchCollection).Item[0] as Match).SubMatches as SubMatches).Item[0];
+              re.Pattern:='<('+s+':\S+?)[^>]*?[\u0000-\uFFFF]*?</\1>';
+              re.Global:=true;
+              rw:=re.Replace(rw,'');
+              b:=doc.loadXML(rw);
+             end;
+            re:=nil;
+           end;
+
 
           if b then
            begin
