@@ -929,7 +929,8 @@ const
     reLink.Global:=true;
     reLink.IgnoreCase:=true;
     //search for applicable <link type="" href="">
-    reLink.Pattern:='<link[^>]+?(rel|type|href)=["'']([^"'']+?)["''][^>]+?(type|href)=["'']([^"'']+?)["''][^>]*?>';
+    reLink.Pattern:='<link[^>]+?(rel|type|href)=["'']([^"'']+?)["''][^>]+?(type|href)=["'']([^"'']+?)["'']([^>]+?(type|href)=["'']([^"'']+?)["''])?[^>]*?>';
+    //                          0                    1                    2                3             (4)     5                6
     mc:=reLink.Execute(rd) as MatchCollection;
     i:=0;
     while (i<mc.Count) and not(Result) do
@@ -937,8 +938,7 @@ const
       m:=mc[i] as Match;
       inc(i);
       sm:=m.SubMatches as SubMatches;
-      //TODO: if (sm[0]='rel') and (sm[2]='href') and (sm[1]='alternate') then
-      if (sm[0]='rel') and (sm[2]='href') and (sm[1]='https://api.w.org/') then
+      if (sm[0]='rel') and (sm[1]='https://api.w.org/') and (sm[2]='href') then
        begin
         combineURL(sm[3]+'wp/v2/posts');
         feedresult:='Feed URL found in content, updating (WPv2)';
@@ -952,6 +952,18 @@ const
         Result:=true;
         s1:=0;//disable below
         s2:=0;
+       end
+      else
+      if (sm[0]='rel') and (sm[1]='alternate') and (sm[2]='type') and (sm[5]='href') then
+       begin
+        s1:=3;
+        s2:=6;
+       end
+      else
+      if (sm[2]='rel') and (sm[4]='alternate') and (sm[0]='type') and (sm[5]='href') then
+       begin
+        s1:=1;
+        s2:=6;
        end
       else
       if (sm[0]='type') and (sm[2]='href') then
