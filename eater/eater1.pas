@@ -1211,7 +1211,7 @@ begin
             r.setRequestHeader('User-Agent','FeedEater/1.0');
           //TODO: ...'/wp/v2/posts' param 'after' last load time?
           r.send(EmptyParam);
-          if r.status=301 then //moved permanently
+          if (r.status=301) or (r.status=308) then //moved permanently
            begin
             feedurl:=r.getResponseHeader('Location');
             b:=true;
@@ -1294,6 +1294,20 @@ begin
               ;//ignore "data past end"
           end;
 
+          if SaveData then
+           begin
+            rf:=TFileStream.Create('xmls\'+Format('%.4d',[feedid])+'.json',fmCreate);
+            try
+              i:=$FEFF;
+              rf.Write(i,2);
+              //rf.Write(rw[i],(Length(rw)-i+1)*2);
+              rw:=jdoc.AsString;
+              rf.Write(rw[1],Length(rw)*2);
+            finally
+              rf.Free;
+            end;
+           end;
+
           jd1:=JSON(jdoc['user']);
           if jd1<>nil then
             feedname:='Instagram: '+VarToStr(jd1['full_name'])+' (@'+VarToStr(jd1['username'])+')';
@@ -1320,9 +1334,13 @@ begin
              end;
 
             if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
+            s:=VarToStr(jn1['thumbnail_src']);//thumbnail_resources?
+            if s='' then s:=VarToStr(jn1['display_url']);
+            //TODO: jn1['is_video']?
+
             content:=
               '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
-              HTMLEncode(VarToStr(jn1['display_url']))+'" border="0" /></a><br />'#13#10+
+              HTMLEncode(s)+'" border="0" /></a><br />'#13#10+
               HTMLEncode(content);
 
             jd1:=JSON(jn1['location']);
