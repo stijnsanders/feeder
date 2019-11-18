@@ -80,7 +80,7 @@ case Context['x'].AsInteger of
     end;
     <<p><form method="post">
     <input type="hidden" name="x" value="3" />
-    <input type="text" name="url" style="width:12em;" />
+    <input type="text" name="url" style="width:12em;" autocomplete="off" />
     <input type="submit" value="Add" />
     </form></p>
     <p><b>previous logins:</b></p>>

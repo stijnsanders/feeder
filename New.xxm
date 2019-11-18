@@ -16,9 +16,9 @@ case Context['x'].AsInteger of
     <dl>
     <dt>URL</dt>
     <dd>
-      <input type="text" name="url" style="width:80vw;" /></dd>
+      <input type="text" name="url" style="width:80vw;" autocomplete="off" /></dd>
     <dt>name</dt>
-    <dd><input type="text" name="name" value="" /> (leave empty for default //TODO: from URL data)</dd>
+    <dd><input type="text" name="name" value="" autocomplete="off" /> (leave empty for default //TODO: from URL data)</dd>
     <dt>category</dt>
     <dd>
       <select name="category">>
@@ -36,7 +36,7 @@ case Context['x'].AsInteger of
       <input type="text" name="categoryNew" />
     </dd>
     <dt>label text</dt>
-    <dd><input type="text" name="label" value="" /> (leave empty for default: feed name)</dd>
+    <dd><input type="text" name="label" value="" autocomplete="off" /> (leave empty for default: feed name)</dd>
     <dt>label color</dt>
     <dd>>#ColorPicker('CCCCCC')<</dd>
     <dt>read width</dt>

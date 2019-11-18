@@ -141,7 +141,7 @@ else
     <input type="text" name="categoryNew" />
   </dd>
   <dt>label text</dt>
-  <dd><input type="text" name="label" value="[[=feedlabel]]" /></dd>
+  <dd><input type="text" name="label" value="[[=feedlabel]]" autocomplete="off" /></dd>
   <dt>label color</dt>
   <dd>>#ColorPicker(feedcolor)<</dd>
   <dt>read width</dt>
