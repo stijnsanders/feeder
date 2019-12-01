@@ -32,6 +32,14 @@ begin
     while (j<=l) and (url[j]<>'/') do inc(j);
     Result:=Copy(url,i,j-i);
    end
+  else if Result='www.instagram.com' then
+   begin
+    inc(j);
+    i:=j;
+    while (j<=l) and (url[j]<>'/') do inc(j);
+    //Result:='i@'+Copy(url,i,j-i);
+    Result:=#$D83D#$DCF8+Copy(url,i,j-i);
+   end
   else if Result='reddit.com' then
    begin
     inc(j);

@@ -757,7 +757,7 @@ procedure DoFeed(dbA:TDataConnection;qr0:TQueryResult;oldPostDate:TDateTime;
 var
   r:ServerXMLHTTP60;
   doc:DOMDocument60;
-  jdoc,jn0,jn1,jc0,jc1,jd1:IJSONDocument;
+  jdoc,jdoc1,jn0,jn1,jc0,jc1,jd1:IJSONDocument;
   jnodes,jcaption:IJSONDocArray;
   xl,xl1:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
@@ -1181,9 +1181,8 @@ begin
           else
           if Copy(feedurl,1,26)='https://www.instagram.com/' then
            begin
-            r.open('GET',feedurl,false,EmptyParam,EmptyParam);
-            //+'?__a=1'?
-            r.setRequestHeader('Accept','text/html');
+            r.open('GET',feedurl+'?__a=1',false,EmptyParam,EmptyParam);
+            r.setRequestHeader('Accept','application/json');
            end
           else
            begin
@@ -1275,11 +1274,6 @@ begin
         if Copy(feedurl,1,26)='https://www.instagram.com/' then
          begin
 
-          i:=1;
-          while (i<Length(rw)-8) and (Copy(rw,i,11)<>'"graphql":{') do
-            inc(i);
-          inc(i,10);
-
           jnodes:=JSONDocArray;
           jdoc:=JSON(['user{'
             ,'edge_felix_video_timeline{','edges',jnodes,'}'
@@ -1287,12 +1281,28 @@ begin
             ,'edge_saved_media{','edges',jnodes,'}'
             ,'edge_media_collections{','edges',jnodes,'}'
             ]);
+
+          {
+          i:=1;
+          while (i<Length(rw)-8) and (Copy(rw,i,11)<>'"graphql":{') do
+            inc(i);
+          inc(i,10);
           try
             jdoc.Parse(Copy(rw,i,Length(rw)-i+1));
           except
             on EJSONDecodeException do
               ;//ignore "data past end"
           end;
+          }
+
+          jdoc1:=JSON(['graphql',jdoc]);
+          try
+            jdoc1.Parse(rw);
+          except
+            on EJSONDecodeException do
+              ;//ignore "data past end"
+          end;
+
 
           if SaveData then
            begin

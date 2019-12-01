@@ -23,7 +23,7 @@ if Length(Values)=0 then r:='' else r:=Values[0];
 [[
 if Length(Values)=2 then
  begin
-  <<base target="_blank" href="[[=Values[1]]]" />>
+  <<base target="_blank" rel="noreferrer" href="[[=Values[1]]]" />>
  end;
 ]]
 </head>
