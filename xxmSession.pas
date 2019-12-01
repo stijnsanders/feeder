@@ -106,7 +106,7 @@ begin
           ['login',Login
           ,'name',Name
           ,'email',Email
-          ,'created',UtcNow
+          ,'created',double(UtcNow)
           ],'id');
         //welcome message
         SetLength(fn,MAX_PATH);

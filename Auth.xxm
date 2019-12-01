@@ -1,6 +1,6 @@
 [[@xxmSession,DataLank,base64,sha3,Windows,fCommon]][[!var
 verb:WideString;
-s:string;
+s:UTF8String;
 db:TDataConnection;
 ]][[
 verb:=Context.ContextString(csVerb);
@@ -9,7 +9,7 @@ if verb<>'POST' then
  begin
   if Context['key'].Value=Session.Key then
    begin
-    s:=base64encode(SHA3_224(Format('[feederAutoLogon]%d:%d:%d:%d:%d:%d[%s]',
+    s:=base64encode(SHA3_224(UTF8Encode(Format('[feederAutoLogon]%d:%d:%d:%d:%d:%d[%s]',
       [GetTickCount
       ,GetCurrentThreadID
       ,GetCurrentProcessID
@@ -17,13 +17,22 @@ if verb<>'POST' then
       ,integer(pointer(Context))
       ,Session.UserID
       ,Session.ID
-      ])));
+      ]))));
     db:=Session.Connection;
     db.BeginTrans;
     try
+
+      if Session.UserID=0 then
+        Session.UserID:=db.Insert('User',
+          ['login',FormatDateTime('yyyymmddhhnnsszz',UtcNow)
+          ,'name',''
+          ,'email',''
+          ,'created',double(UtcNow)
+          ],'id');
+
       db.Insert('UserLogon',
         ['user_id',Session.UserID
-        ,'key',s
+        ,'key',UTF8ToWideString(s)
         ,'created',double(UtcNow)
         ,'last',double(UtcNow)
         ,'address',Context.ContextString(csRemoteAddress)

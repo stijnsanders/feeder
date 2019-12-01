@@ -25,7 +25,7 @@ created float not null,
 constraint FK_Post_Feed foreign key (feed_id) references "Feed" (id)
 );
 
-create index IX_Post on "Post" (feed_id);
+create index IX_Post on "Post" (feed_id, pubdate desc);
 --create index IX_PostGuid on "Post" (guid,feed_id);--//moved to index db kept by eater
 
 create table "User" (

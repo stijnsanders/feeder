@@ -14,7 +14,7 @@ BODY{font-family:"PT Sans",Calibri,sans-serif;padding:2pt;margin:0;background-co
 A{text-decoration:none;color:#000020;}
 IMG{border:0;}
 </style>
-<base target="_blank">
+<base target="_blank" rel="noreferrer">
 </head>
 <body>>
 x:=Context['x'].Value;
