@@ -21,7 +21,7 @@ const
 implementation
 
 uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB,
-  SQLite, jsonDoc;
+  SQLite, jsonDoc, ActiveX, ComObj;
 
 procedure OutLn(const x:string);
 begin
@@ -608,6 +608,67 @@ begin
   end;
 end;
 
+const
+  Base64Codes:array[0..63] of AnsiChar=
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function Base64Encode(const x:UTF8String):UTF8String;
+var
+  i,j,l:cardinal;
+begin
+  l:=Length(x);
+  i:=(l div 3);
+  if (l mod 3)<>0 then inc(i);
+  SetLength(Result,i*4);
+  i:=1;
+  j:=0;
+  while (i+2<=l) do
+   begin
+    inc(j);Result[j]:=Base64Codes[  byte(x[i  ]) shr 2];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i  ]) and $03) shl 4)
+                                or (byte(x[i+1]) shr 4)];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i+1]) and $0F) shl 2)
+                                or (byte(x[i+2]) shr 6)];
+    inc(j);Result[j]:=Base64Codes[  byte(x[i+2]) and $3F];
+    inc(i,3);
+   end;
+  if i=l then
+   begin
+    inc(j);Result[j]:=Base64Codes[  byte(x[i  ]) shr 2];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i  ]) and $03) shl 4)];
+    inc(j);Result[j]:='=';
+    inc(j);Result[j]:='=';
+   end
+  else if i+1=l then
+   begin
+    inc(j);Result[j]:=Base64Codes[  byte(x[i  ]) shr 2];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i  ]) and $03) shl 4)
+                                or (byte(x[i+1]) shr 4)];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i+1]) and $0F) shl 2)];
+    inc(j);Result[j]:='=';
+   end;
+end;
+
+function Base64EncodeStream(const s:IStream):UTF8String;
+var
+  d:UTF8String;
+  i,j:integer;
+  l:FixedUInt;
+begin
+  i:=1;
+  j:=0;
+  l:=1;
+  while l<>0 do
+   begin
+    inc(j,$10000);
+    SetLength(d,j);
+    OleCheck(s.Read(@d[i],$10000,@l));
+    inc(i,l);
+   end;
+  SetLength(d,i-1);
+  Result:=Base64Encode(d);
+end;
+
 function StripWhiteSpace(const x:WideString):WideString;
 var
   i,j,k,l:integer;
@@ -758,7 +819,7 @@ var
   r:ServerXMLHTTP60;
   doc:DOMDocument60;
   jdoc,jdoc1,jn0,jn1,jc0,jc1,jd1:IJSONDocument;
-  jnodes,jcaption:IJSONDocArray;
+  jnodes,jcaption,jthumbs:IJSONDocArray;
   xl,xl1:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
   feedid:integer;
@@ -1323,9 +1384,10 @@ begin
             feedname:='Instagram: '+VarToStr(jd1['full_name'])+' (@'+VarToStr(jd1['username'])+')';
 
           jcaption:=JSONDocArray;
-          jn1:=JSON(['edge_media_to_caption{','edges',jcaption]);
+          jthumbs:=JSONDocArray;
+          jn1:=JSON(['edge_media_to_caption{','edges',jcaption,'}','thumbnail_resources',jthumbs]);
           jn0:=JSON(['node',jn1]);
-          jc1:=JSON;
+          jc1:=JSON();
           jc0:=JSON(['node',jc1]);
           for i:=0 to jnodes.Count-1 do
            begin
@@ -1344,14 +1406,36 @@ begin
              end;
 
             if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
-            s:=VarToStr(jn1['thumbnail_src']);//thumbnail_resources?
-            if s='' then s:=VarToStr(jn1['display_url']);
-            //TODO: jn1['is_video']?
 
-            content:=
+
+            content:=HTMLEncode(content);
+            //if jn1['is_video']=true then content:=#$25B6+content;
+            if jn1['is_video']=true then title:=#$25B6+title;
+
+            if jthumbs.Count=0 then s:='' else
+              s:=VarToStr(JSON(jthumbs.GetJSON(jthumbs.Count-1))['src']);
+            if s='' then s:=VarToStr(jn1['thumbnail_src']);
+            if s='' then s:=VarToStr(jn1['display_url']);
+
+            {
+            if s<>'' then content:=
               '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
               HTMLEncode(s)+'" border="0" /></a><br />'#13#10+
-              HTMLEncode(content);
+              content;
+            }
+            if s<>'' then
+             begin
+              r:=CoServerXMLHTTP60.Create;
+              r.open('GET',s,false,EmptyParam,EmptyParam);
+              r.send(EmptyParam);
+              //if r.status<>200 then raise?
+              content:=
+                '<a href="'+HTMLEncode(itemurl)+'"><img src="data:image/jpeg;base64,'+
+                  UTF8ToWideString(Base64EncodeStream(IUnknown(r.responseStream) as IStream))+
+                  '" border="0" /></a><br />'#13#10+
+                content;
+              r:=nil;
+             end;
 
             jd1:=JSON(jn1['location']);
             if jd1<>nil then
