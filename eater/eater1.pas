@@ -21,7 +21,7 @@ const
 implementation
 
 uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB,
-  SQLite, jsonDoc, ActiveX, ComObj;
+  SQLite, jsonDoc, ActiveX, ComObj, Vcl.Imaging.JPEG;
 
 procedure OutLn(const x:string);
 begin
@@ -649,11 +649,13 @@ begin
    end;
 end;
 
-function Base64EncodeStream(const s:IStream):UTF8String;
+function Base64EncodeStream_JPEG(const s:IStream):UTF8String;
 var
   d:UTF8String;
   i,j:integer;
   l:FixedUInt;
+  //p:TJPEGImage;
+  //m:TMemoryStream;
 begin
   i:=1;
   j:=0;
@@ -666,6 +668,36 @@ begin
     inc(i,l);
    end;
   SetLength(d,i-1);
+
+  {
+  m:=TMemoryStream.Create;
+  try
+    m.Write(d[1],Length(d));
+    m.Position:=0;
+    p:=TJPEGImage.Create;
+    try
+      p.LoadFromStream(m);
+      p.DIBNeeded;
+
+      //???
+      p.CompressionQuality:=75;
+
+      p.Compress;
+      m.Size:=0;
+      p.SaveToStream(m);
+    finally
+      p.Free;
+    end;
+
+    m.Position:=0;
+    SetLength(d,m.Size);
+    //Move(m.Memory^,d[1],m.Size);
+    m.Read(d[1],m.Size);
+  finally
+    m.Free;
+  end;
+  }
+
   Result:=Base64Encode(d);
 end;
 
@@ -835,10 +867,9 @@ const
   regimesteps=8;
   regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90);
 
-  procedure regItem;
+  function CheckNewItem:boolean;
   var
     qr:TQueryResult;
-    b:boolean;
     i:integer;
   begin
     if itemurl='' then itemurl:=itemid;//assert Copy(itemid,1,4)='http'
@@ -884,11 +915,11 @@ const
     inc(c1);
 
     //check age, blacklist, already listed
-    b:=pubDate>=OldPostsCutOff;
+    Result:=pubDate>=OldPostsCutOff;
     i:=0;
-    while b and (i<blacklist.Count) do
+    while Result and (i<blacklist.Count) do
       if (blacklist[i]<>'') and (blacklist[i]=Copy(itemurl,1,Length(blacklist[i]))) then
-        b:=false
+        Result:=false
       else
         inc(i);
     if b then
@@ -906,47 +937,48 @@ const
           'select id from "Post" where feed_id=? and guid=?'
           ,[feedid,itemid]);
       try
-        b:=qr.EOF;
+        Result:=qr.EOF;
       finally
         qr.Free;
       end;
      end;
-    if b then
+  end;
+
+  procedure RegisterItem;
+  begin
+    inc(c2);
+    if IsSomethingEmpty(title) then
      begin
-      inc(c2);
-      if IsSomethingEmpty(title) then
-       begin
-        title:=StripHTML(content,200);
-        if Length(title)<=8 then title:='['+itemid+']';
-       end;
-
-      //content starts with <img>? inject a <br />
-      if rhStartImg.Test(content) then
-        content:=rhStartImg.Replace(content,'$1$3<br />');
-
-      //list the post
-      dbA.BeginTrans;
-      try
-        postid:=dbA.Insert('Post',
-          ['feed_id',feedid
-          ,'guid',itemid
-          ,'title',SanitizeTitle(title)
-          ,'content',content
-          ,'url',itemurl
-          ,'pubdate',double(pubDate)
-          ,'created',double(UtcNow)
-          ],'id');
-        dbA.Execute('insert into "UserPost" (user_id,post_id)'+
-          ' select S.user_id,? from "Subscription" S'+
-          ' left outer join "UserBlock" B on B.user_id=S.user_id and B.url=left(?,length(B.url))'+
-          ' where S.feed_id=? and B.id is null',[postid,itemurl,feedid]);
-        dbA.CommitTrans;
-      except
-        dbA.RollbackTrans;
-        raise;
-      end;
-      inc(LastPostCount);
+      title:=StripHTML(content,200);
+      if Length(title)<=8 then title:='['+itemid+']';
      end;
+
+    //content starts with <img>? inject a <br />
+    if rhStartImg.Test(content) then
+      content:=rhStartImg.Replace(content,'$1$3<br />');
+
+    //list the post
+    dbA.BeginTrans;
+    try
+      postid:=dbA.Insert('Post',
+        ['feed_id',feedid
+        ,'guid',itemid
+        ,'title',SanitizeTitle(title)
+        ,'content',content
+        ,'url',itemurl
+        ,'pubdate',double(pubDate)
+        ,'created',double(UtcNow)
+        ],'id');
+      dbA.Execute('insert into "UserPost" (user_id,post_id)'+
+        ' select S.user_id,? from "Subscription" S'+
+        ' left outer join "UserBlock" B on B.user_id=S.user_id and B.url=left(?,length(B.url))'+
+        ' where S.feed_id=? and B.id is null',[postid,itemurl,feedid]);
+      dbA.CommitTrans;
+    except
+      dbA.RollbackTrans;
+      raise;
+    end;
+    inc(LastPostCount);
   end;
 
   procedure combineURL(const s:string);
@@ -1407,43 +1439,46 @@ begin
 
             if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
 
-
-            content:=HTMLEncode(content);
-            //if jn1['is_video']=true then content:=#$25B6+content;
-            if jn1['is_video']=true then title:=#$25B6+title;
-
-            if jthumbs.Count=0 then s:='' else
-              s:=VarToStr(JSON(jthumbs.GetJSON(jthumbs.Count-1))['src']);
-            if s='' then s:=VarToStr(jn1['thumbnail_src']);
-            if s='' then s:=VarToStr(jn1['display_url']);
-
-            {
-            if s<>'' then content:=
-              '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
-              HTMLEncode(s)+'" border="0" /></a><br />'#13#10+
-              content;
-            }
-            if s<>'' then
+            if CheckNewItem then
              begin
-              r:=CoServerXMLHTTP60.Create;
-              r.open('GET',s,false,EmptyParam,EmptyParam);
-              r.send(EmptyParam);
-              //if r.status<>200 then raise?
-              content:=
-                '<a href="'+HTMLEncode(itemurl)+'"><img src="data:image/jpeg;base64,'+
-                  UTF8ToWideString(Base64EncodeStream(IUnknown(r.responseStream) as IStream))+
-                  '" border="0" /></a><br />'#13#10+
+              content:=HTMLEncode(content);
+              //if jn1['is_video']=true then content:=#$25B6+content;
+              if jn1['is_video']=true then title:=#$25B6+title;
+
+              if jthumbs.Count=0 then s:='' else
+                s:=VarToStr(JSON(jthumbs.GetJSON(jthumbs.Count-1))['src']);
+              if s='' then s:=VarToStr(jn1['thumbnail_src']);
+              if s='' then s:=VarToStr(jn1['display_url']);
+
+              {
+              if s<>'' then content:=
+                '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
+                HTMLEncode(s)+'" border="0" /></a><br />'#13#10+
                 content;
-              r:=nil;
+              }
+              if s<>'' then
+               begin
+                r:=CoServerXMLHTTP60.Create;
+                r.open('GET',s,false,EmptyParam,EmptyParam);
+                r.send(EmptyParam);
+                //if r.status<>200 then raise?
+                content:=
+                  '<a href="'+HTMLEncode(itemurl)+'"><img src="data:image/jpeg;base64,'+
+                    UTF8ToWideString(Base64EncodeStream_JPEG(IUnknown(r.responseStream) as IStream))+
+                    '" border="0" /></a><br />'#13#10+
+                  content;
+
+                r:=nil;
+               end;
+
+              jd1:=JSON(jn1['location']);
+              if jd1<>nil then
+                content:='<i>'+HTMLEncode(jd1['name'])+'</i><br />'#13#10+content;
+
+              //TODO: likes, views, owner?
+
+              RegisterItem;
              end;
-
-            jd1:=JSON(jn1['location']);
-            if jd1<>nil then
-              content:='<i>'+HTMLEncode(jd1['name'])+'</i><br />'#13#10+content;
-
-            //TODO: likes, views, owner?
-
-            regItem;
 
            end;
 
@@ -1481,7 +1516,7 @@ begin
               content:=VarToStr(jn0['description'])
             else
               content:='';
-            regItem;
+            if CheckNewItem then RegisterItem;
            end;
           feedresult:=Format('RSS-in-JSON %d/%d',[c2,c1]);
 
@@ -1510,7 +1545,7 @@ begin
             end;
             //'excerpt'?
             content:=VarToStr(JSON(jn0['content'])['rendered']);
-            regItem;
+            if CheckNewItem then RegisterItem;
            end;
           feedresult:=Format('WPv2 %d/%d',[c2,c1]);
          end
@@ -1546,7 +1581,7 @@ begin
               content:=HTMLEncode(VarToStr(jn0['content_text']))
             else
               content:=VarToStr(jn0['content_html']);
-            regItem;
+            if CheckNewItem then RegisterItem;
            end;
           feedresult:=Format('JSONfeed %d/%d',[c2,c1]);
          end
@@ -1658,7 +1693,7 @@ begin
                 except
                   pubDate:=UtcNow;
                 end;
-                regItem;
+                if CheckNewItem then RegisterItem;
 
                 x:=xl.nextNode as IXMLDOMElement;
                end;
@@ -1696,7 +1731,7 @@ begin
                 except
                   pubDate:=UtcNow;
                 end;
-                regItem;
+                if CheckNewItem then RegisterItem;
 
                 x:=xl.nextNode as IXMLDOMElement;
                end;
@@ -1733,7 +1768,7 @@ begin
                 except
                   pubDate:=UtcNow;
                 end;
-                regItem;
+                if CheckNewItem then RegisterItem;
                 x:=xl.nextNode as IXMLDOMElement;
                end;
 
@@ -1764,7 +1799,7 @@ begin
                   except
                     pubDate:=UtcNow;
                   end;
-                  regItem;
+                  if CheckNewItem then RegisterItem;
                   x:=xl.nextNode as IXMLDOMElement;
                  end;
                end;
@@ -1801,7 +1836,7 @@ begin
                 except
                   pubDate:=UtcNow;
                 end;
-                regItem;
+                if CheckNewItem then RegisterItem;
                 x:=xl.nextNode as IXMLDOMElement;
                end;
 
