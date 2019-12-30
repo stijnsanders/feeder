@@ -859,7 +859,7 @@ var
   feedname,feedname0,title,content:WideString;
   feedload,pubDate:TDateTime;
   feedregime:integer;
-  feedglobal,b:boolean;
+  feedglobal:boolean;
   rc,c1,c2,postid:integer;
   v:Variant;
   re:RegExp;
@@ -922,7 +922,7 @@ const
         Result:=false
       else
         inc(i);
-    if b then
+    if Result then
      begin
       if feedglobal then
         qr:=TQueryResult.Create(dbA,
@@ -1109,7 +1109,7 @@ var
   d:TDateTime;
   i,j,totalcount:integer;
   loadlast,postlast,postavg,margin:double;
-  loadext,newfeed:boolean;
+  loadext,dofeed,newfeed,doreq,xres:boolean;
   rw,rt,s,sql1,sql2:WideString;
   rf:TFileStream;
   qr1:TQueryResult;
@@ -1204,7 +1204,7 @@ begin
     if (loadlast<>0.0) and (d<loadlast) then
       d:=loadlast+feedregime-margin;
    end;
-  b:=(d<feedload) or FeedAll;
+  dofeed:=(d<feedload) or FeedAll;
 
   if postavg=0.0 then
     sl.Add('<td class="empty">&nbsp;</td>')
@@ -1231,7 +1231,7 @@ begin
 
   //Write(?
 
-  if b then
+  if dofeed then
    begin
     c1:=0;
     c2:=0;
@@ -1252,9 +1252,10 @@ begin
       else
        begin
         rc:=0;
-        while b do
+        doreq:=true;
+        while doreq do
          begin
-          b:=false;
+          doreq:=false;
           Write(':');
           r:=CoServerXMLHTTP60.Create;
 
@@ -1306,7 +1307,7 @@ begin
           if (r.status=301) or (r.status=308) then //moved permanently
            begin
             feedurl:=r.getResponseHeader('Location');
-            b:=true;
+            doreq:=true;
             inc(rc);
             if rc=8 then
               raise Exception.Create('max redirects exceeded');
@@ -1598,13 +1599,13 @@ begin
 
           {
           if loadext then
-            b:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
+            xres:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
           else
           }
-            b:=doc.loadXML(rw);
+            xres:=doc.loadXML(rw);
 
           //fix Mashable (grr!)
-          if not(b) then
+          if not(xres) then
            begin
             re:=CoRegExp.Create;
             re.Pattern:='Reference to undeclared namespace prefix: ''([^'']+?)''.\r\n';
@@ -1617,13 +1618,13 @@ begin
               re.Pattern:='<('+s+':\S+?)[^>]*?[\u0000-\uFFFF]*?</\1>';
               re.Global:=true;
               rw:=re.Replace(rw,'');
-              b:=doc.loadXML(rw);
+              xres:=doc.loadXML(rw);
              end;
             re:=nil;
            end;
 
 
-          if b then
+          if xres then
            begin
 
             //atom
