@@ -430,7 +430,7 @@ end;
 
 
 var
-  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhStartImg:RegExp;
+  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhTrim,rhStartImg:RegExp;
   blacklist:TStringList;
 
 procedure SanitizeInit;
@@ -470,6 +470,9 @@ begin
   rhLFs:=CoRegExp.Create;
   rhLFs.Pattern:='(\x0D?\x0A)+';
   rhLFs.Global:=true;
+
+  rhTrim:=CoRegExp.Create;
+  rhTrim.Pattern:='^\s*(.*?)\s*$';
 
   rhStartImg:=CoRegExp.Create;
   rhStartImg.Pattern:='^\s*?(<(div|p)[^>]*?>\s*?)?(<img[^>]*?>)\s*(?!<br)';
@@ -890,6 +893,9 @@ const
       if i<>0 then itemid:=Copy(itemid,1,i-1);
      end;
 
+    //TODO: if feed_flag_trim in feed_flags?
+    itemurl:=rhTrim.Replace(itemurl,'$1');
+
     //relative url
     if (itemurl<>'') and (Copy(itemurl,1,4)<>'http') then
       if itemurl[1]='/' then
@@ -1235,6 +1241,7 @@ begin
    begin
     c1:=0;
     c2:=0;
+    loadext:=false;//counter warning
     try
 
       loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
@@ -1342,7 +1349,20 @@ begin
        end;
     except
       on e:Exception do
+       begin
         feedresult:='['+e.ClassName+']'+e.Message;
+        if not(loadext) and (e is EOleException)
+          and (e.Message='A security error occurred') then //TODO: e.ErrorCode=?
+         begin
+          rf:=TFileStream.Create('feeds\'+Format('%.4d',[feedid])+'.txt',fmCreate);
+          try
+            //
+          finally
+            rf.Free;
+          end;
+         end;
+
+       end;
     end;
 
     //sanitize unicode
