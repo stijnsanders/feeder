@@ -16,8 +16,9 @@ SetLength(r,i);
 
 db:=Session.Connection;
 qr:=TQueryResult.Create(db,
-  'select P.*, S.label, S.color, S.readwidth, S.id as subid'+
+  'select P.*, S.label, S.color, S.readwidth, S.id as subid, F.htmlprefix'+
   ' from "Post" P'+
+  ' inner join "Feed" F on F.id=P.feed_id'+
   ' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'+
   ' where P.id=?',[Session.UserID,id]);
 try
@@ -41,6 +42,7 @@ try
   [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
   <b>>#qr['title']<</b>
   </div>
+  [[#qr['htmlprefix']]]
   <div[[#s]]>>
 
   rp1:=CoRegExp.Create;
