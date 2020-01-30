@@ -21,7 +21,7 @@ const
 implementation
 
 uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB,
-  SQLite, jsonDoc, ActiveX, ComObj, Vcl.Imaging.JPEG;
+  LibPQ, jsonDoc, ActiveX, ComObj, Vcl.Imaging.JPEG;
 
 procedure OutLn(const x:string);
 begin
@@ -1352,7 +1352,9 @@ begin
        begin
         feedresult:='['+e.ClassName+']'+e.Message;
         if not(loadext) and (e is EOleException)
-          and (e.Message='A security error occurred') then //TODO: e.ErrorCode=?
+          and ((e.Message='A security error occurred')
+          or (e.Message='A connection with the server could not be established'))
+          then //TODO: e.ErrorCode=?
          begin
           rf:=TFileStream.Create('feeds\'+Format('%.4d',[feedid])+'.txt',fmCreate);
           try
@@ -2093,7 +2095,7 @@ begin
                 Writeln(#13'Analyze after next load: enabled');
                end;
             'v'://version
-              Writeln('sqlite3_libversion:'+sqlite3_libversion);
+              Writeln('PQlibVersion:'+IntToStr(PQlibVersion));
             'q'://quit
              begin
               Writeln(#13'User abort    ');
@@ -2147,7 +2149,7 @@ begin
 
     sl:=TStringList.Create;
     try
-      sl.LoadFromFile('..\..\feeder.ini');
+      sl.LoadFromFile(FeederIniPath);
       dbA:=TDataConnection.Create(sl.Text);
       dbB:=TDataConnection.Create(sl.Text);
     finally
@@ -2322,7 +2324,7 @@ begin
 
     sl:=TStringList.Create;
     try
-      sl.LoadFromFile('..\..\feeder.ini');
+      sl.LoadFromFile(FeederIniPath);
       db:=TDataConnection.Create(sl.Text);
     finally
       sl.Free;

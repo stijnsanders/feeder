@@ -7,6 +7,7 @@ function ShowLabel(const Lbl,LblColor:string):string;
 function ColorPicker(const ValColor:string):string;
 function CheckColor(const ValColor:string):string;
 function UtcNow:TDateTime;
+procedure ClearChart(const key:string);
 
 implementation
 
@@ -223,6 +224,15 @@ begin
     EncodeDate(st.wYear,st.wMonth,st.wDay)+
     EncodeTime(st.wHour,st.wMinute,st.wSecond,st.wMilliseconds)+
     bias;
+end;
+
+procedure ClearChart(const key:string);
+var
+  fn:string;
+begin
+  SetLength(fn,MAX_PATH);
+  SetLength(fn,GetModuleFileName(HInstance,PChar(fn),MAX_PATH));
+  DeleteFile(PChar(ExtractFilePath(fn)+'charts\'+key+'.png'));
 end;
 
 end.

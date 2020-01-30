@@ -47,6 +47,7 @@ created float not null,
 last float not null,
 address varchar(50) not null,
 useragent varchar(200) not null,
+chart int null,
 constraint FK_UserLogon_User foreign key (user_id) references "User" (id)
 );
 

@@ -10,7 +10,8 @@ uses
   DataLank in '..\DataLank.pas',
   MSXML2_TLB in '..\MSXML2_TLB.pas',
   VBScript_RegExp_55_TLB in '..\VBScript_RegExp_55_TLB.pas',
-  jsonDoc in 'jsonDoc.pas';
+  jsonDoc in 'jsonDoc.pas',
+  eater2 in 'eater2.pas';
 
 {$R *.res}
 {$APPTYPE CONSOLE}
@@ -28,6 +29,7 @@ begin
       DoProcessParams;
       repeat
         DoUpdateFeeds;
+        DoCharts;
         //DoAnalyze;
       until DoCheckRunDone;
     finally

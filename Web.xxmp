@@ -76,11 +76,6 @@
 			"path": "Badge.xxm",
 			"unitName": "badge_xxm1",
 			"unitPath": ""
-		},
-		"graph_xxm": {
-			"path": "Graph.xxm",
-			"unitName": "graph_xxm1",
-			"unitPath": ""
 		}
 	},
 	"units": {
