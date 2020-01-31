@@ -120,6 +120,11 @@ begin
             b.Canvas.FillRect(Rect(d*fw,d1-Round(v[i].t2/q1*d1),(d+1)*fw,bh*fh));
            end;
          end;
+        b.Canvas.Font.Name:='Verdana';
+        b.Canvas.Font.Height:=-10;
+        b.Canvas.Font.Color:=$CC6600;
+        b.Canvas.Brush.Style:=bsClear;
+        b.Canvas.TextOut(2,bh*fh-12,IntToStr(q1));
         p:=TPngImage.Create;
         try
           p.Assign(b);
