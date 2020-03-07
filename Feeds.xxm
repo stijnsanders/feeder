@@ -70,16 +70,18 @@ if id=0 then
   <<div id="trailer" style="height:100vh;border-bottom:4px solid gold;"></div>>
 
   Context.Flush;
+  Session.Connection.Execute('set statement_timeout=10000',[]);
   qr:=TQueryResult.Create(Session.Connection,
-    'select S.id, S.postsopened'+
-    //', (select count(*) from "Post" P where P.feed_id=S.feed_id) as PostCount'+
-    ', F.totalcount as PostCount'+
-    ', (select count(*) from "UserPost" X inner join "Post" P on P.id=X.post_id where P.feed_id=S.feed_id and X.user_id=S.user_id) as UnreadCount'+
+
+    'select S.id, S.postsopened, F.totalcount as PostCount, X.UnreadCount'+
     ' from "Subscription" S'+
+    ' left outer join ('+
+    '   select P.feed_id, count(*) as UnreadCount from "Post" P inner join "UserPost" X on X.post_id=P.id where X.user_id=? group by P.feed_id'+
+    ' ) X on X.feed_id=S.feed_id'+
     ' inner join "Feed" F on F.id=S.feed_id'+
     ' where S.user_id=?'
     //+' order by S.category, S.label, F.name, S.id'
-    ,[Session.UserID]);
+    ,[Session.UserID,Session.UserID]);
   try
     <<script>
     function f(id,x1,x2,x3){

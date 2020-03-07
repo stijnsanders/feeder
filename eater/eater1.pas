@@ -454,7 +454,7 @@ begin
   rh5.Pattern:='&amp;([a-z]+?);';
   rh5.Global:=true;
   rh6:=CoRegExp.Create;
-  rh6.Pattern:='&lt;(i|b|u|s|em|strong|sub|sup)&gt;(.+?)&lt;/\1&gt;';
+  rh6.Pattern:='&lt;(i|b|u|s|em|strong|sub|sup)&gt;(.*?)&lt;/\1&gt;';
   rh6.Global:=true;
   rh6.IgnoreCase:=true;
   rh7:=CoRegExp.Create;
