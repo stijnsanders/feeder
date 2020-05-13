@@ -430,7 +430,8 @@ end;
 
 
 var
-  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhTrim,rhStartImg:RegExp;
+  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhTrim,rhStartImg,
+  rhImgData:RegExp;
   blacklist:TStringList;
 
 procedure SanitizeInit;
@@ -477,6 +478,8 @@ begin
   rhStartImg:=CoRegExp.Create;
   rhStartImg.Pattern:='^\s*?(<(div|p)[^>]*?>\s*?)?(<img[^>]*?>)\s*(?!<br)';
   rhStartImg.IgnoreCase:=true;
+
+  rhImgData:=nil;//see WPv2
 end;
 
 function SanitizeTitle(const title:WideString):WideString;
@@ -956,7 +959,7 @@ const
     if IsSomethingEmpty(title) then
      begin
       title:=StripHTML(content,200);
-      if Length(title)<=8 then title:='['+itemid+']';
+      if Length(title)<=8 then title:=#$2039+itemid+#$203A;
      end;
 
     //content starts with <img>? inject a <br />
@@ -1566,9 +1569,22 @@ begin
             except
               pubDate:=UtcNow;
             end;
-            //'excerpt'?
-            content:=VarToStr(JSON(jn0['content'])['rendered']);
-            if CheckNewItem then RegisterItem;
+            if CheckNewItem then
+             begin
+              //'excerpt'?
+              content:=VarToStr(JSON(jn0['content'])['rendered']);
+
+              if rhImgData=nil then
+               begin
+                rhImgData:=CoRegExp.Create;
+                rhImgData.Pattern:='<img data-srcset="([^"]+?)" data-src="([^"]+?)"';
+                //TODO: negative lookaround: no src/srcset=""
+                rhImgData.Global:=true;
+               end;
+              content:=rhImgData.Replace(content,'<img srcset="$1" src="$2"');
+
+              RegisterItem;
+             end;
            end;
           feedresult:=Format('WPv2 %d/%d',[c2,c1]);
          end
