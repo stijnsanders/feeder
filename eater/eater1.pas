@@ -1577,7 +1577,7 @@ begin
               if rhImgData=nil then
                begin
                 rhImgData:=CoRegExp.Create;
-                rhImgData.Pattern:='<img data-srcset="([^"]+?)" data-src="([^"]+?)"';
+                rhImgData.Pattern:='<img\s+?data-srcset="([^"]+?)"\s+?data-src="([^"]+?)"';
                 //TODO: negative lookaround: no src/srcset=""
                 rhImgData.Global:=true;
                end;
