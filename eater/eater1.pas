@@ -1126,11 +1126,11 @@ var
   d:TDateTime;
   i,j,totalcount:integer;
   loadlast,postlast,postavg,margin:double;
-  loadext,dofeed,newfeed,doreq,xres:boolean;
+  loadext,dofeed,newfeed,doreq,xres,notmod:boolean;
   rw,rt,s,sql1,sql2:WideString;
   rf:TFileStream;
   qr1:TQueryResult;
-  feedresult0:string;
+  feedresult0,feedlastmod,feedlastmod0:string;
 begin
   if qr0.EOF then raise Exception.Create('No feed found for this id.');
   feedid:=qr0.GetInt('id');
@@ -1139,14 +1139,17 @@ begin
   feedload:=UtcNow;
   feedname:=qr0.GetStr('name');
   feedregime:=qr0.GetInt('regime');
+  feedlastmod:=qr0.GetStr('lastmod');
   feedresult:='';
   newfeed:=qr0.IsNull('itemcount');
   totalcount:=qr0.GetInt('totalcount');
   feedurl0:=feedurl;
   feedname0:=feedname;
+  feedlastmod0:=feedlastmod;
   feedresult0:=qr0.GetStr('result');
   c1:=qr0.GetInt('itemcount');
   c2:=qr0.GetInt('loadcount');
+  notmod:=false;//default
 
   Out0(IntToStr(feedid)+':'+feedurl);
 
@@ -1168,7 +1171,6 @@ begin
   if qr0.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr0['loadlast'];
 
   qr0.Free;
-
 
   //check feed timing and regime
   qr1:=TQueryResult.Create(dbA,
@@ -1258,6 +1260,7 @@ begin
       loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
       if loadext then
        begin
+        //TODO: feedlastmod
         rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml');
         //TODO: extract content-type from LoadExternal response?
         i:=1;
@@ -1321,6 +1324,8 @@ begin
           else
             r.setRequestHeader('User-Agent','FeedEater/1.0');
           //TODO: ...'/wp/v2/posts' param 'after' last load time?
+          if feedlastmod<>'' then
+            r.setRequestHeader('If-Modified-Since',feedlastmod);
           r.send(EmptyParam);
           if (r.status=301) or (r.status=308) then //moved permanently
            begin
@@ -1336,7 +1341,9 @@ begin
 
           Write(':');
           rw:=r.responseText;
+          //rh:=r.getAllResponseHeaders;
           rt:=r.getResponseHeader('Content-Type');
+          feedlastmod:=r.getResponseHeader('Last-Modified');
           i:=1;
           while (i<=Length(rt)) and (rt[i]<>';') do inc(i);
           if (i<Length(rt)) then SetLength(rt,i-1);
@@ -1352,9 +1359,24 @@ begin
             finally
               rf.Free;
             end;
+
+            {
+            rf:=TFileStream.Create('xmls\'+Format('%.4d',[feedid])+'.log',fmCreate);
+            try
+              i:=$FEFF;
+              rf.Write(i,2);
+              rf.Write(rh[1],Length(rh)*2);
+            finally
+              rf.Free;
+            end;
+            }
+
            end;
 
          end
+        else
+        if r.status=304 then
+          notmod:=true
         else
           feedresult:='[HTTP:'+IntToStr(r.status)+']'+r.statusText;
        end;
@@ -1378,470 +1400,513 @@ begin
        end;
     end;
 
-    //sanitize unicode
-    for i:=1 to Length(rw) do
-      case word(rw[i]) of
-        0..8,11,12,14..31:rw[i]:=#9;
-        9,10,13:;//leave as-is
-        else ;//leave as-is
-      end;
-
-    //TODO: "Feed".flags?
-    if FileExists('feeds\'+Format('%.4d',[feedid])+'ws.txt') then
+    if notmod then
      begin
-      i:=1;
-      while (i<=Length(rw)) and (word(rw[i])<=32) do inc(i);
-      if i<>1 then rw:=Copy(rw,i,Length(rw)-i+1);
-     end;
+      Writeln(' HTTP 304');
+     end
+    else
+     begin
 
+      if feedresult='' then
+        try
 
-    if feedresult='' then
-      try
-
-        if Copy(feedurl,1,26)='https://www.instagram.com/' then
-         begin
-
-          jnodes:=JSONDocArray;
-          jdoc:=JSON(['user{'
-            ,'edge_felix_video_timeline{','edges',jnodes,'}'
-            ,'edge_owner_to_timeline_media{','edges',jnodes,'}'
-            ,'edge_saved_media{','edges',jnodes,'}'
-            ,'edge_media_collections{','edges',jnodes,'}'
-            ]);
-
-          {
-          i:=1;
-          while (i<Length(rw)-8) and (Copy(rw,i,11)<>'"graphql":{') do
-            inc(i);
-          inc(i,10);
-          try
-            jdoc.Parse(Copy(rw,i,Length(rw)-i+1));
-          except
-            on EJSONDecodeException do
-              ;//ignore "data past end"
-          end;
-          }
-
-          jdoc1:=JSON(['graphql',jdoc]);
-          try
-            jdoc1.Parse(rw);
-          except
-            on EJSONDecodeException do
-              ;//ignore "data past end"
-          end;
-
-
-          if SaveData then
-           begin
-            rf:=TFileStream.Create('xmls\'+Format('%.4d',[feedid])+'.json',fmCreate);
-            try
-              i:=$FEFF;
-              rf.Write(i,2);
-              //rf.Write(rw[i],(Length(rw)-i+1)*2);
-              rw:=jdoc.AsString;
-              rf.Write(rw[1],Length(rw)*2);
-            finally
-              rf.Free;
+          //sanitize unicode
+          for i:=1 to Length(rw) do
+            case word(rw[i]) of
+              0..8,11,12,14..31:rw[i]:=#9;
+              9,10,13:;//leave as-is
+              else ;//leave as-is
             end;
+
+          //TODO: "Feed".flags?
+          if FileExists('feeds\'+Format('%.4d',[feedid])+'ws.txt') then
+           begin
+            i:=1;
+            while (i<=Length(rw)) and (word(rw[i])<=32) do inc(i);
+            if i<>1 then rw:=Copy(rw,i,Length(rw)-i+1);
            end;
 
-          jd1:=JSON(jdoc['user']);
-          if jd1<>nil then
-            feedname:='Instagram: '+VarToStr(jd1['full_name'])+' (@'+VarToStr(jd1['username'])+')';
-
-          jcaption:=JSONDocArray;
-          jthumbs:=JSONDocArray;
-          jn1:=JSON(['edge_media_to_caption{','edges',jcaption,'}','thumbnail_resources',jthumbs]);
-          jn0:=JSON(['node',jn1]);
-          jc1:=JSON();
-          jc0:=JSON(['node',jc1]);
-          for i:=0 to jnodes.Count-1 do
+          if Copy(feedurl,1,26)='https://www.instagram.com/' then
            begin
-            jnodes.LoadItem(i,jn0);
 
-            itemid:=VarToStr(jn1['id']);
-            if itemid='' then raise Exception.Create('edge node without ID');
-            itemurl:='https://www.instagram.com/p/'+VarToStr(jn1['shortcode'])+'/';
-            pubDate:=int64(jn1['taken_at_timestamp'])/SecsPerDay+UnixDateDelta;//is UTC?
+            jnodes:=JSONDocArray;
+            jdoc:=JSON(['user{'
+              ,'edge_felix_video_timeline{','edges',jnodes,'}'
+              ,'edge_owner_to_timeline_media{','edges',jnodes,'}'
+              ,'edge_saved_media{','edges',jnodes,'}'
+              ,'edge_media_collections{','edges',jnodes,'}'
+              ]);
 
-            content:=VarToStr(jn1['title'])+' ';
-            for j:=0 to jcaption.Count-1 do
+            {
+            i:=1;
+            while (i<Length(rw)-8) and (Copy(rw,i,11)<>'"graphql":{') do
+              inc(i);
+            inc(i,10);
+            try
+              jdoc.Parse(Copy(rw,i,Length(rw)-i+1));
+            except
+              on EJSONDecodeException do
+                ;//ignore "data past end"
+            end;
+            }
+
+            jdoc1:=JSON(['graphql',jdoc]);
+            try
+              jdoc1.Parse(rw);
+            except
+              on EJSONDecodeException do
+                ;//ignore "data past end"
+            end;
+
+
+            if SaveData then
              begin
-              jcaption.LoadItem(j,jc0);
-              content:=content+VarToStr(jc1['text'])+#13#10;
+              rf:=TFileStream.Create('xmls\'+Format('%.4d',[feedid])+'.json',fmCreate);
+              try
+                i:=$FEFF;
+                rf.Write(i,2);
+                //rf.Write(rw[i],(Length(rw)-i+1)*2);
+                rw:=jdoc.AsString;
+                rf.Write(rw[1],Length(rw)*2);
+              finally
+                rf.Free;
+              end;
              end;
 
-            if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
+            jd1:=JSON(jdoc['user']);
+            if jd1<>nil then
+              feedname:='Instagram: '+VarToStr(jd1['full_name'])+' (@'+VarToStr(jd1['username'])+')';
 
-            if CheckNewItem then
+            jcaption:=JSONDocArray;
+            jthumbs:=JSONDocArray;
+            jn1:=JSON(['edge_media_to_caption{','edges',jcaption,'}','thumbnail_resources',jthumbs]);
+            jn0:=JSON(['node',jn1]);
+            jc1:=JSON();
+            jc0:=JSON(['node',jc1]);
+            for i:=0 to jnodes.Count-1 do
              begin
-              content:=HTMLEncode(content);
-              //if jn1['is_video']=true then content:=#$25B6+content;
-              if jn1['is_video']=true then title:=#$25B6+title;
+              jnodes.LoadItem(i,jn0);
 
-              if jthumbs.Count=0 then s:='' else
-                s:=VarToStr(JSON(jthumbs.GetJSON(jthumbs.Count-1))['src']);
-              if s='' then s:=VarToStr(jn1['thumbnail_src']);
-              if s='' then s:=VarToStr(jn1['display_url']);
+              itemid:=VarToStr(jn1['id']);
+              if itemid='' then raise Exception.Create('edge node without ID');
+              itemurl:='https://www.instagram.com/p/'+VarToStr(jn1['shortcode'])+'/';
+              pubDate:=int64(jn1['taken_at_timestamp'])/SecsPerDay+UnixDateDelta;//is UTC?
 
-              {
-              if s<>'' then content:=
-                '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
-                HTMLEncode(s)+'" border="0" /></a><br />'#13#10+
-                content;
-              }
-              if s<>'' then
+              content:=VarToStr(jn1['title'])+' ';
+              for j:=0 to jcaption.Count-1 do
                begin
-                r:=CoServerXMLHTTP60.Create;
-                r.open('GET',s,false,EmptyParam,EmptyParam);
-                r.send(EmptyParam);
-                //if r.status<>200 then raise?
-                content:=
-                  '<a href="'+HTMLEncode(itemurl)+'"><img src="data:image/jpeg;base64,'+
-                    UTF8ToWideString(Base64EncodeStream_JPEG(IUnknown(r.responseStream) as IStream))+
-                    '" border="0" /></a><br />'#13#10+
+                jcaption.LoadItem(j,jc0);
+                content:=content+VarToStr(jc1['text'])+#13#10;
+               end;
+
+              if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
+
+              if CheckNewItem then
+               begin
+                content:=HTMLEncode(content);
+                //if jn1['is_video']=true then content:=#$25B6+content;
+                if jn1['is_video']=true then title:=#$25B6+title;
+
+                if jthumbs.Count=0 then s:='' else
+                  s:=VarToStr(JSON(jthumbs.GetJSON(jthumbs.Count-1))['src']);
+                if s='' then s:=VarToStr(jn1['thumbnail_src']);
+                if s='' then s:=VarToStr(jn1['display_url']);
+
+                {
+                if s<>'' then content:=
+                  '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
+                  HTMLEncode(s)+'" border="0" /></a><br />'#13#10+
                   content;
+                }
+                if s<>'' then
+                 begin
+                  r:=CoServerXMLHTTP60.Create;
+                  r.open('GET',s,false,EmptyParam,EmptyParam);
+                  r.send(EmptyParam);
+                  //if r.status<>200 then raise?
+                  content:=
+                    '<a href="'+HTMLEncode(itemurl)+'"><img src="data:image/jpeg;base64,'+
+                      UTF8ToWideString(Base64EncodeStream_JPEG(IUnknown(r.responseStream) as IStream))+
+                      '" border="0" /></a><br />'#13#10+
+                    content;
 
-                r:=nil;
+                  r:=nil;
+                 end;
+
+                jd1:=JSON(jn1['location']);
+                if jd1<>nil then
+                  content:='<i>'+HTMLEncode(jd1['name'])+'</i><br />'#13#10+content;
+
+                //TODO: likes, views, owner?
+
+                RegisterItem;
                end;
 
-              jd1:=JSON(jn1['location']);
-              if jd1<>nil then
-                content:='<i>'+HTMLEncode(jd1['name'])+'</i><br />'#13#10+content;
-
-              //TODO: likes, views, owner?
-
-              RegisterItem;
              end;
 
-           end;
+            feedresult:=Format('Instagram %d/%d',[c2,c1]);
 
-          feedresult:=Format('Instagram %d/%d',[c2,c1]);
-
-         end
-        else
-        if (rt='application/json') and (Copy(StripWhiteSpace(Copy(rw,1,20)),1,8)='{"rss":{') then
-         begin
-          jnodes:=JSONDocArray;
-          jc1:=JSON(['item',jnodes]);
-          jc0:=JSON(['channel',jc1]);
-          jdoc:=JSON(['rss',jc0]);
-          jdoc.Parse(rw);
-          //jc0['version']='2.0'?
-          feedname:=VarToStr(jc1['title']);
-          //jc1['link']
-          jn0:=JSON;
-          for i:=0 to jnodes.Count-1 do
-           begin
-            jnodes.LoadItem(i,jn0);
-            itemid:=VarToStr(jn0['guid']);
-            itemurl:=VarToStr(jn0['link']);
-            title:=VarToStr(jn0['title']);
-            try
-              pubDate:=ConvDate2(VarToStr(jn0['pubDate']));
-            except
-              pubDate:=UtcNow;
-            end;
-            //TODO xmlns...=http://purl.org/rss/1.0/modules/content/ "...:encoded"?
-            if not VarIsNull(jn0['content']) then
-              content:=VarToStr(jn0['content'])
-            else
-            if not VarIsNull(jn0['description']) then
-              content:=VarToStr(jn0['description'])
-            else
-              content:='';
-            if CheckNewItem then RegisterItem;
-           end;
-          feedresult:=Format('RSS-in-JSON %d/%d',[c2,c1]);
-
-         end
-        else
-        if (rt='application/json') and (Copy(feedurl,Length(feedurl)-11,12)='/wp/v2/posts')
-          and (Copy(rw,1,7)='[{"id":') then
-         begin
-          jnodes:=JSONDocArray;
-          jdoc:=JSON(['items',jnodes]);
-          jdoc.Parse('{"items":'+rw+'}');
-          jn0:=JSON;
-          for i:=0 to jnodes.Count-1 do
-           begin
-            jnodes.LoadItem(i,jn0);
-            itemid:=VarToStr(jn0['id']);//'slug'?
-            if itemid='' then itemid:=VarToStr(JSON(jn0['guid'])['rendered']);
-            itemurl:=VarToStr(jn0['link']);
-            title:=VarToStr(JSON(jn0['title'])['rendered']);
-            try
-              v:=jn0['date_gmt'];
-              if VarIsNull(v) then v:=jn0['date'];//modified(_gmt)?
-              pubDate:=ConvDate1(VarToStr(v));
-            except
-              pubDate:=UtcNow;
-            end;
-            if CheckNewItem then
-             begin
-              //'excerpt'?
-              content:=VarToStr(JSON(jn0['content'])['rendered']);
-
-              if rhImgData=nil then
-               begin
-                rhImgData:=CoRegExp.Create;
-                rhImgData.Pattern:='<img\s+?data-srcset="([^"]+?)"\s+?data-src="([^"]+?)"';
-                //TODO: negative lookaround: no src/srcset=""
-                rhImgData.Global:=true;
-               end;
-              content:=rhImgData.Replace(content,'<img srcset="$1" src="$2"');
-
-              RegisterItem;
-             end;
-           end;
-          feedresult:=Format('WPv2 %d/%d',[c2,c1]);
-         end
-        else
-        if (rt='application/json') then
-         begin
-          //
-          jnodes:=JSONDocArray;
-          jdoc:=JSON(['items',jnodes]);
-          jdoc.Parse(rw);
-          //if jdoc['version']='https://jsonfeed.org/version/1' then
-          feedname:=VarToStr(jdoc['title']);
-          //jdoc['home_page_url']?
-          //jdoc['feed_url']?
-          jn0:=JSON;
-          for i:=0 to jnodes.Count-1 do
-           begin
-            jnodes.LoadItem(i,jn0);
-            itemid:=VarToStr(jn0['id']);
-            itemurl:=VarToStr(jn0['url']);
-            title:=VarToStr(jn0['title']);
-            try
-              pubDate:=ConvDate1(VarToStr(jn0['date_published']));
-            except
-              pubDate:=UtcNow;
-            end;
-            if not(VarIsNull(jn0['summary'])) then
-             begin
-              s:=VarToStr(jn0['summary']);
-              if (s<>'') and (s<>title) then title:=title+' '#$2014' '+s;
-             end;
-            if VarIsNull(jn0['content_html']) then
-              content:=HTMLEncode(VarToStr(jn0['content_text']))
-            else
-              content:=VarToStr(jn0['content_html']);
-            if CheckNewItem then RegisterItem;
-           end;
-          feedresult:=Format('JSONfeed %d/%d',[c2,c1]);
-         end
-        else
-         begin
-
-
-          doc:=CoDOMDocument60.Create;
-          doc.async:=false;
-          doc.validateOnParse:=false;
-          doc.resolveExternals:=false;
-          doc.preserveWhiteSpace:=true;
-          doc.setProperty('ProhibitDTD',false);
-
-          {
-          if loadext then
-            xres:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
+           end
           else
-          }
-            xres:=doc.loadXML(rw);
-
-          //fix Mashable (grr!)
-          if not(xres) then
+          if (rt='application/json') and (Copy(StripWhiteSpace(Copy(rw,1,20)),1,8)='{"rss":{') then
            begin
-            re:=CoRegExp.Create;
-            re.Pattern:='Reference to undeclared namespace prefix: ''([^'']+?)''.\r\n';
-            if re.Test(doc.parseError.reason) then
+            jnodes:=JSONDocArray;
+            jc1:=JSON(['item',jnodes]);
+            jc0:=JSON(['channel',jc1]);
+            jdoc:=JSON(['rss',jc0]);
+            jdoc.Parse(rw);
+            //jc0['version']='2.0'?
+            feedname:=VarToStr(jc1['title']);
+            //jc1['link']
+            jn0:=JSON;
+            for i:=0 to jnodes.Count-1 do
              begin
-              s:=(((re.Execute(doc.parseError.reason)
-                as MatchCollection).Item[0]
-                  as Match).SubMatches
-                    as SubMatches).Item[0];
-              re.Pattern:='<('+s+':\S+?)[^>]*?[\u0000-\uFFFF]*?</\1>';
-              re.Global:=true;
-              rw:=re.Replace(rw,'');
-              xres:=doc.loadXML(rw);
-             end;
-            re:=nil;
-           end;
-
-
-          if xres then
-           begin
-
-            //atom
-            if doc.documentElement.nodeName='feed' then
-             begin
-              if doc.namespaces.length=0 then
-                s:='xmlns:atom="http://www.w3.org/2005/Atom"'
+              jnodes.LoadItem(i,jn0);
+              itemid:=VarToStr(jn0['guid']);
+              itemurl:=VarToStr(jn0['link']);
+              title:=VarToStr(jn0['title']);
+              try
+                pubDate:=ConvDate2(VarToStr(jn0['pubDate']));
+              except
+                pubDate:=UtcNow;
+              end;
+              //TODO xmlns...=http://purl.org/rss/1.0/modules/content/ "...:encoded"?
+              if not VarIsNull(jn0['content']) then
+                content:=VarToStr(jn0['content'])
               else
+              if not VarIsNull(jn0['description']) then
+                content:=VarToStr(jn0['description'])
+              else
+                content:='';
+              if CheckNewItem then RegisterItem;
+             end;
+            feedresult:=Format('RSS-in-JSON %d/%d',[c2,c1]);
+
+           end
+          else
+          if (rt='application/json') and (Copy(feedurl,Length(feedurl)-11,12)='/wp/v2/posts')
+            and (Copy(rw,1,7)='[{"id":') then
+           begin
+            jnodes:=JSONDocArray;
+            jdoc:=JSON(['items',jnodes]);
+            jdoc.Parse('{"items":'+rw+'}');
+            jn0:=JSON;
+            for i:=0 to jnodes.Count-1 do
+             begin
+              jnodes.LoadItem(i,jn0);
+              itemid:=VarToStr(jn0['id']);//'slug'?
+              if itemid='' then itemid:=VarToStr(JSON(jn0['guid'])['rendered']);
+              itemurl:=VarToStr(jn0['link']);
+              title:=VarToStr(JSON(jn0['title'])['rendered']);
+              try
+                v:=jn0['date_gmt'];
+                if VarIsNull(v) then v:=jn0['date'];//modified(_gmt)?
+                pubDate:=ConvDate1(VarToStr(v));
+              except
+                pubDate:=UtcNow;
+              end;
+              if CheckNewItem then
                begin
-                i:=0;
-                while (i<doc.namespaces.length) and (doc.namespaces[i]<>'http://www.w3.org/2005/Atom') do inc(i);
-                if i=doc.namespaces.length then i:=0;
-                s:='xmlns:atom="'+doc.namespaces[i]+'"';
+                //'excerpt'?
+                content:=VarToStr(JSON(jn0['content'])['rendered']);
+
+                if rhImgData=nil then
+                 begin
+                  rhImgData:=CoRegExp.Create;
+                  rhImgData.Pattern:='<img\s+?data-srcset="([^"]+?)"\s+?data-src="([^"]+?)"';
+                  //TODO: negative lookaround: no src/srcset=""
+                  rhImgData.Global:=true;
+                 end;
+                content:=rhImgData.Replace(content,'<img srcset="$1" src="$2"');
+
+                RegisterItem;
                end;
-              s:=s+' xmlns:media="http://search.yahoo.com/mrss/"';
-              doc.setProperty('SelectionNamespaces',s);
-
-              x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
-              if x<>nil then feedname:=x.text;
-
-              xl:=doc.documentElement.selectNodes('atom:entry');
-              x:=xl.nextNode as IXMLDOMElement;
-              while x<>nil do
+             end;
+            feedresult:=Format('WPv2 %d/%d',[c2,c1]);
+           end
+          else
+          if (rt='application/json') then
+           begin
+            //
+            jnodes:=JSONDocArray;
+            jdoc:=JSON(['items',jnodes]);
+            jdoc.Parse(rw);
+            //if jdoc['version']='https://jsonfeed.org/version/1' then
+            feedname:=VarToStr(jdoc['title']);
+            //jdoc['home_page_url']?
+            //jdoc['feed_url']?
+            jn0:=JSON;
+            for i:=0 to jnodes.Count-1 do
+             begin
+              jnodes.LoadItem(i,jn0);
+              itemid:=VarToStr(jn0['id']);
+              itemurl:=VarToStr(jn0['url']);
+              title:=VarToStr(jn0['title']);
+              try
+                pubDate:=ConvDate1(VarToStr(jn0['date_published']));
+              except
+                pubDate:=UtcNow;
+              end;
+              if not(VarIsNull(jn0['summary'])) then
                begin
-                y:=x.selectSingleNode('atom:id') as IXMLDOMElement;
-                if y=nil then itemid:='' else itemid:=y.text;
-                if Copy(itemid,1,4)='http' then
-                  itemurl:=itemid
+                s:=VarToStr(jn0['summary']);
+                if (s<>'') and (s<>title) then title:=title+' '#$2014' '+s;
+               end;
+              if VarIsNull(jn0['content_html']) then
+                content:=HTMLEncode(VarToStr(jn0['content_text']))
+              else
+                content:=VarToStr(jn0['content_html']);
+              if CheckNewItem then RegisterItem;
+             end;
+            feedresult:=Format('JSONfeed %d/%d',[c2,c1]);
+           end
+          else
+           begin
+
+
+            doc:=CoDOMDocument60.Create;
+            doc.async:=false;
+            doc.validateOnParse:=false;
+            doc.resolveExternals:=false;
+            doc.preserveWhiteSpace:=true;
+            doc.setProperty('ProhibitDTD',false);
+
+            {
+            if loadext then
+              xres:=doc.load('xmls\'+Format('%.4d',[feedid])+'.xml')
+            else
+            }
+              xres:=doc.loadXML(rw);
+
+            //fix Mashable (grr!)
+            if not(xres) then
+             begin
+              re:=CoRegExp.Create;
+              re.Pattern:='Reference to undeclared namespace prefix: ''([^'']+?)''.\r\n';
+              if re.Test(doc.parseError.reason) then
+               begin
+                s:=(((re.Execute(doc.parseError.reason)
+                  as MatchCollection).Item[0]
+                    as Match).SubMatches
+                      as SubMatches).Item[0];
+                re.Pattern:='<('+s+':\S+?)[^>]*?[\u0000-\uFFFF]*?</\1>';
+                re.Global:=true;
+                rw:=re.Replace(rw,'');
+                xres:=doc.loadXML(rw);
+               end;
+              re:=nil;
+             end;
+
+
+            if xres then
+             begin
+
+              //atom
+              if doc.documentElement.nodeName='feed' then
+               begin
+                if doc.namespaces.length=0 then
+                  s:='xmlns:atom="http://www.w3.org/2005/Atom"'
                 else
                  begin
-                  xl1:=x.selectNodes('atom:link');
-                  y:=xl1.nextNode as IXMLDOMElement;
-                  if y=nil then
+                  i:=0;
+                  while (i<doc.namespaces.length) and (doc.namespaces[i]<>'http://www.w3.org/2005/Atom') do inc(i);
+                  if i=doc.namespaces.length then i:=0;
+                  s:='xmlns:atom="'+doc.namespaces[i]+'"';
+                 end;
+                s:=s+' xmlns:media="http://search.yahoo.com/mrss/"';
+                doc.setProperty('SelectionNamespaces',s);
+
+                x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
+                if x<>nil then feedname:=x.text;
+
+                xl:=doc.documentElement.selectNodes('atom:entry');
+                x:=xl.nextNode as IXMLDOMElement;
+                while x<>nil do
+                 begin
+                  y:=x.selectSingleNode('atom:id') as IXMLDOMElement;
+                  if y=nil then itemid:='' else itemid:=y.text;
+                  if Copy(itemid,1,4)='http' then
                     itemurl:=itemid
                   else
-                    itemurl:=y.getAttribute('href');//default
-                  while y<>nil do
                    begin
-                    //'rel'?
-                    if y.getAttribute('type')='text/html' then
-                      itemurl:=y.getAttribute('href');
+                    xl1:=x.selectNodes('atom:link');
                     y:=xl1.nextNode as IXMLDOMElement;
+                    if y=nil then
+                      itemurl:=itemid
+                    else
+                      itemurl:=y.getAttribute('href');//default
+                    while y<>nil do
+                     begin
+                      //'rel'?
+                      if y.getAttribute('type')='text/html' then
+                        itemurl:=y.getAttribute('href');
+                      y:=xl1.nextNode as IXMLDOMElement;
+                     end;
+                    if itemid='' then itemid:=itemurl;
                    end;
-                  if itemid='' then itemid:=itemurl;                  
-                 end;
-                y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
-                if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
-                if y=nil then title:='' else title:=y.text;
-                y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
-                if y=nil then y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
-                if y=nil then
-                 begin
-                  y:=x.selectSingleNode('media:group/media:description') as IXMLDOMElement;
-                  if y=nil then
-                    content:=''
-                  else
-                    content:=EncodeNonHTMLContent(y.text);
-                 end
-                else
-                  content:=y.text;
-                try
-                  y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:issued') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:modified') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
-                  if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
-                except
-                  pubDate:=UtcNow;
-                end;
-                if CheckNewItem then RegisterItem;
-
-                x:=xl.nextNode as IXMLDOMElement;
-               end;
-              feedresult:=Format('Atom %d/%d',[c2,c1]);
-             end
-            else
-
-            //RSS
-            if doc.documentElement.nodeName='rss' then
-             begin
-              doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
-
-              x:=doc.documentElement.selectSingleNode('channel/title') as IXMLDOMElement;
-              if x<>nil then feedname:=x.text;
-
-              xl:=doc.documentElement.selectNodes('channel/item');
-              x:=xl.nextNode as IXMLDOMElement;
-              while x<>nil do
-               begin
-                y:=x.selectSingleNode('guid') as IXMLDOMElement;
-                if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
-                itemid:=y.text;
-                itemurl:=x.selectSingleNode('link').text;
-                y:=x.selectSingleNode('title') as IXMLDOMElement;
-                if y=nil then title:='' else title:=y.text;
-                y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
-                if (y=nil) or IsSomeThingEmpty(y.text) then
-                  y:=x.selectSingleNode('content') as IXMLDOMElement;
-                if y=nil then
-                  y:=x.selectSingleNode('description') as IXMLDOMElement;
-                if y=nil then content:='' else content:=y.text;
-                try
-                  y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
-                  if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
-                except
-                  pubDate:=UtcNow;
-                end;
-                if CheckNewItem then RegisterItem;
-
-                x:=xl.nextNode as IXMLDOMElement;
-               end;
-              feedresult:=Format('RSS %d/%d',[c2,c1]);
-             end
-            else
-
-            //RDF
-            if doc.documentElement.nodeName='rdf:RDF' then
-             begin
-              doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
-               ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
-              x:=doc.documentElement.selectSingleNode('rss:channel/rss:title') as IXMLDOMElement;
-              if x<>nil then feedname:=x.text;
-
-              xl:=doc.documentElement.selectNodes('rss:item');
-              x:=xl.nextNode as IXMLDOMElement;
-              while x<>nil do
-               begin
-                itemid:=x.getAttribute('rdf:about');
-                itemurl:=x.selectSingleNode('rss:link').text;
-                y:=x.selectSingleNode('rss:title') as IXMLDOMElement;
-                if y=nil then title:='' else title:=y.text;
-                y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
-                if y=nil then content:='' else content:=y.text;
-                try
-                  y:=x.selectSingleNode('rss:pubDate') as IXMLDOMElement;
+                  y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
+                  if y=nil then title:='' else title:=y.text;
+                  y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
                   if y=nil then
                    begin
-                    y:=x.selectSingleNode('dc:date') as IXMLDOMElement;
-                    if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                    y:=x.selectSingleNode('media:group/media:description') as IXMLDOMElement;
+                    if y=nil then
+                      content:=''
+                    else
+                      content:=EncodeNonHTMLContent(y.text);
                    end
-                  else pubDate:=ConvDate2(y.text);
-                except
-                  pubDate:=UtcNow;
-                end;
-                if CheckNewItem then RegisterItem;
-                x:=xl.nextNode as IXMLDOMElement;
-               end;
+                  else
+                    content:=y.text;
+                  try
+                    y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
+                    if y=nil then y:=x.selectSingleNode('atom:issued') as IXMLDOMElement;
+                    if y=nil then y:=x.selectSingleNode('atom:modified') as IXMLDOMElement;
+                    if y=nil then y:=x.selectSingleNode('atom:updated') as IXMLDOMElement;
+                    if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                  except
+                    pubDate:=UtcNow;
+                  end;
+                  if CheckNewItem then RegisterItem;
 
-              if c2=0 then
+                  x:=xl.nextNode as IXMLDOMElement;
+                 end;
+                feedresult:=Format('Atom %d/%d',[c2,c1]);
+               end
+              else
+
+              //RSS
+              if doc.documentElement.nodeName='rss' then
                begin
-                doc.setProperty('SelectionNamespaces',
-                 'xmlns:rdf=''http://www.w3.org/1999/02/22-rdf-syntax-ns#'''+
-                 ' xmlns:schema=''http://schema.org/''');
-                xl:=doc.documentElement.selectNodes('rdf:Description/schema:hasPart/rdf:Description');
+                doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
+
+                x:=doc.documentElement.selectSingleNode('channel/title') as IXMLDOMElement;
+                if x<>nil then feedname:=x.text;
+
+                xl:=doc.documentElement.selectNodes('channel/item');
+                x:=xl.nextNode as IXMLDOMElement;
+                while x<>nil do
+                 begin
+                  y:=x.selectSingleNode('guid') as IXMLDOMElement;
+                  if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
+                  itemid:=y.text;
+                  itemurl:=x.selectSingleNode('link').text;
+                  y:=x.selectSingleNode('title') as IXMLDOMElement;
+                  if y=nil then title:='' else title:=y.text;
+                  y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
+                  if (y=nil) or IsSomeThingEmpty(y.text) then
+                    y:=x.selectSingleNode('content') as IXMLDOMElement;
+                  if y=nil then
+                    y:=x.selectSingleNode('description') as IXMLDOMElement;
+                  if y=nil then content:='' else content:=y.text;
+                  try
+                    y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
+                    if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
+                  except
+                    pubDate:=UtcNow;
+                  end;
+                  if CheckNewItem then RegisterItem;
+
+                  x:=xl.nextNode as IXMLDOMElement;
+                 end;
+                feedresult:=Format('RSS %d/%d',[c2,c1]);
+               end
+              else
+
+              //RDF
+              if doc.documentElement.nodeName='rdf:RDF' then
+               begin
+                doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
+                 ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
+                x:=doc.documentElement.selectSingleNode('rss:channel/rss:title') as IXMLDOMElement;
+                if x<>nil then feedname:=x.text;
+
+                xl:=doc.documentElement.selectNodes('rss:item');
                 x:=xl.nextNode as IXMLDOMElement;
                 while x<>nil do
                  begin
                   itemid:=x.getAttribute('rdf:about');
-                  y:=x.selectSingleNode('schema:url') as IXMLDOMElement;
-                  if y=nil then itemurl:=itemid else
-                    itemurl:=VarToStr(y.getAttribute('rdf:resource'));
-                  y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
+                  itemurl:=x.selectSingleNode('rss:link').text;
+                  y:=x.selectSingleNode('rss:title') as IXMLDOMElement;
                   if y=nil then title:='' else title:=y.text;
-                  y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
-                  if y<>nil then title:=title+' '#$2014' '+y.text;
-
-
-                  y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
+                  y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
                   if y=nil then content:='' else content:=y.text;
                   try
-                    y:=x.selectSingleNode('schema:datePublished') as IXMLDOMElement;
+                    y:=x.selectSingleNode('rss:pubDate') as IXMLDOMElement;
+                    if y=nil then
+                     begin
+                      y:=x.selectSingleNode('dc:date') as IXMLDOMElement;
+                      if y=nil then pubDate:=UtcNow else pubDate:=ConvDate1(y.text);
+                     end
+                    else pubDate:=ConvDate2(y.text);
+                  except
+                    pubDate:=UtcNow;
+                  end;
+                  if CheckNewItem then RegisterItem;
+                  x:=xl.nextNode as IXMLDOMElement;
+                 end;
+
+                if c2=0 then
+                 begin
+                  doc.setProperty('SelectionNamespaces',
+                   'xmlns:rdf=''http://www.w3.org/1999/02/22-rdf-syntax-ns#'''+
+                   ' xmlns:schema=''http://schema.org/''');
+                  xl:=doc.documentElement.selectNodes('rdf:Description/schema:hasPart/rdf:Description');
+                  x:=xl.nextNode as IXMLDOMElement;
+                  while x<>nil do
+                   begin
+                    itemid:=x.getAttribute('rdf:about');
+                    y:=x.selectSingleNode('schema:url') as IXMLDOMElement;
+                    if y=nil then itemurl:=itemid else
+                      itemurl:=VarToStr(y.getAttribute('rdf:resource'));
+                    y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
+                    if y=nil then title:='' else title:=y.text;
+                    y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
+                    if y<>nil then title:=title+' '#$2014' '+y.text;
+
+
+                    y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
+                    if y=nil then content:='' else content:=y.text;
+                    try
+                      y:=x.selectSingleNode('schema:datePublished') as IXMLDOMElement;
+                      pubDate:=ConvDate1(y.text);
+                    except
+                      pubDate:=UtcNow;
+                    end;
+                    if CheckNewItem then RegisterItem;
+                    x:=xl.nextNode as IXMLDOMElement;
+                   end;
+                 end;
+
+
+                feedresult:=Format('RDF %d/%d',[c2,c1]);
+               end
+              else
+
+              //SPARQL
+              if doc.documentElement.nodeName='sparql' then
+               begin
+                doc.setProperty('SelectionNamespaces',
+                 'xmlns:s=''http://www.w3.org/2005/sparql-results#''');
+
+                //feedname:=??
+                xl:=doc.documentElement.selectNodes('s:results/s:result');
+                x:=xl.nextNode as IXMLDOMElement;
+                while x<>nil do
+                 begin
+                  itemid:=x.selectSingleNode('s:binding[@name="news"]/s:uri').text;
+                  itemurl:=x.selectSingleNode('s:binding[@name="url"]/s:uri').text;
+                  title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
+
+                  y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
+                  if (y<>nil) and (y.text<>title) then
+                    title:=title+' '#$2014' '+y.text;
+
+                  y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
+                  if y=nil then content:='' else content:=y.text;
+                  try
+                    y:=x.selectSingleNode('s:binding[@name="pubDate"]/s:literal') as IXMLDOMElement;
                     pubDate:=ConvDate1(y.text);
                   except
                     pubDate:=UtcNow;
@@ -1849,151 +1914,123 @@ begin
                   if CheckNewItem then RegisterItem;
                   x:=xl.nextNode as IXMLDOMElement;
                  end;
-               end;
 
+                feedresult:=Format('SPARQL %d/%d',[c2,c1]);
+               end
+              else
 
-              feedresult:=Format('RDF %d/%d',[c2,c1]);
+              //unknown
+                if not((rt='text/html') and findFeedURL(rw)) then
+                feedresult:='Unkown "'+doc.documentElement.tagName+'" ('
+                  +rt+')';
+
              end
             else
-
-            //SPARQL
-            if doc.documentElement.nodeName='sparql' then
-             begin
-              doc.setProperty('SelectionNamespaces',
-               'xmlns:s=''http://www.w3.org/2005/sparql-results#''');
-
-              //feedname:=??
-              xl:=doc.documentElement.selectNodes('s:results/s:result');
-              x:=xl.nextNode as IXMLDOMElement;
-              while x<>nil do
-               begin
-                itemid:=x.selectSingleNode('s:binding[@name="news"]/s:uri').text;
-                itemurl:=x.selectSingleNode('s:binding[@name="url"]/s:uri').text;
-                title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
-
-                y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
-                if (y<>nil) and (y.text<>title) then
-                  title:=title+' '#$2014' '+y.text;
-
-                y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
-                if y=nil then content:='' else content:=y.text;
-                try
-                  y:=x.selectSingleNode('s:binding[@name="pubDate"]/s:literal') as IXMLDOMElement;
-                  pubDate:=ConvDate1(y.text);
-                except
-                  pubDate:=UtcNow;
-                end;
-                if CheckNewItem then RegisterItem;
-                x:=xl.nextNode as IXMLDOMElement;
-               end;
-
-              feedresult:=Format('SPARQL %d/%d',[c2,c1]);
-             end
-            else
-
-            //unknown
+            //XML parse failed
               if not((rt='text/html') and findFeedURL(rw)) then
-              feedresult:='Unkown "'+doc.documentElement.tagName+'" ('
-                +rt+')';
-
-           end
-          else
-          //XML parse failed
-            if not((rt='text/html') and findFeedURL(rw)) then
-              feedresult:='[XML'+IntToStr(doc.parseError.line)+':'+
-                IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
-         end;
-
-        inc(LastFeedCount);
-
-      except
-        on e:Exception do
-          feedresult:='['+e.ClassName+']'+e.Message;
-      end;
-
-    if (feedresult<>'') and (feedresult[1]='[') then
-     begin
-      Writeln(' !!!');
-      ErrLn(feedresult);
-     end
-    else
-     begin
-      //stale? update regime
-      if (c2=0) and (c1<>0) then
-       begin
-        i:=0;
-        if feedregime>=0 then
-         begin
-          while (i<regimesteps) and (feedregime>=regimestep[i]) do inc(i);
-          if (i<regimesteps) and ((postlast=0.0)
-            or (postlast+regimestep[i]*2<feedload)) then
-           begin
-            feedresult:=feedresult+' (stale? r:'+IntToStr(feedregime)+
-              '->'+IntToStr(regimestep[i])+')';
-            feedregime:=regimestep[i];
+                feedresult:='[XML'+IntToStr(doc.parseError.line)+':'+
+                  IntToStr(doc.parseError.linepos)+']'+doc.parseError.Reason;
            end;
-         end;
+
+          inc(LastFeedCount);
+
+        except
+          on e:Exception do
+            feedresult:='['+e.ClassName+']'+e.Message;
+        end;
+
+      if (feedresult<>'') and (feedresult[1]='[') then
+       begin
+        Writeln(' !!!');
+        ErrLn(feedresult);
        end
       else
        begin
-        //not stale: update regime to apparent post average period
-        if feedregime<>0 then
+        //stale? update regime
+        if (c2=0) and (c1<>0) then
          begin
-          i:=regimesteps;
-          while (i<>0) and (postavg<regimestep[i-1]) do dec(i);
-          if i=0 then feedregime:=0 else feedregime:=regimestep[i-1];
+          i:=0;
+          if feedregime>=0 then
+           begin
+            while (i<regimesteps) and (feedregime>=regimestep[i]) do inc(i);
+            if (i<regimesteps) and ((postlast=0.0)
+              or (postlast+regimestep[i]*2<feedload)) then
+             begin
+              feedresult:=feedresult+' (stale? r:'+IntToStr(feedregime)+
+                '->'+IntToStr(regimestep[i])+')';
+              feedregime:=regimestep[i];
+             end;
+           end;
+         end
+        else
+         begin
+          //not stale: update regime to apparent post average period
+          if feedregime<>0 then
+           begin
+            i:=regimesteps;
+            while (i<>0) and (postavg<regimestep[i-1]) do dec(i);
+            if i=0 then feedregime:=0 else feedregime:=regimestep[i-1];
+           end;
          end;
+
+        Writeln(' '+feedresult);
        end;
 
-      Writeln(' '+feedresult);
-     end;
+      dbA.BeginTrans;
+      try
 
-    dbA.BeginTrans;
-    try
+        if feedname='' then
+         begin
+          i:=5;
+          while (i<=Length(feedurl)) and (feedurl[i]<>':') do inc(i);
+          inc(i);
+          if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+          if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+          feedname:='['+Copy(feedurl,i,Length(feedurl)-i+1);
+          i:=2;
+          while (i<=Length(feedname)) and (feedname[i]<>'/') do inc(i);
+          SetLength(feedname,i);
+          feedname[i]:=']';
+         end;
 
-      if feedname='' then
-       begin
-        i:=5;
-        while (i<=Length(feedurl)) and (feedurl[i]<>':') do inc(i);
-        inc(i);
-        if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
-        if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
-        feedname:='['+Copy(feedurl,i,Length(feedurl)-i+1);
-        i:=2;
-        while (i<=Length(feedname)) and (feedname[i]<>'/') do inc(i);
-        SetLength(feedname,i);
-        feedname[i]:=']';
-       end;
+        if newfeed or
+          (feedurl<>feedurl0) or (feedname<>feedname0) then
+          dbA.Update('Feed',
+            ['id',feedid
+            ,'name',feedname
+            ,'url',feedurl
+            ,'loadlast',double(feedload)
+            ,'result',feedresult
+            ,'loadcount',c2
+            ,'itemcount',c1
+            ,'totalcount',totalcount+c2
+            ,'regime',feedregime
+            ])
+        else
+          dbA.Update('Feed',
+            ['id',feedid
+            ,'loadlast',double(feedload)
+            ,'result',feedresult
+            ,'loadcount',c2
+            ,'itemcount',c1
+            ,'totalcount',totalcount+c2
+            ,'regime',feedregime
+            ]);
 
-      if newfeed or
-        (feedurl<>feedurl0) or (feedname<>feedname0) then
-        dbA.Update('Feed',
-          ['id',feedid
-          ,'name',feedname
-          ,'url',feedurl
-          ,'loadlast',double(feedload)
-          ,'result',feedresult
-          ,'loadcount',c2
-          ,'itemcount',c1
-          ,'totalcount',totalcount+c2
-          ,'regime',feedregime
-          ])
-      else
-        dbA.Update('Feed',
-          ['id',feedid
-          ,'loadlast',double(feedload)
-          ,'result',feedresult
-          ,'loadcount',c2
-          ,'itemcount',c1
-          ,'totalcount',totalcount+c2
-          ,'regime',feedregime
-          ]);
+        if feedlastmod<>feedlastmod0 then
+          dbA.Update('Feed',
+            ['id',feedid
+            ,'lastmod',feedlastmod
+            ]);
 
-      dbA.CommitTrans;
-    except
-      dbA.RollbackTrans;
-      raise;
+        dbA.CommitTrans;
+      except
+        dbA.RollbackTrans;
+        raise;
+      end;
+
     end;
+
    end
   else
    begin

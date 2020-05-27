@@ -10,6 +10,7 @@ loadlast float null,
 result varchar(1000) null,
 loadcount int null,
 itemcount int null,
+lastmod varchar(50) null,
 regime int null,
 totalcount int null
 );
