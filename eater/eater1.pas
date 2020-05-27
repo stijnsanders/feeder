@@ -997,19 +997,27 @@ const
     if LowerCase(Copy(s,1,4))='http' then
       feedurl:=s
     else
-    if s[1]='/' then
-     begin
-      i:=5;
-      l:=Length(feedurl);
-      //"http://"
-      while (i<=l) and (feedurl[i]<>'/') do inc(i);
-      inc(i);
-      while (i<=l) and (feedurl[i]<>'/') do inc(i);
-      inc(i);
-      //then to the next "/"
-      while (i<=l) and (feedurl[i]<>'/') do inc(i);
-      feedurl:=Copy(feedurl,1,i-1)+s;
-     end
+    if (Length(s)>1) and (s[1]='/') then
+      if (Length(s)>2) and (s[2]='/') then
+       begin
+        i:=5;
+        l:=Length(feedurl);
+        while (i<=l) and (feedurl[i]<>'/') do inc(i);
+        feedurl:=Copy(feedurl,1,i-1)+s;
+       end
+     else
+       begin
+        i:=5;
+        l:=Length(feedurl);
+        //"http://"
+        while (i<=l) and (feedurl[i]<>'/') do inc(i);
+        inc(i);
+        while (i<=l) and (feedurl[i]<>'/') do inc(i);
+        inc(i);
+        //then to the next "/"
+        while (i<=l) and (feedurl[i]<>'/') do inc(i);
+        feedurl:=Copy(feedurl,1,i-1)+s;
+       end
     else
      begin
       i:=Length(feedurl);
