@@ -1210,7 +1210,7 @@ begin
   margin:=(RunContinuous+5)/1440.0;
   if postlast=0.0 then
    begin
-    sl.Add('<td class="empty">&nbsp;</td>');
+    sl.Add('<td class="empty" title="'+HTMLEncode(feedlastmod0)+'">&nbsp;</td>');
     if loadlast=0.0 then
       d:=feedload-margin
     else
@@ -1218,7 +1218,7 @@ begin
    end
   else
    begin
-    sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',postlast)+'</td>');
+    sl.Add('<td title="'+HTMLEncode(feedlastmod0)+'">'+FormatDateTime('yyyy-mm-dd hh:nn',postlast)+'</td>');
     d:=postlast+postavg-margin;
     if (loadlast<>0.0) and (d<loadlast) then
       d:=loadlast+feedregime-margin;
@@ -2049,7 +2049,8 @@ begin
     sl.Add('<td class="empty">&nbsp;</td>')
   else
     sl.Add('<td style="text-align:right;">'+IntToStr(c2)+'</td>');
-  sl.Add('<td style="text-align:right;" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)+'">'+IntToStr(c1)+'</td>');
+  sl.Add('<td style="text-align:right;" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)
+    +#13#10+HTMLEncode(feedlastmod)+'">'+IntToStr(c1)+'</td>');
   sl.Add('</tr>');
 
 end;
@@ -2089,7 +2090,6 @@ begin
 
   s:=ExtractFilePath(ParamStr(0))+'blacklist.txt';
   if FileExists(s) then blacklist.LoadFromFile(s);
-
 
   SanitizeInit;
 end;
