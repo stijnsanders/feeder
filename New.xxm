@@ -16,7 +16,10 @@ case Context['x'].AsInteger of
     <dl>
     <dt>URL</dt>
     <dd>
-      <input type="text" name="url" style="width:80vw;" autocomplete="off" /></dd>
+      <input type="text" name="url" id="f1" style="width:80vw;" autocomplete="off" />
+      <br />
+      Optionally enter the URL of the home page here to have the header searched for a feed URL.
+    </dd>
     <dt>name</dt>
     <dd><input type="text" name="name" value="" autocomplete="off" /> (leave empty for default //TODO: from URL data)</dd>
     <dt>category</dt>
@@ -38,13 +41,14 @@ case Context['x'].AsInteger of
     <dt>label text</dt>
     <dd><input type="text" name="label" value="" autocomplete="off" /> (leave empty for default: feed name)</dd>
     <dt>label color</dt>
-    <dd>>#ColorPicker('CCCCCC')<</dd>
+    <dd>>#ColorPicker('')<</dd>
     <dt>read width</dt>
     <dd><input type="text" name="readwidth" value="[[=integer(DefaultReadWidth)]]" style="width:4em;" /> M-width</dd>
     </dl>
     </dl>
-    <p><input type="submit" value="Add" /></p>
+    <p><input type="submit" value="Add Feed" /></p>
     </form>
+    <script>document.getElementById("f1").focus();</script>
     <p><a href="Feeds.xxm">back</a></p>>
    end;
   1://add new

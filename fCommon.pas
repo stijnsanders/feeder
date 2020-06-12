@@ -113,7 +113,10 @@ const
   hex:array[0..15] of char='0123456789ABCDEF';
 begin
   try
-    c:=StrToInt('$0'+ValColor);
+    if ValColor='' then
+      c:=$CCCCCC //default
+    else
+      c:=StrToInt('$0'+ValColor);
   except
     c:=0;
   end;
@@ -167,6 +170,7 @@ begin
     inc(i,3);
    end;
   Result:=Result+'</select><script>doColorSelect(false);</script>';
+  Result:=Result+' //TODO: replace this with a nice color picker';
 end;
 
 function CheckColor(const ValColor:string):string;
