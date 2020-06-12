@@ -51,7 +51,8 @@ function doHere(){
 function doNext(){
   var p=null;
   if(currentPostLink)p=currentPostLink.nextSibling;
-  if(p&&p.id.substr(0,1)!="p")p=null;
+  while(p&&p.id.substr(0,1)!="p")
+    p=p.nextSibling;
   if(p){
     document.body.onscroll=doScroll1;
     var h1=p.offsetTop+p.offsetHeight;
