@@ -60,12 +60,14 @@ else
       </style>>
      end;
     ]]
-    <script src="feeder.js?v=10a"></script>
+    <script src="feeder.js?v=11"></script>
     <div id="black" style="z-index:6;position:fixed;display:none;top:0;left:0;width:100vw;height:100vh;background-color:black;filter:opacity(0.5);user-select:none;" onclick="return doClose();"></div>
     <div id="postbox" class="postbox" style="z-index:8;position:fixed;display:none;top:0.5em;right:1em;user-select:none;">
       <a href="#" onclick="return doHere();"><img src="img_d.png" width="16" height="16" alt="load here" /></a>
       &nbsp;
-      <a href="#" id="postlink" target="_blank" rel="noreferrer" onclick="doClose();"><img src="img_r.png" width="16" height="16" alt="load new tab" /></a>
+      <a href="#" id="postlink" target="_blank" rel="noreferrer" onclick="return doClose();"><img src="img_u.png" width="16" height="16" alt="load new tab" /></a>
+      &nbsp;
+      <a href="#" id="nextlink" rel="noreferrer" onclick="return doNext();"><img src="img_r.png" width="16" height="16" alt="load next post" /></a>
       &nbsp;
       <a href="#" onclick="return doClose();" style="width:4em;"><img src="img_x.png" width="16" height="16" alt="close post view" /></a>
     </div>

@@ -6,6 +6,7 @@ function doResize(){
   y.style.width=window.innerWidth+"px";
   y.style.height=window.innerHeight+"px";
 }
+var currentPostLink=null;
 function doPost(x,event){
   var e=(window.event||event);
   if(e.ctrlKey||e.shiftKey)
@@ -17,9 +18,11 @@ function doPost(x,event){
     document.getElementById("postbox").style.display="";
     document.getElementById("postview").style.display="";
     document.getElementById("postlink").href=x.href;
+    var p=x.parentElement;
+    currentPostLink=p;
     window.open("Post.xxm"+x.getAttribute("postqs"),"postview");
-    if(x.parentElement.className=="post"){
-      x.parentElement.className="postread";
+    if(p.className=="post"){
+      p.className="postread";
       var c=document.getElementById("postcount");
       c.textContent=c.textContent-1;
     }
@@ -34,6 +37,7 @@ function doPostHide(){
   document.getElementById("postview").style.display="none";
   document.body.style.overflowX="";
   document.body.style.overflowY="scroll";
+  currentPostLink=null;
 }
 function doClose(){
   window.open("about:blank","postview");
@@ -42,6 +46,28 @@ function doClose(){
 }
 function doHere(){
   window.open(document.getElementById("postlink").href,"postview");
+  return false;
+}
+function doNext(){
+  var p=null;
+  if(currentPostLink)p=currentPostLink.nextSibling;
+  if(p&&p.id.substr(0,1)!="p")p=null;
+  if(p){
+    document.body.onscroll=doScroll1;
+    p.scrollIntoView();
+    currentPostLink=p;
+    var x=p.lastElementChild;//assert "A"
+    document.getElementById("postlink").href=x.href;
+    //window.open("Post.xxm"+x.getAttribute("postqs"),"postview");
+    document.getElementById("postview").contentWindow.location.replace("Post.xxm"+x.getAttribute("postqs"));
+    if(p.className=="post"){
+      p.className="postread";
+      var c=document.getElementById("postcount");
+      c.textContent=c.textContent-1;
+    }
+  }
+  else
+    doClose();
   return false;
 }
 var outOfView="";
