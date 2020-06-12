@@ -1151,7 +1151,19 @@ begin
   c2:=qr0.GetInt('loadcount');
   notmod:=false;//default
 
-  Out0(IntToStr(feedid)+':'+feedurl);
+  //Out0(IntToStr(feedid)+':'+feedurl);
+  s:=feedurl;
+  i:=1;
+  //ship https?://
+  while (i<=Length(s)) and (s[i]<>'/') do inc(i);
+  inc(i);
+  if (i<=Length(s)) and (s[i]='/') then inc(i);
+  if Copy(s,i,4)='www.' then inc(i,4);
+  j:=i;
+  while (j<=Length(s)) and (s[j]<>'/') do inc(j);
+  inc(j);
+  while (j<=Length(s)) and (s[j]<>'/') and (s[j]<>'?') do inc(j);
+  Out0(IntToStr(feedid)+'<'+Copy(feedurl,i,j-i)+'>');
 
   //flags
   i:=qr0.GetInt('flags');
