@@ -55,9 +55,9 @@ function doNext(){
     p=p.nextSibling;
   if(p){
     document.body.onscroll=doScroll1;
-    var h1=p.offsetTop+p.offsetHeight;
+    var h1=p.offsetTop+p.offsetHeight+4;
     var h2=window.scrollY+window.innerHeight;
-    if(h1+4>h2)
+    if(h1>h2)
       window.scrollBy(0,h1-h2);
     currentPostLink=p;
     var x=p.lastElementChild;//assert "A"
