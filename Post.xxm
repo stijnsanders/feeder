@@ -46,11 +46,11 @@ try
   <div[[#s]]>>
 
   rp1:=CoRegExp.Create;
-  rp1.Pattern:='(<img[^>]+?)width=[^ >]+([^>]*?>)';
+  rp1.Pattern:='(<img[^>]+?)\swidth=[^ >]+([^>]*?>)';
   rp1.Global:=true;
   rp1.IgnoreCase:=true;
   rp2:=CoRegExp.Create;
-  rp2.Pattern:='(<img[^>]+?)height=[^ >]+([^>]*?>)';
+  rp2.Pattern:='(<img[^>]+?)\sheight=[^ >]+([^>]*?>)';
   rp2.Global:=true;
   rp2.IgnoreCase:=true;
   rp3:=CoRegExp.Create;

@@ -57,7 +57,7 @@ case Context['x'].AsInteger of
       qr.Free;
     end;
     <<p><b>block specific URL&#x2019;s</b></p>>
-    qr:=TQueryResult.Create(db,'select * from "UserBlock" where user_id=? order by id',[Session.UserID]);
+    qr:=TQueryResult.Create(db,'select * from "UserBlock" where user_id=? order by lower(url)',[Session.UserID]);
     try
       if not qr.EOF then
        begin

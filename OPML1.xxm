@@ -36,7 +36,7 @@ d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+For
       ' from "Subscription" S'+
       ' inner join "Feed" F on F.id=S.feed_id'+
       ' where S.user_id=?'+
-      ' order by S.Category,S.id',[Session.UserID]);
+      ' order by lower(S.Category),S.id',[Session.UserID]);
     while qr.Read do
      begin
       c1:=qr.GetStr('category');

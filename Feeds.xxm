@@ -32,7 +32,7 @@ if id=0 then
     ' inner join "Feed" F on F.id=S.feed_id'+
     ' where S.user_id=?'+
     //' order by S.category, S.label, F.name, S.id',[Session.UserID]);
-    ' order by S.category, S.label, F.name, S.id',[Session.UserID]);
+    ' order by lower(S.category), lower(S.label), lower(F.name), S.id',[Session.UserID]);
   try
     c:='';
     while qr.Read do
@@ -127,7 +127,7 @@ else
   <<dt>category</dt>
   <dd>
     <select name="category">>
-    qr:=TQueryResult.Create(Session.Connection,'select distinct category from "Subscription" where user_id=? order by 1',[Session.UserID]);
+    qr:=TQueryResult.Create(Session.Connection,'select distinct category, lower(category) as SortBy from "Subscription" where user_id=? order by lower(category)',[Session.UserID]);
     try
       while qr.Read do
         begin
