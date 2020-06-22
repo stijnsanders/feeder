@@ -25,11 +25,11 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 <tr>
 <td>Atom</td>
 <td>xmlns:atom="http://www.w3.org/2005/Atom"</td>
+</tr>
 
 <tr>
 <td>RSS</td>
-<td>valid XML that answers to
-<code>documentElement.selectNodes('channel/item')</code></td>
+<td>valid XML that answers to <code>documentElement.selectNodes('channel/item')</code></td>
 </tr>
 
 <tr>
@@ -49,7 +49,7 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 
 <tr>
 <td>Instagram</td>
-<td>Loads page HTML, locates <code>'"graphql":{'</code>, loads JSON from that point and processes data.
+<td>Loads page HTML, locates <code>'"graphql":{'</code>, loads JSON from that point and processes data.</td>
 </tr>
 
 <tr>
@@ -60,13 +60,18 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 
 <tr>
 <td>Tumblr</td>
-<td>Tumblr has RSS feeds, but since GDPR, requires a consent cookie. I have hardcoded one, but as it expires now and then I need to replace it manually (until I find a better solution or Tumblr no longer requires GDPR consent on RSS fetches)
+<td>Tumblr has RSS feeds, but since GDPR, requires a consent cookie. I have hardcoded one, but as it expires now and then I need to replace it manually (until I find a better solution or Tumblr no longer requires GDPR consent on RSS fetches)</td>
 </tr>
 
 <tr>
 <td>WordPress API</td>
-<td>If HTML declares
-<code>&lt;link rel="https://api.w.org/"</code>, a suffix of <code>/wp/v2/posts</code> by default serves JSON for the 10 most recent posts
+<td>If HTML declares <code>&lt;link rel="https://api.w.org/"</code>, a suffix of <code>/wp/v2/posts</code> by default serves JSON for the 10 most recent posts</td>
+</tr>
+
+<tr>
+<td>Titanium</td>
+<td>Loads page HTML, locates <code>window['titanium-state'] = </code>, loads JSON from that point and processes data.</td>
+</tr>
 
 <tr>
 <td>HTML</td>

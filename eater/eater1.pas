@@ -428,6 +428,22 @@ begin
     bias;
 end;
 
+function VarArrFirst(const v:Variant):Variant;
+begin
+  if VarIsArray(v) then
+    Result:=v[VarArrayLowBound(v,1)]
+  else
+    Result:=Null;
+end;
+
+function VarArrLast(const v:Variant):Variant;
+begin
+  if VarIsArray(v) then
+    Result:=v[VarArrayHighBound(v,1)]
+  else
+    Result:=Null;
+end;
+
 
 var
   rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhTrim,rhStartImg,
@@ -1122,12 +1138,33 @@ const
      end;
   end;
 
+  function DataContains(var data:WideString;const pattern:WideString):boolean;
+  var
+    r:RegExp;
+    m:MatchCollection;
+    mm:Match;
+    l:integer;
+  begin
+    r:=CoRegExp.Create;
+    r.Global:=false;
+    r.IgnoreCase:=false;//?
+    r.Pattern:=pattern;//??!!
+    m:=r.Execute(data) as MatchCollection;
+    if m.Count=0 then Result:=false else
+     begin
+      mm:=m.Item[0] as Match;
+      l:=mm.FirstIndex+mm.Length;
+      data:=Copy(data,1+l,Length(data)-l);
+      Result:=true;
+     end;
+  end;
+
 var
   d:TDateTime;
-  i,j,totalcount:integer;
+  i,j,k,totalcount:integer;
   loadlast,postlast,postavg,margin:double;
   loadext,dofeed,newfeed,doreq,xres,notmod:boolean;
-  rw,rt,s,sql1,sql2:WideString;
+  rw,rt,s,sql1,sql2,p1,p2:WideString;
   rf:TFileStream;
   qr1:TQueryResult;
   feedresult0,feedlastmod,feedlastmod0:string;
@@ -1163,7 +1200,7 @@ begin
   while (j<=Length(s)) and (s[j]<>'/') do inc(j);
   inc(j);
   while (j<=Length(s)) and (s[j]<>'/') and (s[j]<>'?') do inc(j);
-  Out0(IntToStr(feedid)+'<'+Copy(feedurl,i,j-i)+'>');
+  Out0(IntToStr(feedid)+' '+Copy(feedurl,i,j-i));
 
   //flags
   i:=qr0.GetInt('flags');
@@ -1339,7 +1376,7 @@ begin
           if feedlastmod<>'' then
             r.setRequestHeader('If-Modified-Since',feedlastmod);
           r.send(EmptyParam);
-          if (r.status=301) or (r.status=308) then //moved permanently
+          if (r.status=301) or (r.status=302) or (r.status=308) then //moved permanently
            begin
             feedurl:=r.getResponseHeader('Location');
             doreq:=true;
@@ -1651,6 +1688,7 @@ begin
             for i:=0 to jnodes.Count-1 do
              begin
               jnodes.LoadItem(i,jn0);
+              jn1:=JSON(jn0['contents']);
               itemid:=VarToStr(jn0['id']);
               itemurl:=VarToStr(jn0['url']);
               title:=VarToStr(jn0['title']);
@@ -1671,6 +1709,88 @@ begin
               if CheckNewItem then RegisterItem;
              end;
             feedresult:=Format('JSONfeed %d/%d',[c2,c1]);
+           end
+          else
+          if ((feedresult0='') or (Copy(feedresult0,1,8)='Titanium'))
+            and DataContains(rw,'window\[''titanium-state''\] = ') then
+           begin
+            jnodes:=JSONDocArray;
+            jdoc:=JSON(['hub',JSON(['data',JSON(['/',JSON(['cards',jnodes])])])]);
+            try
+              jdoc.Parse(rw);
+            except
+              on EJSONDecodeException do
+                ;//ignore "data past end"
+            end;
+            //feedname:=VarToStr(jdoc[????]);
+            jcaption:=JSONDocArray;
+            jthumbs:=JSONDocArray;
+            jn0:=JSON(['contents',jcaption,'feeds',jthumbs]);
+            jn1:=JSON(['media',jthumbs]);
+            jd1:=JSON;
+            p1:='';
+            p2:='';
+            for i:=0 to jnodes.Count-1 do
+             begin
+              jnodes.LoadItem(i,jn0);
+
+              //coalesce contents under feed onto contents
+              for j:=0 to jThumbs.Count-1 do
+                jcaption.AddJSON(jthumbs.GetJSON(j));
+
+              for j:=0 to jcaption.Count-1 do
+               begin
+                jcaption.LoadItem(j,jn1);
+
+                itemid:=VarToStr(jn1['id']);
+                itemurl:=VarToStr(jn1['localLinkUrl']);
+                try
+                  pubDate:=ConvDate1(VarToStr(jn1['published']));
+                except
+                  pubDate:=UtcNow;
+                end;
+                title:=VarToStr(jn1['headline']);
+
+                //TODO: media, mediumIds (leadPhotoId?
+
+                content:=VarToStr(jn1['storyHTML']);
+
+                //jn1['media']
+                if jthumbs.Count=0 then
+                 begin
+                  v:=jn1['mediumIds'];
+                  if (p1<>'') and VarIsArray(v) and (VarArrayLowBound(v,1)<=VarArrayHighBound(v,1)) then
+                    content:='<img src="'+p1+
+                      VarToStr(v[VarArrayLowBound(v,1)])+
+                      p2+
+                      '" /><br />'#13#10+content;
+
+                 end
+                else
+                 begin
+                  jthumbs.LoadItem(0,jd1);
+                  content:='<img src="'+
+                    VarToStr(jd1['gcsBaseUrl'])+
+                    VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
+                    VarToStr(jd1['imageFileExtension'])+
+                    '" /><br />'#13#10+content;
+                  if p1='' then //see 'mediumIDs' above
+                   begin
+                    p1:=VarToStr(jd1['gcsBaseUrl']);
+                    k:=Length(p1)-1;
+                    while (k<>0) and (p1[k]<>'/') do dec(k);
+                    SetLength(p1,k);
+                    p2:='/'+//?
+                      VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
+                      VarToStr(jd1['imageFileExtension']);
+                   end;
+
+                 end;
+
+                if CheckNewItem then RegisterItem;
+               end;
+             end;
+            feedresult:=Format('Titanium %d/%d',[c2,c1]);
            end
           else
            begin
