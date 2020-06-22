@@ -37,19 +37,23 @@ d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+For
       ' inner join "Feed" F on F.id=S.feed_id'+
       ' where S.user_id=?'+
       ' order by lower(S.Category),S.id',[Session.UserID]);
-    while qr.Read do
-     begin
-      c1:=qr.GetStr('category');
-      if c<>c1 then
+    try
+      while qr.Read do
        begin
-        if c<>'' then Context.SendHTML('</outline>');
-        c:=c1;
-        <<outline title="[[=c]]" text="[[=c]]">
+        c1:=qr.GetStr('category');
+        if c<>c1 then
+         begin
+          if c<>'' then Context.SendHTML('</outline>');
+          c:=c1;
+          <<outline title="[[=c]]" text="[[=c]]">
+          [[
+         end;
+        <<outline type="rss" xmlUrl="[[=qr['url']]]" f:label="[[=qr['label']]]" f:color="[[=qr['color']]]" f:readwidth="[[=qr['readwidth']]]" />
         [[
        end;
-      <<outline type="rss" xmlUrl="[[=qr['url']]]" f:label="[[=qr['label']]]" f:color="[[=qr['color']]]" f:readwidth="[[=qr['readwidth']]]" />
-      [[
-     end;
+    finally
+      qr.Free;
+    end;
     if c<>'' then Context.SendHTML('</outline>'#13#10);
   <</body>
 </opml>
