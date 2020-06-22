@@ -1138,7 +1138,7 @@ const
      end;
   end;
 
-  function DataContains(var data:WideString;const pattern:WideString):boolean;
+  function FindPrefixAndCrop(var data:WideString;const pattern:WideString):boolean;
   var
     r:RegExp;
     m:MatchCollection;
@@ -1712,7 +1712,7 @@ begin
            end
           else
           if ((feedresult0='') or (Copy(feedresult0,1,8)='Titanium'))
-            and DataContains(rw,'window\[''titanium-state''\] = ') then
+            and FindPrefixAndCrop(rw,'window\[''titanium-state''\] = ') then
            begin
             jnodes:=JSONDocArray;
             jdoc:=JSON(['hub',JSON(['data',JSON(['/',JSON(['cards',jnodes])])])]);
