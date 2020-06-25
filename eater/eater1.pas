@@ -1200,13 +1200,16 @@ begin
   while (j<=Length(s)) and (s[j]<>'/') do inc(j);
   inc(j);
   while (j<=Length(s)) and (s[j]<>'/') and (s[j]<>'?') do inc(j);
-  Out0(IntToStr(feedid)+' '+Copy(feedurl,i,j-i));
+  Out0(IntToStr(feedid)+' '+Copy(s,i,j-i));
 
   //flags
   i:=qr0.GetInt('flags');
   //feedglobal:=(i and 1)<>0;
   feedglobal:=i=1;
   //TODO: more?
+
+  if (feedresult0<>'') and (feedresult0[1]='[') then feedresult0:='';
+  
 
   sl.Add('<tr>');
   sl.Add('<td style="text-align:right;">'+IntToStr(feedid)+'</td>');
@@ -1240,18 +1243,30 @@ begin
   end;
   qr1:=TQueryResult.Create(dbA,(//UTF8Encode(
      'select max(X.pubdate) as postlast, avg(X.pd) as postavg'
+    +', min(X.pm) as postmedian'
     +' from('
     +'  select'
     +'  P2.pubdate, min(P2.pubdate-P1.pubdate) as pd'
+    +'  ,case when cume_dist()over(order by min(P2.pubdate-P1.pubdate))<0.5 then null else min(P2.pubdate-P1.pubdate) end as pm'
     +'  from "Post" P1'
-    +'  inner join "Post" P2 on P2.feed_id=P1.feed_id'+sql2+' and P2.pubdate>P1.pubdate'
+    +'  inner join "Post" P2 on P2.feed_id=P1.feed_id'+sql2+' and P2.pubdate>P1.pubdate+1.0/1440.0'
     +'  where P1.feed_id=?'+sql1+' and P1.pubdate>?'
     +'  group by P2.pubdate'
     +' ) X')
   ,[feedid,double(oldPostDate)]);
   try
-    if qr1.EOF or qr1.IsNull('postlast') then postlast:=0.0 else postlast:=qr1['postlast'];
-    if qr1.EOF or qr1.IsNull('postavg') then postavg:=0.0 else postavg:=qr1['postavg'];
+    if qr1.EOF then
+     begin
+      postlast:=0.0;
+      postavg:=0.0;
+     end
+    else
+     begin
+      if not qr1.IsNull('postlast') then postlast:=qr1['postlast'] else postlast:=0.0;
+      if not qr1.IsNull('postmedian') then postavg:=qr1['postmedian'] else
+        if not qr1.IsNull('postavg') then postavg:=qr1['postavg'] else
+          postavg:=0.0;
+     end;
   finally
     qr1.Free;
   end;
@@ -1395,7 +1410,8 @@ begin
           feedlastmod:=r.getResponseHeader('Last-Modified');
           i:=1;
           while (i<=Length(rt)) and (rt[i]<>';') do inc(i);
-          if (i<Length(rt)) then SetLength(rt,i-1);
+          while (i>0) and (rt[i]<=' ') do dec(i);
+          if (i<=Length(rt)) then SetLength(rt,i-1);
           r:=nil;
 
           if SaveData then
@@ -1714,8 +1730,17 @@ begin
           if ((feedresult0='') or (Copy(feedresult0,1,8)='Titanium'))
             and FindPrefixAndCrop(rw,'window\[''titanium-state''\] = ') then
            begin
+
+            i:=5;
+            while (i<=Length(feedurl)) and (feedurl[i]<>':') do inc(i);
+            inc(i);
+            if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+            if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
+            while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
+            s:=Copy(feedurl,i,Length(feedurl)-i+1);
+
             jnodes:=JSONDocArray;
-            jdoc:=JSON(['hub',JSON(['data',JSON(['/',JSON(['cards',jnodes])])])]);
+            jdoc:=JSON(['hub',JSON(['data',JSON([s,JSON(['cards',jnodes])])])]);
             try
               jdoc.Parse(rw);
             except
@@ -2166,8 +2191,23 @@ begin
    end
   else
    begin
-    Writeln(' Skip '+
-      IntToStr(Round((d-feedload)*1440.0))+''' regime:'+IntToStr(feedregime));
+    i:=Round((d-feedload)*1440.0);
+    //minutes
+    s:=IntToStr(i mod 60)+'''';
+    i:=i div 60;
+    if i<>0 then
+     begin
+      //hours
+      s:=IntToStr(i mod 24)+'h '+s;
+      i:=i div  24;
+      if i<>0 then
+       begin
+        //days
+        s:=IntToStr(i)+'d '+s;
+       end;
+     end;
+    if feedregime<>0 then s:=s+' Regime:'+IntToStr(feedregime)+'d';
+    Writeln(' Skip '+s);
     feedresult:=feedresult0;
     //c1,c2: see above
     feedload:=loadlast;
