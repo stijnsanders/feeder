@@ -1698,6 +1698,8 @@ begin
             jdoc.Parse(rw);
             //if jdoc['version']='https://jsonfeed.org/version/1' then
             feedname:=VarToStr(jdoc['title']);
+            if feedname='News' then feedname:=VarToStr(jc1['description']);//NPR?
+            if Length(feedname)>200 then feedname:=Copy(feedname,1,197)+'...';
             //jdoc['home_page_url']?
             //jdoc['feed_url']?
             jn0:=JSON;
@@ -1716,7 +1718,11 @@ begin
               if not(VarIsNull(jn0['summary'])) then
                begin
                 s:=VarToStr(jn0['summary']);
-                if (s<>'') and (s<>title) then title:=title+' '#$2014' '+s;
+                if (s<>'') and (s<>title) then
+                 begin
+                  if Length(s)>200 then s:=Copy(s,1,197)+'...';                  
+                  title:=title+' '#$2014' '+s;
+                 end;
                end;
               if VarIsNull(jn0['content_html']) then
                 content:=HTMLEncode(VarToStr(jn0['content_text']))
