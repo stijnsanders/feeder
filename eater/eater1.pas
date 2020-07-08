@@ -1698,7 +1698,7 @@ begin
             jdoc.Parse(rw);
             //if jdoc['version']='https://jsonfeed.org/version/1' then
             feedname:=VarToStr(jdoc['title']);
-            if feedname='News' then feedname:=VarToStr(jc1['description']);//NPR?
+            if feedname='News' then feedname:=VarToStr(jdoc['description']);//NPR?
             if Length(feedname)>200 then feedname:=Copy(feedname,1,197)+'...';
             //jdoc['home_page_url']?
             //jdoc['feed_url']?
