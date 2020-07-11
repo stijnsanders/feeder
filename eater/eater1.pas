@@ -1678,11 +1678,11 @@ begin
                 if rhImgData=nil then
                  begin
                   rhImgData:=CoRegExp.Create;
-                  rhImgData.Pattern:='<img\s+?data-srcset="([^"]+?)"\s+?data-src="([^"]+?)"';
+                  rhImgData.Pattern:='<img(\s+?)data-(srcset="[^"]*?"\s+?)data-(src="[^"]+?")';
                   //TODO: negative lookaround: no src/srcset=""
                   rhImgData.Global:=true;
                  end;
-                content:=rhImgData.Replace(content,'<img srcset="$1" src="$2"');
+                content:=rhImgData.Replace(content,'<img$1$2$3');
 
                 RegisterItem;
                end;
