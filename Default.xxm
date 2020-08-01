@@ -92,7 +92,7 @@ else
 
   if cat='' then
     if f=0 then
-      if Context['search'].Value='' then
+      if (Context['search'].Value='') and (Context['title'].Value='') then
         if Context['d'].Value='' then
          begin
 
@@ -142,13 +142,23 @@ else
           'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
           +' from "Post" P'
           +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'
-          +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=?'
-          +' where P.title||'' ''||P.content ilike ?';
+          +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=?';
         sqlWhere:=true;
         SetLength(xx,3+lx);
         xx[0]:=Session.UserID;
         xx[1]:=Session.UserID;
-        xx[2]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
+        if Context['title'].Value='' then
+         begin
+          sql:=sql
+            +' where P.title||'' ''||P.content ilike ?';
+          xx[2]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
+         end
+        else
+         begin
+          sql:=sql
+            +' where P.title ilike ?';
+          xx[2]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
+         end;
        end
     else
      begin
@@ -163,6 +173,21 @@ else
       xx[0]:=Session.UserID;
       xx[1]:=Session.UserID;
       xx[2]:=f;
+      if Context['search'].Value<>'' then
+       begin
+        sql:=sql
+          +' and P.title||'' ''||P.content ilike ?';
+        SetLength(xx,4+lx);
+        xx[3]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
+       end
+      else
+      if Context['title'].Value<>'' then
+       begin
+        sql:=sql
+          +' and P.title ilike ?';
+        SetLength(xx,4+lx);
+        xx[3]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
+       end;
      end
   else 
    begin

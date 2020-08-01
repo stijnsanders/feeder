@@ -880,8 +880,7 @@ var
   feedurl,feedurl0,feedurlskip,feedresult,itemid,itemurl:string;
   feedname,feedname0,title,content:WideString;
   feedload,pubDate:TDateTime;
-  feedregime:integer;
-  feedglobal:boolean;
+  feedregime,feedgroupid:integer;
   rc,c1,c2,postid:integer;
   v:Variant;
   re:RegExp;
@@ -949,14 +948,13 @@ const
         inc(i);
     if Result then
      begin
-      if feedglobal then
+      if feedgroupid<>0 then
         qr:=TQueryResult.Create(dbA,
           'select P.id from "Post" P'
           +' inner join "Feed" F on F.id=P.feed_id'
-          //+' and coalesce(F.flags,0)&1=1'
-          +' and F.flags=1'
+          +' and F.group_id=?'
           +' where P.guid=?'
-          ,[itemid])
+          ,[feedgroupid,itemid])
       else
         qr:=TQueryResult.Create(dbA,
           'select id from "Post" where feed_id=? and guid=?'
@@ -1203,19 +1201,19 @@ begin
   Out0(IntToStr(feedid)+' '+Copy(s,i,j-i));
 
   //flags
-  i:=qr0.GetInt('flags');
+  feedgroupid:=qr0.GetInt('group_id');
+  //i:=qr0.GetInt('flags');
   //feedglobal:=(i and 1)<>0;
-  feedglobal:=i=1;
   //TODO: more?
 
   if (feedresult0<>'') and (feedresult0[1]='[') then feedresult0:='';
-  
+
 
   sl.Add('<tr>');
   sl.Add('<td style="text-align:right;">'+IntToStr(feedid)+'</td>');
   sl.Add('<td class="n" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)+'">');
-  if feedglobal then
-    sl.Add('<div class="flag" style="background-color:red;">g</div>&nbsp;');
+  if feedgroupid<>0 then
+    sl.Add('<div class="flag" style="background-color:red;">'+IntToStr(feedgroupid)+'</div>&nbsp;');
   sl.Add('<a href="'+HTMLEncode(feedurl)+'" title="'+HTMLEncode(feedname)+'">'+HTMLEncode(feedname)+'</a></td>');
   sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',qrDate(qr0,'created'))+'</td>');
   sl.Add('<td style="text-align:right;">'+VarToStr(qr0['scount'])+'</td>');

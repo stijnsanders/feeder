@@ -4,15 +4,16 @@ name varchar(200) not null,
 url varchar(200) not null,
 created float not null,
 flags int null,
+group_id int null,
 urlskip varchar(50) null,
 htmlprefix varchar(1000) null,
 loadlast float null,
 result varchar(1000) null,
 loadcount int null,
 itemcount int null,
+totalcount int null,
 lastmod varchar(50) null,
-regime int null,
-totalcount int null
+regime int null
 );
 
 create table "Post" (
