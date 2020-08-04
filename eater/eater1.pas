@@ -867,16 +867,16 @@ begin
   Result:=d;
 end;
 
-procedure DoFeed(dbA:TDataConnection;qr0:TQueryResult;oldPostDate:TDateTime;
+procedure DoFeed(dbA:TDataConnection;feedid:integer;oldPostDate:TDateTime;
   sl:TStringList);
 var
+  qr0:TQueryResult;
   r:ServerXMLHTTP60;
   doc:DOMDocument60;
   jdoc,jdoc1,jn0,jn1,jc0,jc1,jd1:IJSONDocument;
   jnodes,jcaption,jthumbs:IJSONDocArray;
   xl,xl1:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
-  feedid:integer;
   feedurl,feedurl0,feedurlskip,feedresult,itemid,itemurl:string;
   feedname,feedname0,title,content:WideString;
   feedload,pubDate:TDateTime;
@@ -1167,60 +1167,65 @@ var
   qr1:TQueryResult;
   feedresult0,feedlastmod,feedlastmod0:string;
 begin
-  if qr0.EOF then raise Exception.Create('No feed found for this id.');
-  feedid:=qr0.GetInt('id');
-  feedurl:=qr0.GetStr('url');
-  feedurlskip:=qr0.GetStr('urlskip');
-  feedload:=UtcNow;
-  feedname:=qr0.GetStr('name');
-  feedregime:=qr0.GetInt('regime');
-  feedlastmod:=qr0.GetStr('lastmod');
-  feedresult:='';
-  newfeed:=qr0.IsNull('itemcount');
-  totalcount:=qr0.GetInt('totalcount');
-  feedurl0:=feedurl;
-  feedname0:=feedname;
-  feedlastmod0:=feedlastmod;
-  feedresult0:=qr0.GetStr('result');
-  c1:=qr0.GetInt('itemcount');
-  c2:=qr0.GetInt('loadcount');
-  notmod:=false;//default
+  qr0:=TQueryResult.Create(dbA,'select *'
+     +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
+     +' from "Feed" F where F.id=?',[feedid]);
+  try
+    if qr0.EOF then raise Exception.Create('No feed found for this id.');
+    feedurl:=qr0.GetStr('url');
+    feedurlskip:=qr0.GetStr('urlskip');
+    feedload:=UtcNow;
+    feedname:=qr0.GetStr('name');
+    feedregime:=qr0.GetInt('regime');
+    feedlastmod:=qr0.GetStr('lastmod');
+    feedresult:='';
+    newfeed:=qr0.IsNull('itemcount');
+    totalcount:=qr0.GetInt('totalcount');
+    feedurl0:=feedurl;
+    feedname0:=feedname;
+    feedlastmod0:=feedlastmod;
+    feedresult0:=qr0.GetStr('result');
+    c1:=qr0.GetInt('itemcount');
+    c2:=qr0.GetInt('loadcount');
+    notmod:=false;//default
 
-  //Out0(IntToStr(feedid)+':'+feedurl);
-  s:=feedurl;
-  i:=1;
-  //ship https?://
-  while (i<=Length(s)) and (s[i]<>'/') do inc(i);
-  inc(i);
-  if (i<=Length(s)) and (s[i]='/') then inc(i);
-  if Copy(s,i,4)='www.' then inc(i,4);
-  j:=i;
-  while (j<=Length(s)) and (s[j]<>'/') do inc(j);
-  inc(j);
-  while (j<=Length(s)) and (s[j]<>'/') and (s[j]<>'?') do inc(j);
-  Out0(IntToStr(feedid)+' '+Copy(s,i,j-i));
+    //Out0(IntToStr(feedid)+':'+feedurl);
+    s:=feedurl;
+    i:=1;
+    //ship https?://
+    while (i<=Length(s)) and (s[i]<>'/') do inc(i);
+    inc(i);
+    if (i<=Length(s)) and (s[i]='/') then inc(i);
+    if Copy(s,i,4)='www.' then inc(i,4);
+    j:=i;
+    while (j<=Length(s)) and (s[j]<>'/') do inc(j);
+    inc(j);
+    while (j<=Length(s)) and (s[j]<>'/') and (s[j]<>'?') do inc(j);
+    Out0(IntToStr(feedid)+' '+Copy(s,i,j-i));
 
-  //flags
-  feedgroupid:=qr0.GetInt('group_id');
-  //i:=qr0.GetInt('flags');
-  //feedglobal:=(i and 1)<>0;
-  //TODO: more?
+    //flags
+    feedgroupid:=qr0.GetInt('group_id');
+    //i:=qr0.GetInt('flags');
+    //feedglobal:=(i and 1)<>0;
+    //TODO: more?
 
-  if (feedresult0<>'') and (feedresult0[1]='[') then feedresult0:='';
+    if (feedresult0<>'') and (feedresult0[1]='[') then feedresult0:='';
 
 
-  sl.Add('<tr>');
-  sl.Add('<td style="text-align:right;">'+IntToStr(feedid)+'</td>');
-  sl.Add('<td class="n" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)+'">');
-  if feedgroupid<>0 then
-    sl.Add('<div class="flag" style="background-color:red;">'+IntToStr(feedgroupid)+'</div>&nbsp;');
-  sl.Add('<a href="'+HTMLEncode(feedurl)+'" title="'+HTMLEncode(feedname)+'">'+HTMLEncode(feedname)+'</a></td>');
-  sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',qrDate(qr0,'created'))+'</td>');
-  sl.Add('<td style="text-align:right;">'+VarToStr(qr0['scount'])+'</td>');
+    sl.Add('<tr>');
+    sl.Add('<td style="text-align:right;">'+IntToStr(feedid)+'</td>');
+    sl.Add('<td class="n" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)+'">');
+    if feedgroupid<>0 then
+      sl.Add('<div class="flag" style="background-color:red;">'+IntToStr(feedgroupid)+'</div>&nbsp;');
+    sl.Add('<a href="'+HTMLEncode(feedurl)+'" title="'+HTMLEncode(feedname)+'">'+HTMLEncode(feedname)+'</a></td>');
+    sl.Add('<td>'+FormatDateTime('yyyy-mm-dd hh:nn',qrDate(qr0,'created'))+'</td>');
+    sl.Add('<td style="text-align:right;">'+VarToStr(qr0['scount'])+'</td>');
 
-  if qr0.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr0['loadlast'];
+    if qr0.IsNull('loadlast') then loadlast:=0.0 else loadlast:=qr0['loadlast'];
 
-  qr0.Free;
+  finally
+    qr0.Free;
+  end;
 
   //check feed timing and regime
   qr1:=TQueryResult.Create(dbA,
@@ -2397,7 +2402,7 @@ begin
     try
 
       sl.Add('<style>');
-      sl.Add('TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
+      sl.Add('P,TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
       sl.Add('TD.n{max-width:12em;overflow:hidden;text-overflow:ellipsis;}');
       sl.Add('TD.empty{background-color:#CCCCCC;}');
       sl.Add('DIV.flag{display:inline;padding:2pt;border-radius:4pt;white-space:nowrap;}');
@@ -2519,20 +2524,26 @@ begin
       i:=0;
       while i<l do
        begin
-        qr:=TQueryResult.Create(dbB,'select *'
-           +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
-           +' from "Feed" F where F.id=?',[ids[i]]);
-        try
-          DoFeed(dbA,qr,d,sl);
-        finally
-          //qr.Free;
-        end;
+        DoFeed(dbA,ids[i],d,sl);
         inc(i);
        end;
 
       OutLn(Format('%d posts loaded from %d feeds',[LastPostCount,LastFeedCount]));
 
       sl.Add('</table>');
+
+      qr:=TQueryResult.Create(dbB,
+        'select ((select count(*) from "Post")+500)/1000||''K posts, '''
+        +'||((select count(*) from "UserPost")+500)/1000||''K unread, '''
+        +'||pg_database_size(''feeder'')/1024000||''MB, '''
+        +'||version()',[]);
+      try
+        while qr.Read do
+          sl.Add('<p>'+HTMLEncode(qr.GetStr(0))+'</p>');
+      finally
+        qr.Free;
+      end;
+
       sl.SaveToFile('..\Load.html');
 
     finally
