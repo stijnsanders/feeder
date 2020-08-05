@@ -1213,7 +1213,7 @@ begin
 
 
     sl.Add('<tr>');
-    sl.Add('<td style="text-align:right;">'+IntToStr(feedid)+'</td>');
+    sl.Add('<th>'+IntToStr(feedid)+'</th>');
     sl.Add('<td class="n" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)+'">');
     if feedgroupid<>0 then
       sl.Add('<div class="flag" style="background-color:red;">'+IntToStr(feedgroupid)+'</div>&nbsp;');
@@ -2232,6 +2232,7 @@ begin
     sl.Add('<td style="text-align:right;">'+IntToStr(c2)+'</td>');
   sl.Add('<td style="text-align:right;" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)
     +#13#10+HTMLEncode(feedlastmod)+'">'+IntToStr(c1)+'</td>');
+  sl.Add('<td style="text-align:right;">'+IntToStr(totalcount+c2)+'</td>');
   sl.Add('</tr>');
 
 end;
@@ -2402,10 +2403,12 @@ begin
     try
 
       sl.Add('<style>');
-      sl.Add('P,TH,TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
+      sl.Add('P{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;}');
+      sl.Add('TH{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #333333;}');
+      sl.Add('TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
       sl.Add('TD.n{max-width:12em;overflow:hidden;text-overflow:ellipsis;}');
       sl.Add('TD.empty{background-color:#CCCCCC;}');
-      sl.Add('DIV.flag{display:inline;padding:2pt;border-radius:4pt;white-space:nowrap;}');
+      sl.Add('DIV.flag{display:inline;padding:2pt;color:#FFCC00;border-radius:4pt;white-space:nowrap;}');
       sl.Add('</style>');
       sl.Add('<table cellspacing="0" cellpadding="4" border="1">');
       sl.Add('<tr>');
@@ -2421,6 +2424,7 @@ begin
       sl.Add('<th>load:result</th>');
       sl.Add('<th>load:new</th>');
       sl.Add('<th>load:items</th>');
+      sl.Add('<th>total</th>');
       sl.Add('</tr>');
 
       i:=Trunc(LastRun*2.0-0.302);//twice a day on some off-hour
