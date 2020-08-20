@@ -205,6 +205,7 @@ else
   if loadMore then
    begin
     id0:=Context['x'].AsInteger;
+    Session.Connection.Execute('set statement_timeout=90000',[]);    
     qr:=TQueryResult.Create(Session.Connection,'select pubdate from "Post" where id=?',[id0]);
     try
       d1:=double(qr[0]);
@@ -222,6 +223,7 @@ else
    begin
     d:=Trunc(UtcNow+Session.TimeBias);
     Context.Flush;
+    Session.Connection.Execute('set statement_timeout=30000',[]);
    end;
 
   qr:=TQueryResult.Create(Session.Connection,
