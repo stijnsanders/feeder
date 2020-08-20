@@ -1072,6 +1072,7 @@ const
       sm:=m.SubMatches as SubMatches;
       if (sm[0]='rel') and (sm[1]='https://api.w.org/') and (sm[2]='href') then
        begin
+        //TODO: check +'wp/v2/articles'?
         combineURL(sm[3]+'wp/v2/posts');
         feedresult:='Feed URL found in content, updating (WPv2)';
 
@@ -1699,8 +1700,8 @@ begin
 
            end
           else
-          if (rt='application/json') and (Copy(feedurl,Length(feedurl)-11,12)='/wp/v2/posts')
-            and (Copy(rw,1,7)='[{"id":') then
+          if (rt='application/json') and (Pos('/wp/v2/',feedurl)<>0)
+            and (Copy(rw,1,1)='[') then //and ((Copy(rw,1,7)='[{"id":') or (rw='[]')) then
            begin
             jnodes:=JSONDocArray;
             jdoc:=JSON(['items',jnodes]);
@@ -1742,10 +1743,6 @@ begin
           else
           if (rt='application/json') then
            begin
-
-            //this is just to silence errors on "[]"
-            if (rw<>'') and (rw[1]='[') then rw:='{"items":'+rw+'}';
-
             jnodes:=JSONDocArray;
             jdoc:=JSON(['items',jnodes]);
             jdoc.Parse(rw);
