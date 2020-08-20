@@ -557,7 +557,7 @@ begin
 end;
 {$ENDIF}
 
-function LoadExternal(const URL,FilePath:string): WideString;
+function LoadExternal(const URL,FilePath,LastMod:string): WideString;
 var
   si:TStartupInfo;
   pi:TProcessInformation;
@@ -566,9 +566,15 @@ var
   i:integer;
   w:word;
   r:cardinal;
+  p1:string;
 begin
   WriteLn(' ->');
   DeleteFile(PChar(FilePath));//remove any previous file
+
+  if not(FeedAll) and (LastMod<>'') then
+    p1:=' --header="If-Modified-Since: '+LastMod+'"'
+  else
+    p1:='';
 
   ZeroMemory(@si,SizeOf(TStartupInfo));
   si.cb:=SizeOf(TStartupInfo);
@@ -584,7 +590,8 @@ begin
   }
   if not CreateProcess(nil,PChar(
     'wget.exe -nv --no-cache --max-redirect 8 --no-http-keep-alive --no-check-certificate'+
-    ' -A "Accept: application/rss+xml, application/atom+xml, application/xml, text/xml"'+
+    p1+' --save-headers --content-on-error'+
+    ' --header="Accept: application/rss+xml, application/atom+xml, application/xml, text/xml"'+
     ' --user-agent="FeedEater/1.0" --compression=auto'+
     ' -O "'+FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
@@ -884,6 +891,7 @@ var
   rc,c1,c2,postid:integer;
   v:Variant;
   re:RegExp;
+  rh:TStringList;
 const
   regimesteps=8;
   regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90);
@@ -1327,15 +1335,50 @@ begin
       loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
       if loadext then
        begin
-        //TODO: feedlastmod
-        rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml');
-        //TODO: extract content-type from LoadExternal response?
+        rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml',feedlastmod);
+
         i:=1;
-        while (i<=Length(rw)) and (rw[i]<=' ') do inc(i);
-        if (rw[i]='{') or (rw[i]='[') then
-          rt:='application/json'
-        else
-          rt:='text/html';//enables search for <link>s below
+        while (i+4<Length(rw)) and not(
+          (rw[i]=#13) and (rw[i+1]=#10) and
+          (rw[i+2]=#13) and (rw[i+3]=#10)) do inc(i);
+
+        rt:='';//default;
+        feedlastmod:='';//default
+        rh:=TStringList.Create;
+        try
+          rh.Text:=Copy(rw,1,i);
+          if rh.Count<>0 then
+           begin
+            if Copy(rh[0],1,12)='HTTP/1.1 304' then notmod:=true else
+            if Copy(rh[0],1,12)<>'HTTP/1.1 200' then
+              feedresult:='['+rh[0]+']';
+            for j:=1 to rh.Count-1 do
+             begin
+              p1:=rh[j];
+              if Copy(p1,1,14)='Content-Type: ' then
+                rt:=Copy(p1,15,Length(p1)-14)
+              else
+              if Copy(p1,1,15)='Last-Modified: ' then
+                feedlastmod:=Copy(p1,16,Length(p1)-15);
+             end;
+           end;
+        finally
+          rh.Free;
+        end;
+
+        inc(i,4);
+        rw:=Copy(rw,i,Length(rw)-i+1);
+
+        if rt='' then //auto-detect?
+         begin
+          i:=1;
+          while (i<=Length(rw)) and (rw[i]<=' ') do inc(i);
+          if (rw<>'') and ((rw[i]='{') or (rw[i]='[')) then
+            rt:='application/json'
+          else
+            rt:='text/html';//enables search for <link>s below
+         end;
+
        end
       else
        begin
@@ -1391,7 +1434,7 @@ begin
           else
             r.setRequestHeader('User-Agent','FeedEater/1.0');
           //TODO: ...'/wp/v2/posts' param 'after' last load time?
-          if feedlastmod<>'' then
+          if (feedlastmod<>'') and not(FeedAll) then
             r.setRequestHeader('If-Modified-Since',feedlastmod);
           r.send(EmptyParam);
           if (r.status=301) or (r.status=302) or (r.status=308) then //moved permanently
@@ -1411,10 +1454,6 @@ begin
           //rh:=r.getAllResponseHeaders;
           rt:=r.getResponseHeader('Content-Type');
           feedlastmod:=r.getResponseHeader('Last-Modified');
-          i:=1;
-          while (i<=Length(rt)) and (rt[i]<>';') do inc(i);
-          while (i>0) and (rt[i]<=' ') do dec(i);
-          if (i<=Length(rt)) then SetLength(rt,i-1);
           r:=nil;
 
           if SaveData then
@@ -1470,13 +1509,21 @@ begin
 
     if notmod then
      begin
-      Writeln(' HTTP 304');
+      if not loadext then Writeln(' HTTP 304');
      end
     else
      begin
 
       if feedresult='' then
         try
+
+          if rt<>'' then
+           begin
+            i:=1;
+            while (i<=Length(rt)) and (rt[i]<>';') do inc(i);
+            while (i>0) and (rt[i]<=' ') do dec(i);
+            if (i<=Length(rt)) then SetLength(rt,i-1);
+           end;
 
           //sanitize unicode
           for i:=1 to Length(rw) do
@@ -1695,7 +1742,10 @@ begin
           else
           if (rt='application/json') then
            begin
-            //
+
+            //this is just to silence errors on "[]"
+            if (rw<>'') and (rw[1]='[') then rw:='{"items":'+rw+'}';
+
             jnodes:=JSONDocArray;
             jdoc:=JSON(['items',jnodes]);
             jdoc.Parse(rw);
