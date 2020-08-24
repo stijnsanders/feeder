@@ -1,6 +1,7 @@
-[[@xxmSession,DataLank,fCommon]][[!var
+[[@xxmSession,DataLank,fCommon,Variants]][[!var
 id,rw:integer;
 c,cat,lbl:string;
+ur:Variant;
 db:TDataConnection;
 ]][[
 
@@ -16,9 +17,17 @@ case Context['x'].AsInteger of
       if cat='---' then cat:=Context['categoryNew'].Value;
       c:=CheckColor(Context['color'].Value);
       rw:=Context['readwidth'].AsInteger;
+      if Context['autounread0'].Value='' then
+        ur:=Null
+      else
+        case Context['autounread1'].AsInteger of
+          0:ur:=Context['autounread0'].AsInteger;//hours
+          1:ur:=Context['autounread0'].AsInteger*24;//days
+          2:ur:=Context['autounread0'].AsInteger*24*7;//weeks
+        end;
       db.Execute('update "Subscription" set'+
-        ' category=?,label=?,color=?,readwidth=?'+
-        ' where id=? and user_id=?',[cat,lbl,c,rw,id,Session.UserID]);
+        ' category=?,label=?,color=?,readwidth=?,autounread=?'+
+        ' where id=? and user_id=?',[cat,lbl,c,rw,ur,id,Session.UserID]);
       db.CommitTrans;
     except
       db.RollbackTrans;

@@ -1,7 +1,10 @@
 [[@xxmSession,DataLank,fCommon,Variants]][[!var
 qr:TQueryResult;
 category,feedlabel,readwidth,feedcolor,c,c1:string;
-id,feedid:integer;
+autounread:Variant;
+id,feedid,ur0,ur1:integer;
+const
+osel:array[boolean] of string=('',' selected="1"');
 ]][[
 if Session.UserID=0 then Context.Redirect('.',true);
 Context.Include('dHead.xxmi');
@@ -119,6 +122,7 @@ else
     category:=qr.GetStr('category');
     feedlabel:=qr.GetStr('label');
     readwidth:=VarToStr(qr['readwidth']);
+    autounread:=qr['autounread'];
     feedcolor:=qr.GetStr('color');
     feedid:=qr.GetInt('feed_id');
   finally
@@ -148,6 +152,34 @@ else
   <dd>>#ColorPicker(feedcolor)<</dd>
   <dt>read width</dt>
   <dd><input type="text" name="readwidth" value="[[=readwidth]]" style="width:4em;" /> M-width</dd>
+  <dt>auto-unread after</dt>
+  <dd>>
+  ur0:=0;//default
+  ur1:=1;//default: days
+  if not VarIsNull(autounread) then
+   begin
+    ur0:=autounread;
+    if (ur0 mod 24)=0 then
+      if (ur0 mod (7*24))=0 then
+       begin
+        ur0:=ur0 div (7*24);
+        ur1:=2;//weeks
+       end
+      else
+       begin
+        ur0:=ur0 div 24;
+        ur1:=1;//days
+       end
+    else
+      ur1:=0;//hours
+   end;
+  <<input type="text" name="autounread0" value="[[if not VarIsNull(autounread) then Context.Send(ur0);]]" style="width:4em;" />
+  <select name="autounread1">
+  <option value="0"[[#osel[ur1=0]]]>hours</option>
+  <option value="1"[[#osel[ur1=1]]]>days</option>
+  <option vaule="2"[[#osel[ur1=2]]]>weeks</option>
+  </select>
+  </dd>
   </dl>
   <p><input type="submit" value="Update" /></p>
   </form>

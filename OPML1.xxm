@@ -48,7 +48,7 @@ d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+For
           <<outline title="[[=c]]" text="[[=c]]">
           [[
          end;
-        <<outline type="rss" xmlUrl="[[=qr['url']]]" f:label="[[=qr['label']]]" f:color="[[=qr['color']]]" f:readwidth="[[=qr['readwidth']]]" />
+        <<outline type="rss" xmlUrl="[[=qr['url']]]" f:label="[[=qr['label']]]" f:color="[[=qr['color']]]" f:readwidth="[[=qr['readwidth']]]" f:autounread="[[=qr['autounread']]]" />
         [[
        end;
     finally

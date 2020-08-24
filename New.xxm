@@ -1,6 +1,7 @@
-[[@xxmSession,DataLank,fCommon]][[!var
+[[@xxmSession,DataLank,fCommon,Variants]][[!var
 s,t,lbl,cat,c:string;
 id,id1,rw:integer;
+ur:Variant;
 qr:TQueryResult;
 const
 DefaultReadWidth=32;
@@ -20,7 +21,7 @@ case Context['x'].AsInteger of
       <br />
       Optionally enter the URL of the home page here to have the header searched for a feed URL.
     </dd>
-    <dt>name</dt>
+    <dt>name (optional)</dt>
     <dd><input type="text" name="name" value="" autocomplete="off" /> (leave empty for default //TODO: from URL data)</dd>
     <dt>category</dt>
     <dd>
@@ -44,7 +45,14 @@ case Context['x'].AsInteger of
     <dd>>#ColorPicker('')<</dd>
     <dt>read width</dt>
     <dd><input type="text" name="readwidth" value="[[=integer(DefaultReadWidth)]]" style="width:4em;" /> M-width</dd>
-    </dl>
+    <dt>auto-unread after (optional)</dt>
+    <dd><input type="text" name="autounread0" value="" style="width:4em;" />
+    <select name="autounread1">
+    <option value="0">hours</option>
+    <option value="1" selected="1">days</option>
+    <option vaule="2">weeks</option>
+    </select>
+    </dd>
     </dl>
     <p><input type="submit" value="Add Feed" /></p>
     </form>
@@ -100,6 +108,14 @@ case Context['x'].AsInteger of
       if cat='---' then cat:=Context['categoryNew'].Value;
       c:=CheckColor(Context['color'].Value);
       rw:=Context['readwidth'].AsInteger;
+      if Context['autounread0'].Value='' then
+        ur:=Null
+      else
+        case Context['autounread1'].AsInteger of
+          0:ur:=Context['autounread0'].AsInteger;//hours
+          1:ur:=Context['autounread0'].AsInteger*24;//days
+          2:ur:=Context['autounread0'].AsInteger*24*7;//weeks
+        end;
       Session.Connection.Insert('Subscription',
         ['user_id',Session.UserID
         ,'feed_id',id
@@ -107,6 +123,7 @@ case Context['x'].AsInteger of
         ,'category',cat
         ,'color',c
         ,'readwidth',rw
+        ,'autounread',ur
         ,'created',double(UtcNow)
         ],'id');
       <<p>Subscription added</p>>

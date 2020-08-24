@@ -969,6 +969,9 @@ const
           ,[feedid,itemid]);
       try
         Result:=qr.EOF;
+
+        //TODO: if feedgroupid<>0 and P.feed_id>feedid then update?
+
       finally
         qr.Free;
       end;
@@ -1703,6 +1706,9 @@ begin
           if (rt='application/json') and (Pos('/wp/v2/',feedurl)<>0)
             and (Copy(rw,1,1)='[') then //and ((Copy(rw,1,7)='[{"id":') or (rw='[]')) then
            begin
+
+            //TODO: if rw='[]' and '/wp/v2/posts' switch to '/wp/v2/articles'? episodes? media?
+
             jnodes:=JSONDocArray;
             jdoc:=JSON(['items',jnodes]);
             jdoc.Parse('{"items":'+rw+'}');
@@ -2529,8 +2535,37 @@ begin
           Writeln(' '+IntToStr(j)+' feeds cleaned      ');
 
         finally
-          qr.Free;
+         qr.Free;
         end;
+       end;
+
+      Out0('Auto-unread after...');
+      qr:=TQueryResult.Create(dbB,'select X.id from "UserPost" X'
+        +' inner join "Post" P on P.id=X.post_id'
+        +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'
+        +' where P.pubdate<?-S.autounread/24.0 limit 1',[double(UtcNow)]);
+      try
+        if qr.EOF then i:=0 else i:=1;
+      finally
+        qr.Free;
+      end;
+      if i=0 then
+        Writeln(' none')
+      else
+       begin
+        dbA.BeginTrans;
+        try
+          i:=dbA.Execute('delete from "UserPost" where id in (select X.id'
+            +' from "UserPost" X'
+            +' inner join "Post" P on P.id=X.post_id'
+            +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'
+            +' where P.pubdate<?-S.autounread/24.0)',[double(UtcNow)]);
+          dbA.CommitTrans;
+        except
+          dbA.RollbackTrans;
+          raise;
+        end;
+        Writeln(' '+IntToStr(i)+' items marked read');
        end;
 
       OutLn('List feeds for loading...');

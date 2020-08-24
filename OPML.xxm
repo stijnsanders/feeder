@@ -9,9 +9,10 @@ DefaultReadWidth=32;
 procedure DoOutlines(xl:IXMLDOMNodeList;const Group:string);
 var
   x:IXMLDOMElement;
-  s,t,feedcolor:string;
+  s,t,feedcolor,autounread:string;
   qr:TQueryResult;
-  id,id1,rw:integer;
+  id,id1,rw,ur0:integer;
+  ur:Variant;
 begin
   x:=xl.nextNode as IXMLDOMElement;
   while x<>nil do
@@ -61,6 +62,9 @@ begin
       feedcolor:=VarToStr(x.getAttribute('f:color'));
       if not TryStrToInt(VarToStr(x.getAttribute('f:readwidth')),rw) then
         rw:=DefaultReadWidth;
+      autounread:=VarToStr(x.getAttribute('f:autounread'));
+      if autounread='' then ur:=Null else
+        if TryStrToInt(autounread,ur0) then ur0:=ur else ur:=Null;
 
       if id1=0 then
        begin
@@ -72,6 +76,7 @@ begin
           ,'color',feedcolor
           ,'category',Group
           ,'readwidth',rw
+          ,'autounread',ur
           ,'created',double(UtcNow)
           ],'id');
        end
