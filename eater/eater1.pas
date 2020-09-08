@@ -1513,6 +1513,7 @@ begin
 
     if notmod then
      begin
+      feedresult:=feedresult0+' [HTTP 403]';
       if not loadext then Writeln(' HTTP 304');
      end
     else
@@ -2285,7 +2286,7 @@ begin
     sl.Add('<td style="text-align:right;">'+IntToStr(c2)+'</td>');
   sl.Add('<td style="text-align:right;" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',feedload)
     +#13#10+HTMLEncode(feedlastmod)+'">'+IntToStr(c1)+'</td>');
-  sl.Add('<td style="text-align:right;">'+IntToStr(totalcount+c2)+'</td>');
+  sl.Add('<td style="text-align:right;">'+IntToStr(totalcount)+'</td>');
   sl.Add('</tr>');
 
 end;

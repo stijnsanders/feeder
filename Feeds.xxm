@@ -177,7 +177,7 @@ else
   <select name="autounread1">
   <option value="0"[[#osel[ur1=0]]]>hours</option>
   <option value="1"[[#osel[ur1=1]]]>days</option>
-  <option vaule="2"[[#osel[ur1=2]]]>weeks</option>
+  <option value="2"[[#osel[ur1=2]]]>weeks</option>
   </select>
   </dd>
   </dl>
