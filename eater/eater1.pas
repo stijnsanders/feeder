@@ -1169,6 +1169,24 @@ const
      end;
   end;
 
+  function FindMatch(const data:WideString;const pattern:WideString):WideString;
+  var
+    r:RegExp;
+    m:MatchCollection;
+    sm:SubMatches;
+  begin
+    r:=CoRegExp.Create;
+    r.Global:=false;
+    r.IgnoreCase:=false;//?
+    r.Pattern:=pattern;
+    m:=r.Execute(data) as MatchCollection;
+    if m.Count=0 then Result:='' else
+     begin
+      sm:=(m.Item[0] as Match).SubMatches as SubMatches;
+      if sm.Count=0 then Result:='' else Result:=VarToStr(sm.Item[0]);
+     end;
+  end;
+
 var
   d:TDateTime;
   i,j,k,totalcount:integer;
@@ -1793,17 +1811,10 @@ begin
           if ((feedresult0='') or (Copy(feedresult0,1,8)='Titanium'))
             and FindPrefixAndCrop(rw,'window\[''titanium-state''\] = ') then
            begin
-
-            i:=5;
-            while (i<=Length(feedurl)) and (feedurl[i]<>':') do inc(i);
-            inc(i);
-            if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
-            if (i<=Length(feedurl)) and (feedurl[i]='/') then inc(i);
-            while (i<=Length(feedurl)) and (feedurl[i]<>'/') do inc(i);
-            s:=Copy(feedurl,i,Length(feedurl)-i+1);
-
             jnodes:=JSONDocArray;
-            jdoc:=JSON(['hub',JSON(['data',JSON([s,JSON(['cards',jnodes])])])]);
+            jdoc:=JSON(['hub',JSON(['data',JSON([
+              FindMatch(rw,'"data":{"([^"]*?)":'),
+              JSON(['cards',jnodes])])])]);
             try
               jdoc.Parse(rw);
             except

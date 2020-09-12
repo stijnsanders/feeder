@@ -90,6 +90,7 @@ created float not null,
 constraint FK_UserBlock_User foreign key (user_id) references "User" (id)
 );
 
+create unique index IX_UserBlock on "UserBlock" (user_id,url);
 
 insert into "Feed" (id,name,url,created) values (0,'[system messages]','',0.0);
 
