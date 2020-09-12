@@ -1813,7 +1813,7 @@ begin
            begin
             jnodes:=JSONDocArray;
             jdoc:=JSON(['hub',JSON(['data',JSON([
-              FindMatch(rw,'"data":{"([^"]*?)":'),
+              FindMatch(rw,'"data":{"([^"]*?)":{"cards":'),
               JSON(['cards',jnodes])])])]);
             try
               jdoc.Parse(rw);
