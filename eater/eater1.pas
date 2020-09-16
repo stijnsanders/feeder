@@ -888,6 +888,7 @@ var
   feedname,feedname0,title,content:WideString;
   feedload,pubDate:TDateTime;
   feedregime,feedgroupid:integer;
+  feedtags:Variant;
   rc,c1,c2,postid:integer;
   v:Variant;
   re:RegExp;
@@ -979,6 +980,9 @@ const
   end;
 
   procedure RegisterItem;
+  var
+    ti:integer;
+    tsql:string;
   begin
     inc(c2);
     if IsSomethingEmpty(title) then
@@ -990,6 +994,16 @@ const
     //content starts with <img>? inject a <br />
     if rhStartImg.Test(content) then
       content:=rhStartImg.Replace(content,'$1$3<br />');
+
+    if VarIsArray(feedtags) and //varArray of varStrSomething?
+      (VarArrayDimCount(feedtags)=1) and (VarArrayHighBound(feedtags,1)-VarArrayLowBound(feedtags,1)>0) then
+     begin
+      tsql:='';
+      for ti:=VarArrayLowBound(feedtags,1) to VarArrayHighBound(feedtags,1) do
+        tsql:=tsql+' or B.url=''tag:'+StringReplace(VarToStr(feedtags[ti]),'''','''''',[rfReplaceAll])+'''';
+     end
+    else
+      tsql:='';
 
     //list the post
     dbA.BeginTrans;
@@ -1005,7 +1019,8 @@ const
         ],'id');
       dbA.Execute('insert into "UserPost" (user_id,post_id)'+
         ' select S.user_id,? from "Subscription" S'+
-        ' left outer join "UserBlock" B on B.user_id=S.user_id and B.url=left(?,length(B.url))'+
+        ' left outer join "UserBlock" B on B.user_id=S.user_id'+
+        ' and (B.url=left(?,length(B.url)'+tsql+')'+
         ' where S.feed_id=? and B.id is null',[postid,itemurl,feedid]);
       dbA.CommitTrans;
     except
@@ -1013,6 +1028,8 @@ const
       raise;
     end;
     inc(LastPostCount);
+
+    VarClear(feedtags);
   end;
 
   procedure combineURL(const s:string);
@@ -1539,6 +1556,7 @@ begin
 
       if feedresult='' then
         try
+          VarClear(feedtags);
 
           if rt<>'' then
            begin
@@ -1886,7 +1904,11 @@ begin
 
                  end;
 
-                if CheckNewItem then RegisterItem;
+                if CheckNewItem then
+                 begin
+                  feedtags:=jn1['tagIds'];
+                  RegisterItem;
+                 end;
                end;
              end;
             feedresult:=Format('Titanium %d/%d',[c2,c1]);
