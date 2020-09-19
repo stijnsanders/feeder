@@ -888,6 +888,7 @@ var
   feedname,feedname0,title,content:WideString;
   feedload,pubDate:TDateTime;
   feedregime,feedgroupid:integer;
+  feedtagprefix:string;
   feedtags:Variant;
   rc,c1,c2,postid:integer;
   v:Variant;
@@ -995,12 +996,13 @@ const
     if rhStartImg.Test(content) then
       content:=rhStartImg.Replace(content,'$1$3<br />');
 
+    //if feedtagprefix<>'' then
     if VarIsArray(feedtags) and //varArray of varStrSomething?
       (VarArrayDimCount(feedtags)=1) and (VarArrayHighBound(feedtags,1)-VarArrayLowBound(feedtags,1)>0) then
      begin
       tsql:='';
       for ti:=VarArrayLowBound(feedtags,1) to VarArrayHighBound(feedtags,1) do
-        tsql:=tsql+' or B.url=''tag:'+StringReplace(VarToStr(feedtags[ti]),'''','''''',[rfReplaceAll])+'''';
+        tsql:=tsql+' or B.url='''+StringReplace(feedtagprefix+':'+VarToStr(feedtags[ti]),'''','''''',[rfReplaceAll])+'''';
      end
     else
       tsql:='';
@@ -1029,6 +1031,7 @@ const
     end;
     inc(LastPostCount);
 
+    feedtagprefix:='';
     VarClear(feedtags);
   end;
 
@@ -1556,6 +1559,7 @@ begin
 
       if feedresult='' then
         try
+          feedtagprefix:='';
           VarClear(feedtags);
 
           if rt<>'' then
@@ -1906,6 +1910,7 @@ begin
 
                 if CheckNewItem then
                  begin
+                  feedtagprefix:='tag';
                   feedtags:=jn1['tagIds'];
                   RegisterItem;
                  end;
@@ -1995,6 +2000,7 @@ begin
                         itemurl:=y.getAttribute('href');
                       y:=xl1.nextNode as IXMLDOMElement;
                      end;
+                    xl1:=nil;
                     if itemid='' then itemid:=itemurl;
                    end;
                   y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
@@ -2059,7 +2065,25 @@ begin
                   except
                     pubDate:=UtcNow;
                   end;
-                  if CheckNewItem then RegisterItem;
+                  if CheckNewItem then
+                   begin
+                    xl1:=x.selectNodes('category');
+                    if xl1.length<>0 then
+                     begin
+                      feedtagprefix:='category';
+                      feedtags:=VarArrayCreate([0,xl1.length-1],varOleStr);
+                      i:=0;
+                      y:=xl1.nextNode as IXMLDOMElement;
+                      while y<>nil do
+                       begin
+                        feedtags[i]:=y.text;
+                        inc(i);
+                        y:=xl1.nextNode as IXMLDOMElement;
+                       end;
+                     end;
+                    xl1:=nil;
+                    RegisterItem;
+                   end;
 
                   x:=xl.nextNode as IXMLDOMElement;
                  end;

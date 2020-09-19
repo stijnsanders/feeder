@@ -188,7 +188,7 @@ case Context['x'].AsInteger of
   3://add user block URL
    begin
     s:=Context['url'].Value;
-    if (Length(s)<8) or not((Copy(s,1,4)='http') or (Copy(s,1,4)='tag:')) then
+    if (Length(s)<8) or not((Copy(s,1,4)='http') or (Copy(s,1,4)='tag:') or (Copy(s,1,9)='category:')) then
       raise Exception.Create('Invalid Block URL prefix');
     db.BeginTrans;
     try
