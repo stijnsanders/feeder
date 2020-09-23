@@ -12,7 +12,7 @@ uses eater1, Windows, Classes, DataLank, Graphics, Vcl.Imaging.PngImage;
 
 procedure DoCharts;
 const
-  bw=40;
+  bw=60;
   bh=40;
   fw=2;
   fh=1;
@@ -22,7 +22,7 @@ var
   sl:TStringList;
   s:string;
   UserID,tz,si,i,d,d1:integer;
-  q1:cardinal;
+  q1,q3,qi:cardinal;
   TimeBias:TDateTime;
   b:TBitmap;
   p:TPngImage;
@@ -65,7 +65,7 @@ begin
       TimeBias:=(tz div 100)/24.0+(tz mod 100)/1440.0;
 
       qr:=TQueryResult.Create(db,
-        'select trunc(P.pubdate+T.bias) as d, count(*) as q1, count(X.id) as q2'
+        'select trunc(P.pubdate+T.bias) as d, count(*) as q1, count(X.id) as q2, count(distinct S.feed_id) as q3'
         +' from "Subscription" S cross join (values (?)) T(bias)'
         +' inner join "Post" P on P.feed_id=S.feed_id'
         +' left outer join "UserPost" X on X.user_id=S.user_id and X.post_id=P.id'
@@ -76,6 +76,7 @@ begin
         d:=0;
         q1:=0;
         //q2:=0;
+        q3:=0;
         while (i<bw) do
          begin
           if qr.Read then d1:=qr.GetInt('d') else d1:=0;
@@ -84,8 +85,10 @@ begin
             d:=d1;
             v[i].t1:=qr.GetInt('q1');
             v[i].t2:=qr.GetInt('q2');
+            qi:=qr.GetInt('q3');
             if q1<v[i].t1 then q1:=v[i].t1;
             //if q2<v[i].t2 then q2:=v[i].t2;
+            if q3<qi then q3:=qi;
            end
           else
            begin
@@ -124,7 +127,7 @@ begin
         b.Canvas.Font.Height:=-10;
         b.Canvas.Font.Color:=$CC6600;
         b.Canvas.Brush.Style:=bsClear;
-        b.Canvas.TextOut(2,bh*fh-12,IntToStr(q1));
+        b.Canvas.TextOut(2,bh*fh-12,Format('%d (%d)',[q1,q3]));
         p:=TPngImage.Create;
         try
           p.Assign(b);
