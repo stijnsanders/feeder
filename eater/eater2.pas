@@ -66,10 +66,10 @@ begin
 
       qr:=TQueryResult.Create(db,
         'select trunc(P.pubdate+T.bias) as d, count(*) as q1, count(X.id) as q2, count(distinct S.feed_id) as q3'
-        +' from "Subscription" S cross join (values (?)) T(bias)'
+        +' from "Subscription" S cross join (values ($1)) T(bias)'
         +' inner join "Post" P on P.feed_id=S.feed_id'
         +' left outer join "UserPost" X on X.user_id=S.user_id and X.post_id=P.id'
-        +' where S.user_id=? group by trunc(P.pubdate+T.bias)'
+        +' where S.user_id=$2 group by trunc(P.pubdate+T.bias)'
         +' order by 1 desc limit '+IntToStr(bw),[double(TimeBias),UserID]);
       try
         i:=0;

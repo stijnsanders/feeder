@@ -20,7 +20,7 @@ db:=Session.Connection;
 case Context['x'].AsInteger of
   0:
    begin
-    qr:=TQueryResult.Create(db,'select * from "User" where id=?',[Session.UserID]);
+    qr:=TQueryResult.Create(db,'select * from "User" where id=$1',[Session.UserID]);
     try
       tz:=qr.GetInt('timezone');
       <<form method="post">
@@ -57,7 +57,7 @@ case Context['x'].AsInteger of
       qr.Free;
     end;
     <<p><b>block specific URL&#x2019;s</b></p>>
-    qr:=TQueryResult.Create(db,'select * from "UserBlock" where user_id=? order by lower(url)',[Session.UserID]);
+    qr:=TQueryResult.Create(db,'select * from "UserBlock" where user_id=$1 order by lower(url)',[Session.UserID]);
     try
       if not qr.EOF then
        begin
@@ -86,7 +86,7 @@ case Context['x'].AsInteger of
     <p><b>previous logins:</b></p>>
     c:=0;
     s:=Context.Cookie['feederAutoLogon'];
-    qr:=TQueryResult.Create(db,'select * from "UserLogon" where user_id=? order by last desc',[Session.UserID]);
+    qr:=TQueryResult.Create(db,'select * from "UserLogon" where user_id=$1 order by last desc',[Session.UserID]);
     try
       while qr.Read do
        begin
@@ -155,7 +155,7 @@ case Context['x'].AsInteger of
       tz:=Context['z1'].AsInteger;
       i:=Context['batchsize'].AsInteger;
       if tz<0 then tz:=tz*100-Context['z2'].AsInteger else tz:=tz*100+Context['z2'].AsInteger;
-      db.Execute('update "User" set timezone=?, batchsize=? where id=?',
+      db.Execute('update "User" set timezone=$1, batchsize=$2 where id=$3',
         [tz
         ,i
         ,Session.UserID
@@ -174,7 +174,7 @@ case Context['x'].AsInteger of
    begin
     db.BeginTrans;
     try
-      db.Execute('delete from "UserLogon" where user_id=? and id=?',[Session.UserID,Context['id'].AsInteger]);
+      db.Execute('delete from "UserLogon" where user_id=$1 and id=$2',[Session.UserID,Context['id'].AsInteger]);
       db.CommitTrans;
     except
       db.RollbackTrans;
@@ -205,7 +205,7 @@ case Context['x'].AsInteger of
    begin
     db.BeginTrans;
     try
-      db.Execute('delete from "UserBlock" where user_id=? and id=?',[Session.UserID,Context['id'].AsInteger]);
+      db.Execute('delete from "UserBlock" where user_id=$1 and id=$2',[Session.UserID,Context['id'].AsInteger]);
       db.CommitTrans;
     except
       db.RollbackTrans;
@@ -220,7 +220,7 @@ case Context['x'].AsInteger of
     s:=Context.Cookie['feederAutoLogon'];
     db.BeginTrans;
     try
-      db.Execute('update "UserLogon" set chart=? where user_id=? and key=?',[1{??},Session.UserID,s]);
+      db.Execute('update "UserLogon" set chart=$1 where user_id=$2 and key=$3',[1{??},Session.UserID,s]);
       db.CommitTrans;
     except
       db.RollbackTrans;
@@ -235,7 +235,7 @@ case Context['x'].AsInteger of
     s:=Context.Cookie['feederAutoLogon'];
     db.BeginTrans;
     try
-      db.Execute('update "UserLogon" set chart=null where user_id=? and key=?',[Session.UserID,s]);
+      db.Execute('update "UserLogon" set chart=null where user_id=$1 and key=$2',[Session.UserID,s]);
       db.CommitTrans;
     except
       db.RollbackTrans;

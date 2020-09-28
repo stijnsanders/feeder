@@ -19,8 +19,8 @@ qr:=TQueryResult.Create(db,
   'select P.*, S.label, S.color, S.readwidth, S.id as subid, F.htmlprefix'+
   ' from "Post" P'+
   ' inner join "Feed" F on F.id=P.feed_id'+
-  ' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'+
-  ' where P.id=?',[Session.UserID,id]);
+  ' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'+
+  ' where P.id=$2',[Session.UserID,id]);
 try
   Context.Include('dHead.xxmi',[r,qr['url']]);
   //TODO: sanitize HTML (either here or in eater)
@@ -82,9 +82,9 @@ Context.Include('dFoot.xxmi');
 db.BeginTrans;
 try
   DecodeDate(Date,dy,dm,dd);
-  if db.Execute('delete from "UserPost" where user_id=? and post_id=?',[Session.UserID,id])=1 then
-    //db.Execute('update "Subscription" set postsopened=coalesce(postsopened,0)+1 where id=?',[sid]);
-    db.Execute('insert into "SubCount" (month,subscription_id,postsopened) values (?,?,1)'+
+  if db.Execute('delete from "UserPost" where user_id=$1 and post_id=$2',[Session.UserID,id])=1 then
+    //db.Execute('update "Subscription" set postsopened=coalesce(postsopened,0)+1 where id=$1',[sid]);
+    db.Execute('insert into "SubCount" (month,subscription_id,postsopened) values ($1,$2,1)'+
       ' on conflict (month,subscription_id) do update set postsopened="SubCount".postsopened+1',
       [dy*100+dm,sid]);
   db.CommitTrans;

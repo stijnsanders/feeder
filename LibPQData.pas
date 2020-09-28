@@ -25,7 +25,7 @@ interface
 {$D-}
 {$L-}
 
-{$DEFINE LIBPQDATA_TRANSFORMQM}
+{xxxxx$DEFINE LIBPQDATA_TRANSFORMQM}
 
 uses SysUtils, LibPQ;
 
@@ -289,12 +289,12 @@ begin
 end;
 {$IFEND}
 
+{$IFDEF LIBPQDATA_TRANSFORMQM}
 function PrepSQL(const SQL: UTF8String): PAnsiChar;
 var
   s:UTF8String;
   i,j,k,l:integer;
 begin
-{$IFDEF LIBPQDATA_TRANSFORMQM}
   i:=1;
   j:=1;
   k:=0;
@@ -333,10 +333,13 @@ begin
    end;
   SetLength(s,j-1);
   Result:=@s[1];
-{$ELSE}
-  Result:=@SQL[1];
-{$ENDIF}
 end;
+{$ELSE}
+function PrepSQL(const SQL: UTF8String): PAnsiChar; inline;
+begin
+  Result:=@SQL[1];
+end;
+{$ENDIF}
 
 procedure SendQuery(DB: PGConn; const SQL: UTF8String;
   const Values: array of Variant);

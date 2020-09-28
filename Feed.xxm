@@ -26,8 +26,8 @@ case Context['x'].AsInteger of
           2:ur:=Context['autounread0'].AsInteger*24*7;//weeks
         end;
       db.Execute('update "Subscription" set'+
-        ' category=?,label=?,color=?,readwidth=?,autounread=?'+
-        ' where id=? and user_id=?',[cat,lbl,c,rw,ur,id,Session.UserID]);
+        ' category=$1,label=$2,color=$3,readwidth=$4,autounread=$5'+
+        ' where id=$6 and user_id=$7',[cat,lbl,c,rw,ur,id,Session.UserID]);
       db.CommitTrans;
     except
       db.RollbackTrans;
@@ -44,10 +44,10 @@ case Context['x'].AsInteger of
         ' (select X.id from "UserPost" X'+
         ' inner join "Post" P on P.id=X.post_id'+
         ' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'+
-        ' where X.user_id=? and P.feed_id=?)',[Session.UserID,id]);
+        ' where X.user_id=$1 and P.feed_id=$2)',[Session.UserID,id]);
       db.Execute('delete from "SubCount" where subscription_id in '+
-        '(select id from "Subscription" where id=? and user_id=?)',[id,Session.UserID]);
-      db.Execute('delete from "Subscription" where id=? and user_id=?',[id,Session.UserID]);
+        '(select id from "Subscription" where id=$1 and user_id=$2)',[id,Session.UserID]);
+      db.Execute('delete from "Subscription" where id=$1 and user_id=$2',[id,Session.UserID]);
       db.CommitTrans;
     except
       db.RollbackTrans;

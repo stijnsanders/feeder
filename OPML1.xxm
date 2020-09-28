@@ -19,7 +19,7 @@ d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+For
 <opml version="1.1" xmlns="http://opml.org/spec2" xmlns:f="http://yoy.be/schema/2018/feeder_subs">
   <head>
     <title>Feeder - a simple feed reader</title>>
-    qr:=TQueryResult.Create(Session.Connection,'select * from "User" where id=?',[Session.UserID]);
+    qr:=TQueryResult.Create(Session.Connection,'select * from "User" where id=$1',[Session.UserID]);
     try
       <<ownerName>>=qr['name']<</ownerName>
       <ownerEmail>>=qr['email']<</ownerEmail>
@@ -35,7 +35,7 @@ d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+For
       'select S.*, F.url'+
       ' from "Subscription" S'+
       ' inner join "Feed" F on F.id=S.feed_id'+
-      ' where S.user_id=?'+
+      ' where S.user_id=$1'+
       ' order by lower(S.Category),S.id',[Session.UserID]);
     try
       while qr.Read do

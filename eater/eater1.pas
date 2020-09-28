@@ -962,12 +962,12 @@ const
         qr:=TQueryResult.Create(dbA,
           'select P.id from "Post" P'
           +' inner join "Feed" F on F.id=P.feed_id'
-          +' and F.group_id=?'
-          +' where P.guid=?'
+          +' and F.group_id=$1'
+          +' where P.guid=$2'
           ,[feedgroupid,itemid])
       else
         qr:=TQueryResult.Create(dbA,
-          'select id from "Post" where feed_id=? and guid=?'
+          'select id from "Post" where feed_id=$1 and guid=$2'
           ,[feedid,itemid]);
       try
         Result:=qr.EOF;
@@ -1020,10 +1020,10 @@ const
         ,'created',double(UtcNow)
         ],'id');
       dbA.Execute('insert into "UserPost" (user_id,post_id)'+
-        ' select S.user_id,? from "Subscription" S'+
+        ' select S.user_id,$1 from "Subscription" S'+
         ' left outer join "UserBlock" B on B.user_id=S.user_id'+
-        ' and (B.url=left(?,length(B.url))'+tsql+')'+
-        ' where S.feed_id=? and B.id is null',[postid,itemurl,feedid]);
+        ' and (B.url=left($2,length(B.url))'+tsql+')'+
+        ' where S.feed_id=$3 and B.id is null',[postid,itemurl,feedid]);
       dbA.CommitTrans;
     except
       dbA.RollbackTrans;
@@ -1219,7 +1219,7 @@ var
 begin
   qr0:=TQueryResult.Create(dbA,'select *'
      +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
-     +' from "Feed" F where F.id=?',[feedid]);
+     +' from "Feed" F where F.id=$1',[feedid]);
   try
     if qr0.EOF then raise Exception.Create('No feed found for this id.');
     feedurl:=qr0.GetStr('url');
@@ -1279,7 +1279,7 @@ begin
 
   //check feed timing and regime
   qr1:=TQueryResult.Create(dbA,
-    'select id from "Post" where feed_id=? order by 1 desc limit 1 offset 1000',[feedid]);
+    'select id from "Post" where feed_id=$1 order by 1 desc limit 1 offset 1000',[feedid]);
   try
     if qr1.EOF then
      begin
@@ -1303,7 +1303,7 @@ begin
     +'  ,case when cume_dist()over(order by min(P2.pubdate-P1.pubdate))<0.5 then null else min(P2.pubdate-P1.pubdate) end as pm'
     +'  from "Post" P1'
     +'  inner join "Post" P2 on P2.feed_id=P1.feed_id'+sql2+' and P2.pubdate>P1.pubdate+1.0/1440.0'
-    +'  where P1.feed_id=?'+sql1+' and P1.pubdate>?'
+    +'  where P1.feed_id=$1'+sql1+' and P1.pubdate>$2'
     +'  group by P2.pubdate'
     +' ) X')
   ,[feedid,double(oldPostDate)]);
@@ -2545,7 +2545,7 @@ begin
 
         Out0('Clean-up old...');
         OldPostsCutOff:=UtcNow-OldPostsDays;
-        qr:=TQueryResult.Create(dbB,'select id from "Post" where pubdate<?',[double(OldPostsCutOff)]);
+        qr:=TQueryResult.Create(dbB,'select id from "Post" where pubdate<$1',[double(OldPostsCutOff)]);
         try
 
           j:=0;
@@ -2554,8 +2554,8 @@ begin
             i:=qr.GetInt('id');
             dbA.BeginTrans;
             try
-              dbA.Execute('delete from "UserPost" where post_id=?',[i]);
-              dbA.Execute('delete from "Post" where id=?',[i]);
+              dbA.Execute('delete from "UserPost" where post_id=$1',[i]);
+              dbA.Execute('delete from "Post" where id=$1',[i]);
               dbA.CommitTrans;
             except
               dbA.RollbackTrans;
@@ -2580,9 +2580,9 @@ begin
             Write(#13'... #'+IntToStr(i)+'   ');
             dbA.BeginTrans;
             try
-              dbA.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id=?)',[i]);
-              dbA.Execute('delete from "Post" where feed_id=?',[i]);
-              dbA.Execute('delete from "Feed" where id=?',[i]);
+              dbA.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id=$1)',[i]);
+              dbA.Execute('delete from "Post" where feed_id=$1',[i]);
+              dbA.Execute('delete from "Feed" where id=$1',[i]);
               dbA.CommitTrans;
             except
               dbA.RollbackTrans;
@@ -2601,7 +2601,7 @@ begin
       qr:=TQueryResult.Create(dbB,'select X.id from "UserPost" X'
         +' inner join "Post" P on P.id=X.post_id'
         +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'
-        +' where P.pubdate<?-S.autounread/24.0 limit 1',[double(UtcNow)]);
+        +' where P.pubdate<$1-S.autounread/24.0 limit 1',[double(UtcNow)]);
       try
         if qr.EOF then i:=0 else i:=1;
       finally
@@ -2617,7 +2617,7 @@ begin
             +' from "UserPost" X'
             +' inner join "Post" P on P.id=X.post_id'
             +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'
-            +' where P.pubdate<?-S.autounread/24.0)',[double(UtcNow)]);
+            +' where P.pubdate<$1-S.autounread/24.0)',[double(UtcNow)]);
           dbA.CommitTrans;
         except
           dbA.RollbackTrans;
@@ -2641,7 +2641,7 @@ begin
          begin
           FeedNew:=false;//only once
           qr:=TQueryResult.Create(dbA,'select F.id from "Feed" F where F.id>0'+
-            ' and F.created>?'+FeedOrderBy,[UtcNow-1.0]);
+            ' and F.created>$1'+FeedOrderBy,[UtcNow-1.0]);
          end
         else
           qr:=TQueryResult.Create(dbA,'select F.id from "Feed" F where F.id>0'+FeedOrderBy,[]);

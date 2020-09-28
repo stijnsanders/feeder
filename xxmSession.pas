@@ -97,7 +97,7 @@ begin
    begin
     s:=SessionStore.Objects[i] as TXxmSession;
     db:=TXxmSession.Connection;
-    qr:=TQueryResult.Create(db,'select * from "User" where login=?',[Login]);
+    qr:=TQueryResult.Create(db,'select * from "User" where login=$1',[Login]);
     try
       if qr.EOF then
        begin
@@ -146,12 +146,12 @@ begin
         FreeAndNil(qr);
         if n1<>Name then
          begin
-          db.Execute('update "User" set name=? where id=?',[Name,s.UserID]);
+          db.Execute('update "User" set name=$1 where id=$2',[Name,s.UserID]);
           s.Name:=Name;
          end;
         if n2<>Email then
          begin
-          db.Execute('update "User" set email=? where id=?',[Email,s.UserID]);
+          db.Execute('update "User" set email=$1 where id=$2',[Email,s.UserID]);
           //?:=Email;
          end;
         //TODO: central LoadUser(qr)
@@ -198,7 +198,7 @@ begin
     Connection.BeginTrans;
     try
       //TODO: more checks? hash user-agent?
-      qr:=TQueryResult.Create(Connection,'select U.*, L.id as LogonID from "UserLogon" L inner join "User" U on U.id=L.user_id where L.key=?',[s]);
+      qr:=TQueryResult.Create(Connection,'select U.*, L.id as LogonID from "UserLogon" L inner join "User" U on U.id=L.user_id where L.key=$1',[s]);
       try
         if qr.Read then
          begin
@@ -215,7 +215,7 @@ begin
       end;
       if UserID<>0 then
        begin
-        Connection.Execute('update "UserLogon" set last=?,address=?,useragent=? where id=?',
+        Connection.Execute('update "UserLogon" set last=$1,address=$2,useragent=$3 where id=$4',
           [double(UtcNow)
           ,Context.ContextString(csRemoteAddress)
           ,Context.ContextString(csUserAgent)

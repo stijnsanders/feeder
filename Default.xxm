@@ -41,7 +41,7 @@ else
      end;
     ]]
     <span id="postcount">>
-    qr:=TQueryResult.Create(Session.Connection,'select count(*) from "UserPost" where user_id=?',[Session.UserID]);
+    qr:=TQueryResult.Create(Session.Connection,'select count(*) from "UserPost" where user_id=$1',[Session.UserID]);
     try
       Context.Send(qr.GetInt(0));
     finally
@@ -83,12 +83,12 @@ else
   sql:=
     'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
     +' from "Post" P'
-    +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'
-    +' inner join "UserPost" X on X.post_id=P.id and X.user_id=?'
+    +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
+    +' inner join "UserPost" X on X.post_id=P.id and X.user_id=$1'
     ;
   sqlWhere:=false;
 
-  if loadMore then lx:=3 else lx:=0;
+  if loadMore then lx:=2 else lx:=0;
 
   if cat='' then
     if f=0 then
@@ -100,7 +100,7 @@ else
           if not loadMore then
            begin
             qr:=TQueryResult.Create(Session.Connection,
-              'select distinct S.Category from "Subscription" S where S.user_id=? and S.Category<>'''' order by 1',[Session.UserID]);
+              'select distinct S.Category from "Subscription" S where S.user_id=$1 and S.Category<>'''' order by 1',[Session.UserID]);
             try
               if not qr.EOF then
                begin
@@ -127,37 +127,35 @@ else
          end
         else
          begin
-          sql:=sql+' where P.pubdate>? and P.pubdate<?';
+          sql:=sql+' where P.pubdate>$2 and P.pubdate<$3';
           sqlWhere:=true;
-          SetLength(xx,4+lx);
+          SetLength(xx,3+lx);
           xx[0]:=Session.UserID;
-          xx[1]:=Session.UserID;
           d1:=UtcNow-Context['d'].AsInteger;
-          xx[2]:=double(VarFromDateTime(d1-4.0/24.0));
-          xx[3]:=double(VarFromDateTime(d1+4.0/24.0));
+          xx[1]:=double(VarFromDateTime(d1-4.0/24.0));
+          xx[2]:=double(VarFromDateTime(d1+4.0/24.0));
          end
       else
        begin
         sql:=
           'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
           +' from "Post" P'
-          +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'
-          +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=?';
+          +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
+          +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1';
         sqlWhere:=true;
-        SetLength(xx,3+lx);
+        SetLength(xx,2+lx);
         xx[0]:=Session.UserID;
-        xx[1]:=Session.UserID;
         if Context['title'].Value='' then
          begin
           sql:=sql
-            +' where P.title||'' ''||P.content ilike ?';
-          xx[2]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
+            +' where P.title||'' ''||P.content ilike $2';
+          xx[1]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
          end
         else
          begin
           sql:=sql
-            +' where P.title ilike ?';
-          xx[2]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
+            +' where P.title ilike $2';
+          xx[1]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
          end;
        end
     else
@@ -165,38 +163,36 @@ else
       sql:=
         'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
         +' from "Post" P'
-        +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=?'
-        +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=?'
-        +' where P.feed_id=?';
+        +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
+        +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1'
+        +' where P.feed_id=$2';
       sqlWhere:=true;
-      SetLength(xx,3+lx);
+      SetLength(xx,2+lx);
       xx[0]:=Session.UserID;
-      xx[1]:=Session.UserID;
-      xx[2]:=f;
+      xx[1]:=f;
       if Context['search'].Value<>'' then
        begin
         sql:=sql
-          +' and P.title||'' ''||P.content ilike ?';
-        SetLength(xx,4+lx);
-        xx[3]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
+          +' and P.title||'' ''||P.content ilike $3';
+        SetLength(xx,3+lx);
+        xx[2]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
        end
       else
       if Context['title'].Value<>'' then
        begin
         sql:=sql
-          +' and P.title ilike ?';
-        SetLength(xx,4+lx);
-        xx[3]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
+          +' and P.title ilike $3';
+        SetLength(xx,3+lx);
+        xx[2]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
        end;
      end
   else 
    begin
-    sql:=sql+' where S.category=?';
+    sql:=sql+' where S.category=$2';
     sqlWhere:=true;
-    SetLength(xx,3+lx);
+    SetLength(xx,2+lx);
     xx[0]:=Session.UserID;
-    xx[1]:=Session.UserID;
-    xx[2]:=cat;
+    xx[1]:=cat;
    end;
 
   if Context['q'].Value='' then l:=0 else l:=Context['q'].AsInteger;
@@ -206,7 +202,7 @@ else
    begin
     id0:=Context['x'].AsInteger;
     Session.Connection.Execute('set statement_timeout=90000',[]);    
-    qr:=TQueryResult.Create(Session.Connection,'select pubdate from "Post" where id=?',[id0]);
+    qr:=TQueryResult.Create(Session.Connection,'select pubdate from "Post" where id=$1',[id0]);
     try
       d1:=double(qr[0]);
     finally
@@ -214,10 +210,10 @@ else
     end;
     d:=Trunc(d1+Session.TimeBias);
     if sqlWhere then sql:=sql+' and' else sql:=sql+' where';
-    sql:=sql+' ((P.pubdate=? and P.id>?) or (P.pubdate'+lessthan[Context['a'].AsInteger<>0]+'?))';
-    xx[Length(xx)-3]:=double(d1);
-    xx[Length(xx)-2]:=id0;
-    xx[Length(xx)-1]:=double(d1);
+    sql:=sql+' ((P.pubdate=$'+IntToStr(Length(xx)-1)+' and P.id>$'+IntToStr(Length(xx))+
+      ') or (P.pubdate'+lessthan[Context['a'].AsInteger<>0]+'$'+IntToStr(Length(xx)-1)+'))';
+    xx[Length(xx)-2]:=double(d1);
+    xx[Length(xx)-1]:=id0;
    end
   else
    begin
