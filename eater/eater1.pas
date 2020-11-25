@@ -446,8 +446,8 @@ end;
 
 
 var
-  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhTrim,rhStartImg,
-  rhImgData:RegExp;
+  rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhTrim,
+  rhStartImg,rhImgData,rhImgFoaf:RegExp;
   blacklist:TStringList;
 
 procedure SanitizeInit;
@@ -496,6 +496,10 @@ begin
   rhStartImg.IgnoreCase:=true;
 
   rhImgData:=nil;//see WPv2
+
+  rhImgFoaf:=CoRegExp.Create;
+  rhImgFoaf.Pattern:='<noscript class="adaptive-image"[^>]*?>(<img typeof="foaf:Image"[^>]*?>)</noscript>';
+  rhImgFoaf.Global:=true;
 end;
 
 function SanitizeTitle(const title:WideString):WideString;
@@ -894,6 +898,7 @@ var
   v:Variant;
   re:RegExp;
   rh:TStringList;
+  hasFoaf:boolean;
 const
   regimesteps=8;
   regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90);
@@ -2040,6 +2045,15 @@ begin
                begin
                 doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
 
+                hasFoaf:=false;
+                i:=0;
+                while not(hasFoaf) and (i<doc.namespaces.length) do
+                 begin
+                  s:=doc.namespaces[i];
+                  if Copy(s,1,22)='http://xmlns.com/foaf/' then hasFoaf:=true;
+                  inc(i);
+                 end;
+
                 x:=doc.documentElement.selectSingleNode('channel/title') as IXMLDOMElement;
                 if x<>nil then feedname:=x.text;
 
@@ -2082,6 +2096,8 @@ begin
                        end;
                      end;
                     xl1:=nil;
+                    if hasFoaf and rhImgFoaf.Test(content) then
+                      content:=rhImgFoaf.Replace(content,'$1');
                     RegisterItem;
                    end;
 
