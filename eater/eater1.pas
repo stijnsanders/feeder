@@ -40,10 +40,16 @@ end;
 
 
 var
-  OldPostsCutOff,LastRun:TDateTime;
+  OldPostsCutOff,LastRun,RunStart,LastLoadStart,LastLoadDone:TDateTime;
   SaveData,FeedAll,FeedNew,NextAnalyze:boolean;
   FeedID,RunContinuous,LastClean,LastFeedCount,LastPostCount:integer;
   FeedOrderBy:WideString;//UTF8String;
+  InstagramTC,InstagramBadTC,InstagramSuccess:cardinal;
+
+const
+  InstagramLoadExternal=true;//TODO: from config?
+  InstagramTimeoutMS=90*1000;
+  InstagramBadTimeoutMS=8*60*60*1000;
 
 function ConvDate1(const x:string):TDateTime;
 var
@@ -561,7 +567,7 @@ begin
 end;
 {$ENDIF}
 
-function LoadExternal(const URL,FilePath,LastMod:string): WideString;
+function LoadExternal(const URL,FilePath,LastMod,Accept:string): WideString;
 var
   si:TStartupInfo;
   pi:TProcessInformation;
@@ -594,8 +600,7 @@ begin
   }
   if not CreateProcess(nil,PChar(
     'wget.exe -nv --no-cache --max-redirect 8 --no-http-keep-alive --no-check-certificate'+
-    p1+' --save-headers --content-on-error'+
-    ' --header="Accept: application/rss+xml, application/atom+xml, application/xml, text/xml"'+
+    p1+' --save-headers --content-on-error --header="Accept: '+Accept+'"'+
     ' --user-agent="FeedEater/1.0" --compression=auto'+
     ' -O "'+FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
@@ -897,7 +902,6 @@ var
   rc,c1,c2,postid:integer;
   v:Variant;
   re:RegExp;
-  rh:TStringList;
   hasFoaf:boolean;
 const
   regimesteps=8;
@@ -1221,6 +1225,45 @@ var
   rf:TFileStream;
   qr1:TQueryResult;
   feedresult0,feedlastmod,feedlastmod0:string;
+
+  procedure ParseExternalHeader;
+  var
+    i,j:integer;
+    rh:TStringList;
+  begin
+    i:=1;
+    while (i+4<Length(rw)) and not(
+      (rw[i]=#13) and (rw[i+1]=#10) and
+      (rw[i+2]=#13) and (rw[i+3]=#10)) do inc(i);
+
+    rt:='';//default;
+    feedlastmod:='';//default
+    rh:=TStringList.Create;
+    try
+      rh.Text:=Copy(rw,1,i);
+      if rh.Count<>0 then
+       begin
+        if Copy(rh[0],1,12)='HTTP/1.1 304' then notmod:=true else
+        if Copy(rh[0],1,12)<>'HTTP/1.1 200' then
+          feedresult:='['+rh[0]+']';
+        for j:=1 to rh.Count-1 do
+         begin
+          p1:=rh[j];
+          if Copy(p1,1,14)='Content-Type: ' then
+            rt:=Copy(p1,15,Length(p1)-14)
+          else
+          if Copy(p1,1,15)='Last-Modified: ' then
+            feedlastmod:=Copy(p1,16,Length(p1)-15);
+         end;
+       end;
+    finally
+      rh.Free;
+    end;
+
+    inc(i,4);
+    rw:=Copy(rw,i,Length(rw)-i+1);
+  end;
+
 begin
   qr0:=TQueryResult.Create(dbA,'select *'
      +' ,(select count(*) from "Subscription" S where S.feed_id=F.id) as scount'
@@ -1347,6 +1390,19 @@ begin
    end;
   dofeed:=(d<feedload) or FeedAll;
 
+  //Instagram gone bad, long timeout
+  if (Copy(feedurl,1,26)='https://www.instagram.com/') and (InstagramBadTC<>0) then
+    if (cardinal(GetTickCount-InstagramBadTC)<InstagramBadTimeoutMS) then
+     begin
+      dofeed:=false;
+      feedresult0:='Instagram ?';
+     end
+    else
+     begin
+      InstagramBadTC:=0;
+      InstagramSuccess:=0;
+     end;
+
   if postavg=0.0 then
     sl.Add('<td class="empty">&nbsp;</td>')
   else
@@ -1376,45 +1432,36 @@ begin
    begin
     c1:=0;
     c2:=0;
-    loadext:=false;//counter warning
+    loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
     try
 
-      loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
+      if InstagramLoadExternal and (Copy(feedurl,1,26)='https://www.instagram.com/') then
+       begin
+
+        //Instagram small timeout: keep number of requests below 200 per hour
+        if cardinal(GetTickCount-InstagramTC)<InstagramTimeoutMS then
+         begin
+          Write('(t'+IntToStr(cardinal(InstagramTimeoutMS-(GetTickCount-InstagramTC)) div 1000)+'")');
+          while cardinal(GetTickCount-InstagramTC)<InstagramTimeoutMS do
+           begin
+            //TODO: allow user interrupt?
+            Sleep(100);
+           end;
+         end;
+
+        rw:=LoadExternal(feedurl+'?__a=1','xmls\'+Format('%.4d',[feedid])+'.json',feedlastmod,
+          'application/json');
+
+        ParseExternalHeader;
+       end
+      else
+
       if loadext then
        begin
-        rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml',feedlastmod);
+        rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml',feedlastmod,
+          'application/rss+xml, application/atom+xml, application/xml, text/xml');
 
-        i:=1;
-        while (i+4<Length(rw)) and not(
-          (rw[i]=#13) and (rw[i+1]=#10) and
-          (rw[i+2]=#13) and (rw[i+3]=#10)) do inc(i);
-
-        rt:='';//default;
-        feedlastmod:='';//default
-        rh:=TStringList.Create;
-        try
-          rh.Text:=Copy(rw,1,i);
-          if rh.Count<>0 then
-           begin
-            if Copy(rh[0],1,12)='HTTP/1.1 304' then notmod:=true else
-            if Copy(rh[0],1,12)<>'HTTP/1.1 200' then
-              feedresult:='['+rh[0]+']';
-            for j:=1 to rh.Count-1 do
-             begin
-              p1:=rh[j];
-              if Copy(p1,1,14)='Content-Type: ' then
-                rt:=Copy(p1,15,Length(p1)-14)
-              else
-              if Copy(p1,1,15)='Last-Modified: ' then
-                feedlastmod:=Copy(p1,16,Length(p1)-15);
-             end;
-           end;
-        finally
-          rh.Free;
-        end;
-
-        inc(i,4);
-        rw:=Copy(rw,i,Length(rw)-i+1);
+        ParseExternalHeader;
 
         if rt='' then //auto-detect?
          begin
@@ -1453,8 +1500,21 @@ begin
           else
           if Copy(feedurl,1,26)='https://www.instagram.com/' then
            begin
+            //Instagram small timeout: keep number of requests below 200 per hour
+            if cardinal(GetTickCount-InstagramTC)<InstagramTimeoutMS then
+             begin
+              Write('(t'+IntToStr(cardinal(InstagramTimeoutMS-(GetTickCount-InstagramTC)) div 1000)+'")');
+              while cardinal(GetTickCount-InstagramTC)<InstagramTimeoutMS do
+               begin
+                //TODO: allow user interrupt?
+                Sleep(100);
+               end;
+             end;
+
             r.open('GET',feedurl+'?__a=1',false,EmptyParam,EmptyParam);
             r.setRequestHeader('Accept','application/json');
+
+            InstagramTC:=GetTickCount;
            end
           else
            begin
@@ -1567,6 +1627,7 @@ begin
           feedtagprefix:='';
           VarClear(feedtags);
 
+          //sanitize content type
           if rt<>'' then
            begin
             i:=1;
@@ -1593,7 +1654,7 @@ begin
 
           if Copy(feedurl,1,26)='https://www.instagram.com/' then
            begin
-
+            InstagramTC:=GetTickCount;
             jnodes:=JSONDocArray;
             jdoc:=JSON(['user{'
               ,'edge_felix_video_timeline{','edges',jnodes,'}'
@@ -1615,101 +1676,114 @@ begin
             end;
             }
 
-            jdoc1:=JSON(['graphql',jdoc]);
-            try
-              jdoc1.Parse(rw);
-            except
-              on EJSONDecodeException do
-                ;//ignore "data past end"
-            end;
-
-
-            if SaveData then
+            if rt='application/json' then
              begin
-              rf:=TFileStream.Create('xmls\'+Format('%.4d',[feedid])+'.json',fmCreate);
+
+              jdoc1:=JSON(['graphql',jdoc]);
               try
-                i:=$FEFF;
-                rf.Write(i,2);
-                //rf.Write(rw[i],(Length(rw)-i+1)*2);
-                rw:=jdoc.AsString;
-                rf.Write(rw[1],Length(rw)*2);
-              finally
-                rf.Free;
+                jdoc1.Parse(rw);
+              except
+                on EJSONDecodeException do
+                  ;//ignore "data past end"
               end;
-             end;
 
-            jd1:=JSON(jdoc['user']);
-            if jd1<>nil then
-              feedname:='Instagram: '+VarToStr(jd1['full_name'])+' (@'+VarToStr(jd1['username'])+')';
-
-            jcaption:=JSONDocArray;
-            jthumbs:=JSONDocArray;
-            jn1:=JSON(['edge_media_to_caption{','edges',jcaption,'}','thumbnail_resources',jthumbs]);
-            jn0:=JSON(['node',jn1]);
-            jc1:=JSON();
-            jc0:=JSON(['node',jc1]);
-            for i:=0 to jnodes.Count-1 do
-             begin
-              jnodes.LoadItem(i,jn0);
-
-              itemid:=VarToStr(jn1['id']);
-              if itemid='' then raise Exception.Create('edge node without ID');
-              itemurl:='https://www.instagram.com/p/'+VarToStr(jn1['shortcode'])+'/';
-              pubDate:=int64(jn1['taken_at_timestamp'])/SecsPerDay+UnixDateDelta;//is UTC?
-
-              content:=VarToStr(jn1['title'])+' ';
-              for j:=0 to jcaption.Count-1 do
+              if SaveData then
                begin
-                jcaption.LoadItem(j,jc0);
-                content:=content+VarToStr(jc1['text'])+#13#10;
+                rf:=TFileStream.Create('xmls\'+Format('%.4d',[feedid])+'.json',fmCreate);
+                try
+                  i:=$FEFF;
+                  rf.Write(i,2);
+                  //rf.Write(rw[i],(Length(rw)-i+1)*2);
+                  rw:=jdoc.AsString;
+                  rf.Write(rw[1],Length(rw)*2);
+                finally
+                  rf.Free;
+                end;
                end;
 
-              if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
+              jd1:=JSON(jdoc['user']);
+              if jd1<>nil then
+                feedname:='Instagram: '+VarToStr(jd1['full_name'])+' (@'+VarToStr(jd1['username'])+')';
 
-              if CheckNewItem then
+              jcaption:=JSONDocArray;
+              jthumbs:=JSONDocArray;
+              jn1:=JSON(['edge_media_to_caption{','edges',jcaption,'}','thumbnail_resources',jthumbs]);
+              jn0:=JSON(['node',jn1]);
+              jc1:=JSON();
+              jc0:=JSON(['node',jc1]);
+              for i:=0 to jnodes.Count-1 do
                begin
-                content:=HTMLEncode(content);
-                //if jn1['is_video']=true then content:=#$25B6+content;
-                if jn1['is_video']=true then title:=#$25B6+title;
+                jnodes.LoadItem(i,jn0);
 
-                if jthumbs.Count=0 then s:='' else
-                  s:=VarToStr(JSON(jthumbs.GetJSON(jthumbs.Count-1))['src']);
-                if s='' then s:=VarToStr(jn1['thumbnail_src']);
-                if s='' then s:=VarToStr(jn1['display_url']);
+                itemid:=VarToStr(jn1['id']);
+                if itemid='' then raise Exception.Create('edge node without ID');
+                itemurl:='https://www.instagram.com/p/'+VarToStr(jn1['shortcode'])+'/';
+                pubDate:=int64(jn1['taken_at_timestamp'])/SecsPerDay+UnixDateDelta;//is UTC?
 
-                {
-                if s<>'' then content:=
-                  '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
-                  HTMLEncode(s)+'" border="0" /></a><br />'#13#10+
-                  content;
-                }
-                if s<>'' then
+                content:=VarToStr(jn1['title'])+' ';
+                for j:=0 to jcaption.Count-1 do
                  begin
-                  r:=CoServerXMLHTTP60.Create;
-                  r.open('GET',s,false,EmptyParam,EmptyParam);
-                  r.send(EmptyParam);
-                  //if r.status<>200 then raise?
-                  content:=
-                    '<a href="'+HTMLEncode(itemurl)+'"><img src="data:image/jpeg;base64,'+
-                      UTF8ToWideString(Base64EncodeStream_JPEG(IUnknown(r.responseStream) as IStream))+
-                      '" border="0" /></a><br />'#13#10+
-                    content;
-
-                  r:=nil;
+                  jcaption.LoadItem(j,jc0);
+                  content:=content+VarToStr(jc1['text'])+#13#10;
                  end;
 
-                jd1:=JSON(jn1['location']);
-                if jd1<>nil then
-                  content:='<i>'+HTMLEncode(jd1['name'])+'</i><br />'#13#10+content;
+                if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
 
-                //TODO: likes, views, owner?
+                if CheckNewItem then
+                 begin
+                  content:=HTMLEncode(content);
+                  //if jn1['is_video']=true then content:=#$25B6+content;
+                  if jn1['is_video']=true then title:=#$25B6+title;
 
-                RegisterItem;
+                  if jthumbs.Count=0 then s:='' else
+                    s:=VarToStr(JSON(jthumbs.GetJSON(jthumbs.Count-1))['src']);
+                  if s='' then s:=VarToStr(jn1['thumbnail_src']);
+                  if s='' then s:=VarToStr(jn1['display_url']);
+
+                  {
+                  if s<>'' then content:=
+                    '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
+                    HTMLEncode(s)+'" border="0" /></a><br />'#13#10+
+                    content;
+                  }
+                  if s<>'' then
+                   begin
+                    r:=CoServerXMLHTTP60.Create;
+                    r.open('GET',s,false,EmptyParam,EmptyParam);
+                    r.send(EmptyParam);
+                    //if r.status<>200 then raise?
+                    content:=
+                      '<a href="'+HTMLEncode(itemurl)+'"><img src="data:image/jpeg;base64,'+
+                        UTF8ToWideString(Base64EncodeStream_JPEG(IUnknown(r.responseStream) as IStream))+
+                        '" border="0" /></a><br />'#13#10+
+                      content;
+
+                    r:=nil;
+                   end;
+
+                  jd1:=JSON(jn1['location']);
+                  if jd1<>nil then
+                    content:='<i>'+HTMLEncode(jd1['name'])+'</i><br />'#13#10+content;
+
+                  //TODO: likes, views, owner?
+
+                  RegisterItem;
+                 end;
+
                end;
-
              end;
 
-            feedresult:=Format('Instagram %d/%d',[c2,c1]);
+            if (c1=0) and (c2=0) then//if rt<>'application/json'?
+             begin
+              InstagramBadTC:=GetTickCount;
+              feedlastmod:='';
+              feedresult:='Instagram ? ('+IntToStr(InstagramSuccess)+')';
+             end
+            else
+             begin
+              inc(InstagramSuccess);
+              feedresult:=Format('Instagram %d/%d',[c2,c1]);
+             end;
 
            end
           else
@@ -2328,18 +2402,23 @@ begin
   else
    begin
     i:=Round((d-feedload)*1440.0);
-    //minutes
-    s:=IntToStr(i mod 60)+'''';
-    i:=i div 60;
-    if i<>0 then
+    if i<0 then
+      s:='('+feedresult0+')'
+    else
      begin
-      //hours
-      s:=IntToStr(i mod 24)+'h '+s;
-      i:=i div  24;
+      //minutes
+      s:=IntToStr(i mod 60)+'''';
+      i:=i div 60;
       if i<>0 then
        begin
-        //days
-        s:=IntToStr(i)+'d '+s;
+        //hours
+        s:=IntToStr(i mod 24)+'h '+s;
+        i:=i div  24;
+        if i<>0 then
+         begin
+          //days
+          s:=IntToStr(i)+'d '+s;
+         end;
        end;
      end;
     if feedregime<>0 then s:=s+' Regime:'+IntToStr(feedregime)+'d';
@@ -2464,8 +2543,27 @@ begin
                 NextAnalyze:=true;
                 Writeln(#13'Analyze after next load: enabled');
                end;
+            'd'://diagnostics
+             begin
+              Writeln(#13'Diagnostics:  ');
+              Writeln('  Running since '+DateTimeToStr(RunStart));
+              Writeln('  Last load: '+DateTimeToStr(LastLoadStart));
+              i:=Round((LastLoadDone-LastLoadStart)*86400.0);
+              Writeln(Format('  %d posts from %d feeds (%d''%d")',[LastPostCount,LastFeedCount,i div 60,i mod 60]));
+              if InstagramBadTC<>0 then
+               begin
+                Writeln('  Instagram timeout since '+
+                  FormatDateTime('hh:nn:ss',Now-cardinal(GetTickCount-InstagramBadTC)/(24*60*60*1000)));
+                Writeln('  Instagram successes before timeout: '+IntToStr(InstagramSuccess));
+               end;
+              //TODO: more?
+             end;
             'v'://version
-              Writeln('PQlibVersion:'+IntToStr(PQlibVersion));
+             begin
+              //TODO: self version
+              i:=PQlibVersion;
+              Writeln(Format('PQlibVersion: %d.%d',[i div 10000,i mod 10000]));
+             end;
             'q'://quit
              begin
               Writeln(#13'User abort    ');
@@ -2533,7 +2631,7 @@ begin
       sl.Add('P{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;}');
       sl.Add('TH{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #333333;}');
       sl.Add('TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
-      sl.Add('TD.n{max-width:12em;overflow:hidden;text-overflow:ellipsis;}');
+      sl.Add('TD.n{max-width:20em;overflow:hidden;text-overflow:ellipsis;}');
       sl.Add('TD.empty{background-color:#CCCCCC;}');
       sl.Add('DIV.flag{display:inline;padding:2pt;color:#FFCC00;border-radius:4pt;white-space:nowrap;}');
       sl.Add('</style>');
@@ -2643,6 +2741,7 @@ begin
        end;
 
       OutLn('List feeds for loading...');
+      LastLoadStart:=Now;
       LastFeedCount:=0;
       LastPostCount:=0;
       if FeedID<>0 then
@@ -2688,7 +2787,7 @@ begin
         inc(i);
        end;
 
-      OutLn(Format('%d posts loaded from %d feeds',[LastPostCount,LastFeedCount]));
+      OutLn(Format('Loaded: %d posts from %d feeds',[LastPostCount,LastFeedCount]));
 
       sl.Add('</table>');
 
@@ -2710,6 +2809,7 @@ begin
       dbA.Free;
       dbB.Free;
       sl.Free;
+      LastLoadDone:=Now;
     end;
   except
     on e:Exception do
@@ -2752,6 +2852,10 @@ end;
 }
 
 initialization
+  RunStart:=Now;//UtcNow?
+  InstagramTC:=GetTickCount-InstagramTimeoutMS;
+  InstagramBadTC:=0;
+  InstagramSuccess:=0;
   LastClean:=0;
   blacklist:=TStringList.Create;
 finalization
