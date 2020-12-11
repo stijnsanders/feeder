@@ -43,13 +43,14 @@ var
   OldPostsCutOff,LastRun,RunStart,LastLoadStart,LastLoadDone:TDateTime;
   SaveData,FeedAll,FeedNew,NextAnalyze:boolean;
   FeedID,RunContinuous,LastClean,LastFeedCount,LastPostCount:integer;
-  FeedOrderBy:WideString;//UTF8String;
-  InstagramTC,InstagramBadTC,InstagramSuccess:cardinal;
+  FeedOrderBy,PGVersion:WideString;//UTF8String;
+  InstagramTC,InstagramNext,InstagramBadTC,InstagramSuccess:cardinal;
 
 const
   InstagramLoadExternal=true;//TODO: from config?
-  InstagramTimeoutMS=90*1000;
-  InstagramBadTimeoutMS=8*60*60*1000;
+  InstagramTimeoutMS=80*1000;
+  InstagramTimeoutRandomPaddingMS=15*1000;
+  InstagramBadTimeoutMS=4*60*60*1000;
 
 function ConvDate1(const x:string):TDateTime;
 var
@@ -1439,10 +1440,10 @@ begin
        begin
 
         //Instagram small timeout: keep number of requests below 200 per hour
-        if cardinal(GetTickCount-InstagramTC)<InstagramTimeoutMS then
+        if cardinal(GetTickCount-InstagramTC)<InstagramNext then
          begin
-          Write('(t'+IntToStr(cardinal(InstagramTimeoutMS-(GetTickCount-InstagramTC)) div 1000)+'")');
-          while cardinal(GetTickCount-InstagramTC)<InstagramTimeoutMS do
+          Write('(t'+IntToStr(cardinal(InstagramNext-(GetTickCount-InstagramTC)) div 1000)+'")');
+          while cardinal(GetTickCount-InstagramTC)<InstagramNext do
            begin
             //TODO: allow user interrupt?
             Sleep(100);
@@ -1501,10 +1502,10 @@ begin
           if Copy(feedurl,1,26)='https://www.instagram.com/' then
            begin
             //Instagram small timeout: keep number of requests below 200 per hour
-            if cardinal(GetTickCount-InstagramTC)<InstagramTimeoutMS then
+            if cardinal(GetTickCount-InstagramTC)<InstagramNext then
              begin
-              Write('(t'+IntToStr(cardinal(InstagramTimeoutMS-(GetTickCount-InstagramTC)) div 1000)+'")');
-              while cardinal(GetTickCount-InstagramTC)<InstagramTimeoutMS do
+              Write('(t'+IntToStr(cardinal(InstagramNext-(GetTickCount-InstagramTC)) div 1000)+'")');
+              while cardinal(GetTickCount-InstagramTC)<InstagramNext do
                begin
                 //TODO: allow user interrupt?
                 Sleep(100);
@@ -1515,6 +1516,7 @@ begin
             r.setRequestHeader('Accept','application/json');
 
             InstagramTC:=GetTickCount;
+            InstagramNext:=InstagramTimeoutMS+Random(InstagramTimeoutRandomPaddingMS);
            end
           else
            begin
@@ -1655,6 +1657,7 @@ begin
           if Copy(feedurl,1,26)='https://www.instagram.com/' then
            begin
             InstagramTC:=GetTickCount;
+            InstagramNext:=InstagramTimeoutMS+Random(InstagramTimeoutRandomPaddingMS);
             jnodes:=JSONDocArray;
             jdoc:=JSON(['user{'
               ,'edge_felix_video_timeline{','edges',jnodes,'}'
@@ -2443,6 +2446,45 @@ begin
 
 end;
 
+{
+function SelfVersion:string;
+const
+  dSize=$1000;
+var
+  d:array[0..dSize-1] of byte;
+  verblock:PVSFIXEDFILEINFO;
+  verlen:cardinal;
+  p:PAnsiChar;
+  h1,h2:THandle;
+begin
+  h1:=FindResource(HInstance,pointer(1),RT_VERSION);
+  if h1=0 then SelfVersion:='[no version data]' else
+   begin
+    h2:=LoadResource(HInstance,h1);
+    if h2=0 then SelfVersion:='[verion load failed]' else
+     begin
+      //odd, a copy is required to avoid access violation in version.dll
+      Move(LockResource(h2)^,d[0],SizeofResource(HInstance,h1));
+      UnlockResource(h2);
+      FreeResource(h2);
+      //
+      if VerQueryValueA(@d[0],'\',pointer(verblock),verlen) then
+        Result:=
+          IntToStr(HiWord(verblock.dwFileVersionMS))+'.'+
+          IntToStr(LoWord(verblock.dwFileVersionMS))+'.'+
+          IntToStr(HiWord(verblock.dwFileVersionLS))+'.'+
+          IntToStr(LoWord(verblock.dwFileVersionLS))
+      else
+        Result:='v???';
+      if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+        Result:=string(p)+' '+Result;
+     end;
+   end;
+end;
+}
+
+
+
 procedure DoProcessParams;
 var
   i:integer;
@@ -2560,9 +2602,12 @@ begin
              end;
             'v'://version
              begin
-              //TODO: self version
+              Writeln(#13'Versions:    ');
+              //Writeln(SelfVersion);
               i:=PQlibVersion;
               Writeln(Format('PQlibVersion: %d.%d',[i div 10000,i mod 10000]));
+              if PGVersion<>'' then
+                Writeln('PostgreSQL version: '+PGVersion);
              end;
             'q'://quit
              begin
@@ -2623,6 +2668,16 @@ begin
     finally
       sl.Free;
     end;
+
+    if PGVersion='' then //?
+     begin
+      qr:=TQueryResult.Create(dbB,'select version()',[]);
+      try
+        if qr.Read then PGVersion:=qr.GetStr(0);        
+      finally
+        qr.Free;
+      end;
+     end;
 
     sl:=TStringList.Create;
     try
@@ -2852,11 +2907,14 @@ end;
 }
 
 initialization
+  Randomize;
   RunStart:=Now;//UtcNow?
-  InstagramTC:=GetTickCount-InstagramTimeoutMS;
+  InstagramTC:=GetTickCount-InstagramTimeoutMS-InstagramTimeoutRandomPaddingMS;
+  InstagramNext:=InstagramTimeoutMS;
   InstagramBadTC:=0;
   InstagramSuccess:=0;
   LastClean:=0;
+  PGVersion:='';
   blacklist:=TStringList.Create;
 finalization
   blacklist.Free;
