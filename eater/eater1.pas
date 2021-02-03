@@ -315,6 +315,7 @@ const
 function ConvDate2(const x:string):TDateTime;
 var
   dy,dm,dd,th,tm,ts,tz,b:word;
+  dda:boolean;
   i,j,k,l,b1:integer;
   procedure nx(var xx:word;yy:integer);
   var
@@ -333,10 +334,15 @@ begin
   l:=Length(x);
   while (i<=l) and (x[i]<=' ') do inc(i);
   //day of week 'Mon,','Tue,'...
-  while (i<=l) and not(AnsiChar(x[i]) in ['0'..'9']) do inc(i);
-  //day of month
-  nx(dd,2);
-  inc(i);//' '
+  while (i<=l) and not(AnsiChar(x[i]) in [',',' ']) do inc(i);
+  while (i<=l) and not(AnsiChar(x[i]) in ['0'..'9','A'..'Z']) do inc(i);
+  dda:=(i<=l) and (AnsiChar(x[i]) in ['0'..'9']);
+  if dda then
+   begin
+    //day of month
+    nx(dd,2);
+    inc(i);//' '
+   end;
   //month
   dm:=0;//default
   if i+3<l then
@@ -366,11 +372,37 @@ begin
       'N':dm:=11;//Nov
       'D':dm:=12;//Dec
     end;
-  inc(i,4);
+  if dda then
+    inc(i,4)
+  else
+   begin
+    while (i<=l) and not(x[i]=' ') do inc(i);
+    inc(i);//' '
+    nx(dd,2);
+    inc(i);//',';
+    inc(i);//' ';
+   end;
   nx(dy,4); inc(i);//' '
+  if not dda then inc(i);//','
   nx(th,2); inc(i);//':'
   nx(tm,2); inc(i);//':'
-  nx(ts,2); inc(i);//' '
+  if dda then
+   begin
+    nx(ts,2); inc(i);//' '
+   end
+  else
+   begin
+    ts:=0;
+    //AM/PM
+    if (i<l) and (x[i]='P') and (x[i+1]='M') then
+     begin
+      if th<>12 then th:=th+12;
+      inc(i,3);
+     end
+    else
+    if (i<l) and (x[i]='A') and (x[i+1]='M') then
+      inc(i,3);
+   end;
   tz:=0;
   //timezone
   b:=0;//default
@@ -1894,6 +1926,7 @@ begin
               except
                 pubDate:=UtcNow;
               end;
+              //TODO: if summary<>content?
               if not(VarIsNull(jn0['summary'])) then
                begin
                 s:=VarToStr(jn0['summary']);
@@ -2037,6 +2070,17 @@ begin
               re:=nil;
              end;
 
+            //fix floating nbsp's
+            if not(xres) and (Pos('''nbsp''',string(doc.parseError.reason))<>0) then
+             begin
+              re:=CoRegExp.Create;
+              re.Pattern:='&nbsp;';
+              re.Global:=true;
+              //rw:=re.Replace(rw,'&amp;nbsp;');
+              rw:=re.Replace(rw,#$00A0);
+              xres:=doc.loadXML(rw);
+              re:=nil;
+             end;
 
             if xres then
              begin
@@ -2140,8 +2184,9 @@ begin
                  begin
                   y:=x.selectSingleNode('guid') as IXMLDOMElement;
                   if y=nil then y:=x.selectSingleNode('link') as IXMLDOMElement;
-                  itemid:=y.text;
-                  itemurl:=x.selectSingleNode('link').text;
+                  if y=nil then itemid:='' else itemid:=y.text;
+                  y:=x.selectSingleNode('link') as IXMLDOMElement;
+                  if y=nil then itemurl:='' else itemurl:=y.text;
                   y:=x.selectSingleNode('title') as IXMLDOMElement;
                   if y=nil then title:='' else title:=y.text;
                   y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
