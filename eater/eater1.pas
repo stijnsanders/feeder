@@ -383,7 +383,7 @@ begin
     inc(i);//' ';
    end;
   nx(dy,4); inc(i);//' '
-  if not dda then inc(i);//','
+  if not dda then inc(i);//','  
   nx(th,2); inc(i);//':'
   nx(tm,2); inc(i);//':'
   if dda then
@@ -487,7 +487,10 @@ end;
 var
   rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhTrim,
   rhStartImg,rhImgData,rhImgFoaf:RegExp;
-  blacklist:TStringList;
+  blacklist,proxies:TStringList;
+  proxiesTC:cardinal;
+  proxiesIndex:integer;
+  proxiesLoaded:TDateTime;
 
 procedure SanitizeInit;
 begin
@@ -600,7 +603,7 @@ begin
 end;
 {$ENDIF}
 
-function LoadExternal(const URL,FilePath,LastMod,Accept:string): WideString;
+function LoadExternal(const URL,FilePath,LastMod,Accept:string;useProxy:boolean): WideString;
 var
   si:TStartupInfo;
   pi:TProcessInformation;
@@ -618,6 +621,13 @@ begin
     p1:=' --header="If-Modified-Since: '+LastMod+'"'
   else
     p1:='';
+
+  if useProxy and (proxiesIndex<proxies.Count) then
+    p1:=p1+' -e http_proxy='+proxies[proxiesIndex];
+
+  if useProxy then //if 'instagram'
+    p1:=p1+' --max-redirect=0';
+
 
   ZeroMemory(@si,SizeOf(TStartupInfo));
   si.cb:=SizeOf(TStartupInfo);
@@ -1482,8 +1492,22 @@ begin
            end;
          end;
 
+        //refresh proxies list
+        {
+        if proxiesLoaded<Now-0.5 then
+         begin
+          proxiesTC:=GetTickCount;
+          proxiesIndex:=0;
+          proxiesLoaded:=Now;
+          r:=CoServerXMLHTTP60.Create;
+          r.open('GET','https://www.proxy-list.download/api/v1/get?type=http',false,EmptyParam,EmptyParam);
+          r.send(EmptyParam);
+          if r.status=200 then proxies.Text:=r.responseText else proxies.Clear;
+         end;
+        }
+
         rw:=LoadExternal(feedurl+'?__a=1','xmls\'+Format('%.4d',[feedid])+'.json',feedlastmod,
-          'application/json');
+          'application/json',true);
 
         ParseExternalHeader;
        end
@@ -1492,7 +1516,7 @@ begin
       if loadext then
        begin
         rw:=LoadExternal(feedurl,'xmls\'+Format('%.4d',[feedid])+'.xml',feedlastmod,
-          'application/rss+xml, application/atom+xml, application/xml, text/xml');
+          'application/rss+xml, application/atom+xml, application/xml, text/xml',false);
 
         ParseExternalHeader;
 
@@ -1810,9 +1834,15 @@ begin
 
             if (c1=0) and (c2=0) then//if rt<>'application/json'?
              begin
-              InstagramBadTC:=GetTickCount;
+              proxiesTC:=GetTickCount;
+              inc(proxiesIndex);
+              if proxiesIndex>=proxies.Count then
+                InstagramBadTC:=GetTickCount
+              else
+                InstagramTC:=GetTickCount-InstagramTimeoutMS-InstagramTimeoutRandomPaddingMS;
               feedlastmod:='';
-              feedresult:='Instagram ? ('+IntToStr(InstagramSuccess)+')';
+              feedresult:=Format('Instagram ? (s:%d, p:%d/%d)',
+                [InstagramSuccess,proxiesIndex+1,proxies.Count]);
              end
             else
              begin
@@ -1932,7 +1962,7 @@ begin
                 s:=VarToStr(jn0['summary']);
                 if (s<>'') and (s<>title) then
                  begin
-                  if Length(s)>200 then s:=Copy(s,1,197)+'...';                  
+                  if Length(s)>200 then s:=Copy(s,1,197)+'...';
                   title:=title+' '#$2014' '+s;
                  end;
                end;
@@ -2643,6 +2673,9 @@ begin
                   FormatDateTime('hh:nn:ss',Now-cardinal(GetTickCount-InstagramBadTC)/(24*60*60*1000)));
                 Writeln('  Instagram successes before timeout: '+IntToStr(InstagramSuccess));
                end;
+              Writeln(Format('  Proxy: %d/%d since %s/%s',[proxiesIndex+1,proxies.Count,
+                FormatDateTime('yyyy-mm-dd hh:nn',Now-cardinal(GetTickCount-proxiesTC)/(24*60*60*1000)),
+                FormatDateTime('yyyy-mm-dd hh:nn',proxiesLoaded)]));
               //TODO: more?
              end;
             'v'://version
@@ -2659,6 +2692,11 @@ begin
               Writeln(#13'User abort    ');
               raise Exception.Create('User abort');
              end;
+            'p'://proxies list refresh
+             begin
+              Writeln(#13'Force proxies list refresh   ');
+              proxiesLoaded:=0;
+             end
             else
               Writeln(#13'Unknown code "'+b.Event.KeyEvent.AsciiChar+'"');
           end;
@@ -2961,6 +2999,11 @@ initialization
   LastClean:=0;
   PGVersion:='';
   blacklist:=TStringList.Create;
+  proxies:=TStringList.Create;
+  proxiesTC:=GetTickCount;
+  proxiesIndex:=0;
+  proxiesLoaded:=0;//start stale
 finalization
   blacklist.Free;
+  proxies.Free;
 end.
