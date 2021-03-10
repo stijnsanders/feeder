@@ -456,10 +456,11 @@ begin
   GetLocalTime(st);
   tx:=GetTimeZoneInformation(tz);
   case tx of
-    0:bias:=tz.Bias/1440.0;
-    1:bias:=(tz.Bias+tz.StandardBias)/1440.0;
-    2:bias:=(tz.Bias+tz.DaylightBias)/1440.0;
-    else bias:=0.0;
+    //TIME_ZONE_ID_INVALID:RaiseLastOSError;
+    TIME_ZONE_ID_UNKNOWN:  bias:=tz.Bias/1440.0;
+    TIME_ZONE_ID_STANDARD: bias:=(tz.Bias+tz.StandardBias)/1440.0;
+    TIME_ZONE_ID_DAYLIGHT: bias:=(tz.Bias+tz.DaylightBias)/1440.0;
+    else                   bias:=0.0;
   end;
   Result:=
     EncodeDate(st.wYear,st.wMonth,st.wDay)+
@@ -926,6 +927,37 @@ begin
   Result:=d;
 end;
 
+procedure PerformReplaces(feedid:integer;var data:WideString);
+var
+  sl:TStringList;
+  j,rd:IJSONDocument;
+  r:IJSONDocArray;
+  i:integer;
+  re:RegExp;
+begin
+  r:=JSONDocArray;
+  j:=JSON(['r',r]);
+  sl:=TStringList.Create;
+  try
+    sl.LoadFromFile('feeds\'+Format('%.4d',[feedid])+'r.json');
+    j.Parse(sl.Text);
+  finally
+    sl.Free;
+  end;
+
+  rd:=JSON;
+  for i:=0 to r.Count-1 do
+   begin
+    r.LoadItem(i,rd);
+    re:=CoRegExp.Create;
+    re.Pattern:=rd['x'];
+    if not(VarIsNull(rd['g'])) then re.Global:=rd['g'];
+    if not(VarIsNull(rd['m'])) then re.Multiline:=rd['m'];
+    if not(VarIsNull(rd['i'])) then re.IgnoreCase:=rd['g'];
+    data:=re.Replace(data,rd['s']);
+   end;
+end;
+
 procedure DoFeed(dbA:TDataConnection;feedid:integer;oldPostDate:TDateTime;
   sl:TStringList);
 var
@@ -945,7 +977,7 @@ var
   rc,c1,c2,postid:integer;
   v:Variant;
   re:RegExp;
-  hasFoaf:boolean;
+  hasFoaf,hasReplaces:boolean;
 const
   regimesteps=8;
   regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90);
@@ -1957,6 +1989,7 @@ begin
                 pubDate:=UtcNow;
               end;
               //TODO: if summary<>content?
+              {
               if not(VarIsNull(jn0['summary'])) then
                begin
                 s:=VarToStr(jn0['summary']);
@@ -1966,6 +1999,7 @@ begin
                   title:=title+' '#$2014' '+s;
                  end;
                end;
+              }
               if VarIsNull(jn0['content_html']) then
                 content:=HTMLEncode(VarToStr(jn0['content_text']))
               else
@@ -2205,6 +2239,8 @@ begin
                   inc(i);
                  end;
 
+                hasReplaces:=FileExists('feeds\'+Format('%.4d',[feedid])+'r.json');
+
                 x:=doc.documentElement.selectSingleNode('channel/title') as IXMLDOMElement;
                 if x<>nil then feedname:=x.text;
 
@@ -2250,6 +2286,8 @@ begin
                     xl1:=nil;
                     if hasFoaf and rhImgFoaf.Test(content) then
                       content:=rhImgFoaf.Replace(content,'$1');
+                    if hasReplaces then
+                      PerformReplaces(feedid,content);
                     RegisterItem;
                    end;
 

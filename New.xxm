@@ -3,6 +3,7 @@ s,t,lbl,cat,c:string;
 id,id1,rw:integer;
 ur:Variant;
 qr:TQueryResult;
+d:TDateTime;
 const
 DefaultReadWidth=32;
 ]][[
@@ -116,6 +117,7 @@ case Context['x'].AsInteger of
           1:ur:=Context['autounread0'].AsInteger*24;//days
           2:ur:=Context['autounread0'].AsInteger*24*7;//weeks
         end;
+      d:=UtcNow;
       Session.Connection.Insert('Subscription',
         ['user_id',Session.UserID
         ,'feed_id',id
@@ -124,9 +126,17 @@ case Context['x'].AsInteger of
         ,'color',c
         ,'readwidth',rw
         ,'autounread',ur
-        ,'created',double(UtcNow)
+        ,'created',double(d)
         ],'id');
       <<p>Subscription added</p>>
+
+      <<div class="post">
+      <div class="date">>=FormatDateTime('yyyy-mm-dd',double(d)+Session.TimeBias)<</div>
+      [[#ShowLabel(lbl,c)]]
+      "[[=t]]"
+      <span style="color:#CCCCCC;">>=s<</span>
+      </div>>
+
      end
     else
       begin

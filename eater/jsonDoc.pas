@@ -6,7 +6,7 @@ Copyright 2015-2019 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/jsonDoc
 
-v1.2.0
+v1.2.1
 
 }
 unit jsonDoc;
@@ -130,10 +130,12 @@ type
     ['{4A534F4E-0001-0005-C000-000000000005}']
     function Get_Item(Index: integer): Variant; stdcall;
     procedure Set_Item(Index: integer; const Value: Variant); stdcall;
-    function Count: integer; stdcall;
+    function ItemsCount: integer; stdcall;
     function ToString: WideString; stdcall;
     function v0(Index: integer): pointer; stdcall;
     property Item[Idx: integer]: Variant read Get_Item write Set_Item; default;
+    property Count: integer read ItemsCount;
+    property AsString: WideString read ToString;
   end;
 
 {
@@ -323,7 +325,7 @@ type
   protected
     function Get_Item(Index: integer): Variant; stdcall;
     procedure Set_Item(Index: integer; const Value: Variant); stdcall;
-    function Count: integer; stdcall;
+    function ItemsCount: integer; stdcall;
     function JSONToString: WideString; stdcall;
     function IJSONArray.ToString=JSONToString;
     function v0(Index: integer): pointer; stdcall;
@@ -366,7 +368,7 @@ type
     //IJSONArray
     function Get_Item(Index: integer): Variant; stdcall;
     procedure Set_Item(Index: integer; const Value: Variant); stdcall;
-    function Count: integer; stdcall;
+    function ItemsCount: integer; stdcall;
     function JSONToString: WideString; stdcall;
     function IJSONArray.ToString=JSONToString;
     function v0(Index: integer): pointer; stdcall;
@@ -416,7 +418,7 @@ type
   protected
     function Get_Item(Index: integer): Variant; stdcall;
     procedure Set_Item(Index: integer; const Value: Variant); stdcall;
-    function Count: integer; stdcall;
+    function ItemsCount: integer; stdcall;
     function JSONToString: WideString; stdcall;
     function IJSONArray.ToString=JSONToString;
     function v0(Index: integer): pointer; stdcall;
@@ -1358,46 +1360,51 @@ begin
           while b do
            begin
             v:=Null;
-            if IsArray then
-              if SkipWhiteSpace=']' then
-               begin
-                if da=nil then
-                 begin
-                  if FUseIJSONArray then
+            case SkipWhiteSpace of
+              ']':
+                if not IsArray then
+                  raise EJSONDecodeException.Create(
+                    'JSON Unexpected "]" inside of document'+ExVicinity(i))
+                else
+                  if da=nil then
                    begin
-                    aa:=TJSONArray.Create(ai-a1);
-                    k1:=a1;
-                    k2:=0;
-                    while k1<ai do
+                    if FUseIJSONArray then
                      begin
-                      //aa[k2]:=a[k1];VarClear(a[k1]);
-                      VarMove(aa.FData[k2],a[k1]);
-                      inc(k1);
-                      inc(k2);
-                     end;
-                    v:=aa as IJSONArray;
-                   end
-                  else
-                   begin
-                    if not(VarTypeIsValidArrayType(at)) then at:=varVariant;
-                    v:=VarArrayCreate([0,ai-a1-1],at);
-                    k1:=a1;
-                    k2:=0;
-                    while k1<ai do
+                      aa:=TJSONArray.Create(ai-a1);
+                      k1:=a1;
+                      k2:=0;
+                      while k1<ai do
+                       begin
+                        //aa[k2]:=a[k1];VarClear(a[k1]);
+                        VarMove(aa.FData[k2],a[k1]);
+                        inc(k1);
+                        inc(k2);
+                       end;
+                      v:=aa as IJSONArray;
+                     end
+                    else
                      begin
-                      v[k2]:=a[k1];
-                      VarClear(a[k1]);
-                      inc(k1);
-                      inc(k2);
+                      if not(VarTypeIsValidArrayType(at)) then at:=varVariant;
+                      v:=VarArrayCreate([0,ai-a1-1],at);
+                      k1:=a1;
+                      k2:=0;
+                      while k1<ai do
+                       begin
+                        v[k2]:=a[k1];
+                        VarClear(a[k1]);
+                        inc(k1);
+                        inc(k2);
+                       end;
                      end;
+                    ai:=a1;
                    end;
-                  ai:=a1;
-                 end;
-               end
+              '}':
+                if IsArray then
+                  raise EJSONDecodeException.Create(
+                    'JSON Unexpected "}" and end of array'+ExVicinity(i));
               else
-                b:=false
-            else
-              b:=SkipWhiteSpace='}';
+                b:=false;
+            end;
             if b then
              begin
               inc(i);
@@ -1438,7 +1445,10 @@ begin
            end;
          end;
        end;
-      {$IFNDEF JSONDOC_JSON_LOOSE}
+      {$IFDEF JSONDOC_JSON_LOOSE}
+      if stackIndex>0 then raise EJSONDecodeException.Create(
+        'JSON with '+IntToStr(stackIndex+1)+' objects or arrays not closed');
+      {$ELSE}
       if stackIndex<>-1 then raise EJSONDecodeException.Create(
         'JSON with '+IntToStr(stackIndex+1)+' objects or arrays not closed');
       {$ENDIF}
@@ -2232,7 +2242,7 @@ begin
   inherited;
 end;
 
-function TVarJSONArray.Count: integer;
+function TVarJSONArray.ItemsCount: integer;
 begin
   Result:=v2-v1;
 end;
@@ -2315,7 +2325,7 @@ begin
   SetLength(FData,Size);
 end;
 
-function TJSONArray.Count: integer;
+function TJSONArray.ItemsCount: integer;
 begin
   Result:=Length(FData);
 end;
@@ -2535,7 +2545,7 @@ begin
   {$ENDIF}
 end;
 
-function TJSONDocArray.Count: integer;
+function TJSONDocArray.ItemsCount: integer;
 begin
   Result:=FItemsCount;
 end;
