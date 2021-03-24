@@ -1,8 +1,9 @@
 [[@DataLank,xxmSession,VBScript_RegExp_55_TLB,fCommon]][[!var
 qr:TQueryResult;
-id:integer;
+id,i,j,l:integer;
 db:TDataConnection;
 d1:TDateTime;
+s:UTF8String;
 ]][[
 Context.Include('dHead.xxmi');
 id:=Context['id'].AsInteger;
@@ -19,9 +20,157 @@ try
   <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('mm-dd hh:nn',d1)<</div>
   [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
   <b>>=qr['title']<</b>
-  </div>
-  <div>>=qr['content']<</div>
-  <div style="height:75vh;margin-top:4pt;border-top:4px solid gold;color:#9999AA;font-size:0.8em;">
+  </div>>
+
+  if Context['raw'].AsInteger<>0 then
+   begin
+    <<div>>=qr['content']<</div>>
+   end
+  else
+   begin
+    <<style>
+    SPAN.e{color:#999;}
+    SPAN.a{color:#990;}
+    SPAN.v{color:#009;}
+    SPAN.x{color:#090;}
+    SPAN.d{color:#900;}
+    SPAN.c{color:#CCC;}
+    </style><div>>
+    s:=UTF8Encode(qr.GetStr('content'));
+    l:=Length(s);
+    i:=1;
+    while i<=l do
+     begin
+      case s[i] of
+        '<'://start element
+         begin
+          if (i+4<=l) and (Copy(s,i,4)='<!--') then
+           begin
+            //comment 
+            j:=i+4;
+            while (j+3<=l) and not((s[j]='-') and (s[j+1]='-') and (s[j+2]='>')) do inc(j);
+            inc(j,2);
+            <<span class="c">>=Copy(s,i,j-i+1)<</span>>
+            i:=j;
+           end
+          else
+          if (i+9<=l) and (Copy(s,i,9)='<![CDATA[') then
+           begin
+             //cdata section
+             j:=i+8;
+             while (j+3<=l) and not((s[j]=']') and (s[j+1]=']') and (s[j+2]='>')) do inc(j);
+             inc(j,2);
+             <<span class="d">>=Copy(s,i,j-i+1)<</span>>
+             i:=j;
+           end
+          else
+          if (i+1<=l) and (s[i+1]='/') then
+           begin
+            //closing element
+            j:=i+2;
+            while (j<=l) and (s[j]<>'>') do inc(j);
+            <<span class="e">>=Copy(s,i,j-i+1)<</span>>
+            i:=j;
+           end
+          else
+           begin
+            //element 
+            j:=i+1;
+            while (j<=l) and (s[j]<>'>') and (s[j]>' ') do inc(j);
+            while (j<=l) and (s[j]<' ') do inc(j);
+            if (j<=l) and (s[j]='>') then
+             begin
+              <<span class="e">>=Copy(s,i,j-i+1)<</span>>
+              i:=j;
+             end
+            else
+            if (j+1<=l) and (s[j]='/') and (s[j+1]='>') then
+             begin
+              inc(j);
+              <<span class="e">>=Copy(s,i,j-i+1)<</span>>
+              i:=j;
+             end;
+            if i<>j then
+             begin
+              <<span class="e">>=Copy(s,i,j-i)<</span>>
+              i:=j;
+              while (i<=l) and (s[i]<>'>') do
+               begin
+                //attributes
+                j:=i;
+                while (j<=l) and (s[j]<>'=') and (s[j]>' ') do inc(j);
+                <<span class="a">>=Copy(s,i,j-i)<</span>>
+                if (j+1<=l) and (s[j]='=') and (s[j+1]='''') then
+                 begin
+                  //attribute value enclosed in single quotes
+                  <<span class="c">>=Copy(s,j,2)<</span>>
+                  inc(j,2);
+                  i:=j;
+                  while (j<=l) and (s[j]<>'''') do inc(j);
+                  <<span class="v">>=Copy(s,i,j-i)<</span>>
+                  if (j<=l) then
+                   begin
+                    <<span class="c">>=s[j]<</span>> //assert ''''
+                    inc(j);
+                   end;
+                 end
+                else
+                if (j+1<=l) and (s[j]='=') and (s[j+1]='"') then
+                 begin
+                  //attribute value enclosed in double quotes
+                  <<span class="c">>=Copy(s,j,2)<</span>>
+                  inc(j,2);
+                  i:=j;
+                  while (j<=l) and (s[j]<>'"') do inc(j);
+                  <<span class="v">>=Copy(s,i,j-i)<</span>>
+                  if (j<=l) then
+                   begin
+                    <<span class="c">>=s[j]<</span>> //assert '"'
+                    inc(j);
+                   end;
+                 end
+                else
+                if (j<=l) and (s[j]='=') then
+                 begin
+                  //attribute value not enclosed
+                  <<span class="c">>=s[j]<</span>>
+                  inc(j);
+                  i:=j;
+                  while (j<=l) and (s[j]<>'>') and (s[j]>' ') do inc(j);
+                  <<span class="v">>=Copy(s,i,j-i)<</span>>
+                 end;
+                //else no value?
+                i:=j;
+                while (j<=l) and (s[j]<=' ') do inc(j);
+                if i<>j then 
+                 begin
+                  Context.Send(Copy(s,i,j-i));
+                  i:=j;
+                 end;
+               end;
+              if (i<=l)  then
+               begin
+                <<span class="e">>=s[i]<</span>> //assert '>'
+               end;
+             end;
+           end;
+         end;
+        '&'://start entity
+         begin
+          j:=i;
+          while (j<=l) and not(s[j]=';') and not(s[j]<=' ') do inc(j);
+          <<span class="x">>=Copy(s,i,j-i+1)<</span>>
+          i:=j;
+         end;
+        else
+          Context.Send(s[i]);
+      end;
+      inc(i);
+     end;
+    <</div>>
+   end;
+
+  <<div style="height:75vh;margin-top:4pt;border-top:4px solid gold;color:#9999AA;font-size:0.8em;">
   <span title="[[=qr['guid']]]">>=qr['url']<</span>
   <a class="raw" target="postview" href="Post.xxm?[[=Context.ContextString(csQueryString)]]">&emsp;&#x2139;&emsp;</a>
   </div>>
