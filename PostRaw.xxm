@@ -4,6 +4,7 @@ id,i,j,l:integer;
 db:TDataConnection;
 d1:TDateTime;
 s:UTF8String;
+d:AnsiChar;
 ]][[
 Context.Include('dHead.xxmi');
 id:=Context['id'].AsInteger;
@@ -100,35 +101,34 @@ try
                 j:=i;
                 while (j<=l) and (s[j]<>'=') and (s[j]>' ') do inc(j);
                 <<span class="a">>=Copy(s,i,j-i)<</span>>
-                if (j+1<=l) and (s[j]='=') and (s[j+1]='''') then
+                if (j+1<=l) and (s[j]='=') and ((s[j+1]='"') or (s[j+1]='''')) then
                  begin
-                  //attribute value enclosed in single quotes
-                  <<span class="c">>=Copy(s,j,2)<</span>>
+                  d:=s[j+1];
+                  //attribute value enclosed in double or single quotes
+                  <<span class="c">>=Copy(s,j,2)<</span><span class="v">>
                   inc(j,2);
                   i:=j;
-                  while (j<=l) and (s[j]<>'''') do inc(j);
-                  <<span class="v">>=Copy(s,i,j-i)<</span>>
+                  while (j<=l) and (s[j]<>d) do
+                    if s[j]='&' then
+                     begin
+                      Context.Send(Copy(s,i,j-i));
+                      i:=j;
+                      inc(j);//'&'
+                      while (j<=l) and not(s[j]=';') and not(s[j]='>') and not(s[j]='&') and not(s[j]<=' ') do inc(j);
+                      if (j<=l) and (s[j]=';') then inc(j);
+                      <</span><span class="x">>=Copy(s,i,j-i)<</span><span class="v">>
+                      i:=j;
+                     end
+                    else
+                      inc(j); 
+                  Context.Send(Copy(s,i,j-i));
+                  <</span>>
                   if (j<=l) then
                    begin
-                    <<span class="c">>=s[j]<</span>> //assert ''''
+                    <<span class="c">>=s[j]<</span>> //assert s[j]=d
                     inc(j);
                    end;
-                 end
-                else
-                if (j+1<=l) and (s[j]='=') and (s[j+1]='"') then
-                 begin
-                  //attribute value enclosed in double quotes
-                  <<span class="c">>=Copy(s,j,2)<</span>>
-                  inc(j,2);
-                  i:=j;
-                  while (j<=l) and (s[j]<>'"') do inc(j);
-                  <<span class="v">>=Copy(s,i,j-i)<</span>>
-                  if (j<=l) then
-                   begin
-                    <<span class="c">>=s[j]<</span>> //assert '"'
-                    inc(j);
-                   end;
-                 end
+                 end 
                 else
                 if (j<=l) and (s[j]='=') then
                  begin
@@ -158,8 +158,10 @@ try
         '&'://start entity
          begin
           j:=i;
-          while (j<=l) and not(s[j]=';') and not(s[j]<=' ') do inc(j);
-          <<span class="x">>=Copy(s,i,j-i+1)<</span>>
+          inc(j);//'&'
+          while (j<=l) and not(s[j]=';') and not(s[j]='<') and not(s[j]='&') and not(s[j]<=' ') do inc(j);
+          if (j<=l) and (s[j]=';') then inc(j);
+          <<span class="x">>=Copy(s,i,j-i)<</span>>
           i:=j;
          end;
         else
