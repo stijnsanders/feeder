@@ -1,9 +1,10 @@
-[[@xxmSession,DataLank,fCommon,Variants]][[!var
+[[@xxmSession,DataLank,fCommon,Variants,Windows]][[!var
 s,t,lbl,cat,c:string;
 id,id1,rw:integer;
 ur:Variant;
 qr:TQueryResult;
 d:TDateTime;
+h:THandle;
 const
 DefaultReadWidth=32;
 ]][[
@@ -87,6 +88,12 @@ case Context['x'].AsInteger of
       if t='' then t:=NameFromFeedURL(s);
       id:=Session.Connection.Insert('Feed',['name',t,'url',s,'created',double(UtcNow)],'id');
       <<p>Feed added. Posts may not appear until first time the fetching schedule loaded current posts.</p>>
+
+      //poke eater to check new feeds
+      h:=OpenEvent(EVENT_MODIFY_STATE,true,'Global\FeederEaterNewFeed');
+      SetEvent(h);
+      CloseHandle(h);
+
      end
     else
      begin

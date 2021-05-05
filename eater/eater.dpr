@@ -18,6 +18,7 @@ uses
 
 var
   h:THandle;
+  n:boolean;
 begin
   try
     h:=CreateMutex(nil,true,'Global\FeederEater');
@@ -28,9 +29,14 @@ begin
       CoInitialize(nil);
       DoProcessParams;
       repeat
+        n:=FeedNew;
+
         DoUpdateFeeds;
-        DoCharts;
+
+        if not(n) then DoCharts;
+
         //DoAnalyze;
+
       until DoCheckRunDone;
     finally
       CloseHandle(h);

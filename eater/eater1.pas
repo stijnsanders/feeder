@@ -18,6 +18,9 @@ const
   AvgPostsDays=100;
   OldPostsDays=3660;
 
+var
+  FeedNew:boolean;
+
 implementation
 
 uses Classes, Windows, DataLank, MSXML2_TLB, Variants, VBScript_RegExp_55_TLB,
@@ -41,10 +44,11 @@ end;
 
 var
   OldPostsCutOff,LastRun,RunStart,LastLoadStart,LastLoadDone:TDateTime;
-  SaveData,FeedAll,FeedNew,NextAnalyze:boolean;
+  SaveData,FeedAll,NextAnalyze:boolean;
   FeedID,RunContinuous,LastClean,LastFeedCount,LastPostCount:integer;
   FeedOrderBy,PGVersion:WideString;//UTF8String;
   InstagramTC,InstagramNext,InstagramBadTC,InstagramSuccess:cardinal;
+  NewFeedEvent:THandle;
 
 const
   InstagramLoadExternal=true;//TODO: from config?
@@ -1374,7 +1378,7 @@ begin
     while (j<=Length(s)) and (s[j]<>'/') do inc(j);
     inc(j);
     while (j<=Length(s)) and (s[j]<>'/') and (s[j]<>'?') do inc(j);
-    Out0(IntToStr(feedid)+' '+Copy(s,i,j-i));
+    Out0('#'+IntToStr(feedid)+' '+Copy(s,i,j-i));
 
     //flags
     feedgroupid:=qr0.GetInt('group_id');
@@ -2608,6 +2612,7 @@ begin
   FeedID:=0;
   FeedAll:=false;
   FeedNew:=false;
+  NewFeedEvent:=0;
   FeedOrderBy:=' order by F.id';
   NextAnalyze:=false;//?
 
@@ -2641,9 +2646,10 @@ function DoCheckRunDone:boolean;
 var
   RunNext,d:TDateTime;
   i:integer;
-  h:THandle;
+  h:array[0..1] of THandle;
   b:TInputRecord;
   c:cardinal;
+  checking:boolean;
 begin
   if RunContinuous=0 then
     Result:=true
@@ -2662,83 +2668,107 @@ begin
       Sleep(1000);//?
       d:=UtcNow;
 
+      if NewFeedEvent=0 then
+        NewFeedEvent:=CreateEvent(nil,true,false,'Global\FeederEaterNewFeed');
 
-      h:=GetStdHandle(STD_INPUT_HANDLE);
-      while WaitForSingleObject(h,0)=WAIT_OBJECT_0 do
-       begin
-        if not ReadConsoleInput(h,b,1,c) then
-          RaiseLastOSError;
-        if (c<>0) and (b.EventType=KEY_EVENT) and b.Event.KeyEvent.bKeyDown then
-          case b.Event.KeyEvent.AsciiChar of
-            's'://skip
-             begin
-              Writeln(#13'Manual skip    ');
-              d:=RunNext;
-             end;
-            'n'://skip + new
-             begin
-              Writeln(#13'Skip + new feeds   ');
-              d:=RunNext;
-              FeedNew:=true;
-             end;
-            'x'://skip + run all
-             begin
-              Writeln(#13'Skip + all feeds   ');
-              d:=RunNext;
-              FeedAll:=true;
-             end;
-            'a'://analyze on next
-              if NextAnalyze then
-               begin
-                NextAnalyze:=false;
-                Writeln(#13'Analyze after next load: disabled');
-               end
-              else
-               begin
-                NextAnalyze:=true;
-                Writeln(#13'Analyze after next load: enabled');
-               end;
-            'd'://diagnostics
-             begin
-              Writeln(#13'Diagnostics:  ');
-              Writeln('  Running since '+DateTimeToStr(RunStart));
-              Writeln('  Last load: '+DateTimeToStr(LastLoadStart));
-              i:=Round((LastLoadDone-LastLoadStart)*86400.0);
-              Writeln(Format('  %d posts from %d feeds (%d''%d")',[LastPostCount,LastFeedCount,i div 60,i mod 60]));
-              if InstagramBadTC<>0 then
-               begin
-                Writeln('  Instagram timeout since '+
-                  FormatDateTime('hh:nn:ss',Now-cardinal(GetTickCount-InstagramBadTC)/(24*60*60*1000)));
-                Writeln('  Instagram successes before timeout: '+IntToStr(InstagramSuccess));
-               end;
-              Writeln(Format('  Proxy: %d/%d since %s/%s',[proxiesIndex+1,proxies.Count,
-                FormatDateTime('yyyy-mm-dd hh:nn',Now-cardinal(GetTickCount-proxiesTC)/(24*60*60*1000)),
-                FormatDateTime('yyyy-mm-dd hh:nn',proxiesLoaded)]));
-              //TODO: more?
-             end;
-            'v'://version
-             begin
-              Writeln(#13'Versions:    ');
-              //Writeln(SelfVersion);
-              i:=PQlibVersion;
-              Writeln(Format('PQlibVersion: %d.%d',[i div 10000,i mod 10000]));
-              if PGVersion<>'' then
-                Writeln('PostgreSQL version: '+PGVersion);
-             end;
-            'q'://quit
-             begin
-              Writeln(#13'User abort    ');
-              raise Exception.Create('User abort');
-             end;
-            'p'://proxies list refresh
-             begin
-              Writeln(#13'Force proxies list refresh   ');
-              proxiesLoaded:=0;
-             end
-            else
-              Writeln(#13'Unknown code "'+b.Event.KeyEvent.AsciiChar+'"');
-          end;
-       end;
+      checking:=true;
+      h[0]:=GetStdHandle(STD_INPUT_HANDLE);
+      h[1]:=NewFeedEvent;
+      while checking do
+        case WaitForMultipleObjects(2,@h[0],false,0) of
+          WAIT_OBJECT_0://STD_INPUT_HANDLE
+           begin
+            if not ReadConsoleInput(h[0],b,1,c) then
+              RaiseLastOSError;
+            if (c<>0) and (b.EventType=KEY_EVENT) and b.Event.KeyEvent.bKeyDown then
+              case b.Event.KeyEvent.AsciiChar of
+                's'://skip
+                 begin
+                  Writeln(#13'Manual skip    ');
+                  d:=RunNext;
+                  checking:=false;
+                 end;
+                'n'://skip + new
+                 begin
+                  Writeln(#13'Skip + new feeds   ');
+                  d:=RunNext;
+                  FeedNew:=true;
+                  checking:=false;
+                 end;
+                'x'://skip + run all
+                 begin
+                  Writeln(#13'Skip + all feeds   ');
+                  d:=RunNext;
+                  FeedAll:=true;
+                  checking:=false;
+                 end;
+                'a'://analyze on next
+                  if NextAnalyze then
+                   begin
+                    NextAnalyze:=false;
+                    Writeln(#13'Analyze after next load: disabled');
+                   end
+                  else
+                   begin
+                    NextAnalyze:=true;
+                    Writeln(#13'Analyze after next load: enabled');
+                   end;
+                'd'://diagnostics
+                 begin
+                  Writeln(#13'Diagnostics:  ');
+                  Writeln('  Running since '+DateTimeToStr(RunStart));
+                  Writeln('  Last load: '+DateTimeToStr(LastLoadStart));
+                  i:=Round((LastLoadDone-LastLoadStart)*86400.0);
+                  Writeln(Format('  %d posts from %d feeds (%d''%d")',[LastPostCount,LastFeedCount,i div 60,i mod 60]));
+                  if InstagramBadTC<>0 then
+                   begin
+                    Writeln('  Instagram timeout since '+
+                      FormatDateTime('hh:nn:ss',Now-cardinal(GetTickCount-InstagramBadTC)/(24*60*60*1000)));
+                    Writeln('  Instagram successes before timeout: '+IntToStr(InstagramSuccess));
+                   end;
+                  Writeln(Format('  Proxy: %d/%d since %s/%s',[proxiesIndex+1,proxies.Count,
+                    FormatDateTime('yyyy-mm-dd hh:nn',Now-cardinal(GetTickCount-proxiesTC)/(24*60*60*1000)),
+                    FormatDateTime('yyyy-mm-dd hh:nn',proxiesLoaded)]));
+                  //TODO: more?
+                 end;
+                'v'://version
+                 begin
+                  Writeln(#13'Versions:    ');
+                  //Writeln(SelfVersion);
+                  i:=PQlibVersion;
+                  Writeln(Format('PQlibVersion: %d.%d',[i div 10000,i mod 10000]));
+                  if PGVersion<>'' then
+                    Writeln('PostgreSQL version: '+PGVersion);
+                 end;
+                'q'://quit
+                 begin
+                  Writeln(#13'User abort    ');
+                  raise Exception.Create('User abort');
+                 end;
+                'p'://proxies list refresh
+                 begin
+                  Writeln(#13'Force proxies list refresh   ');
+                  proxiesLoaded:=0;
+                 end
+                else
+                  Writeln(#13'Unknown code "'+b.Event.KeyEvent.AsciiChar+'"');
+              end;
+
+           end;
+
+          WAIT_OBJECT_0+1://NewFeed event
+           begin
+            ResetEvent(h[1]);
+
+            Writeln(#13'Signal from front-end:  new feeds   ');
+            d:=RunNext;
+            FeedNew:=true;
+            checking:=false;
+           end;
+
+          else
+            checking:=false;
+        end;
 
      end;
     Writeln(#13'>>> '+FormatDateTime('yyyy-mm-dd hh:nn:ss',d));
