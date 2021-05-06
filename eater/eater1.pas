@@ -54,7 +54,7 @@ const
   InstagramLoadExternal=true;//TODO: from config?
   InstagramTimeoutMS=80*1000;
   InstagramTimeoutRandomPaddingMS=15*1000;
-  InstagramBadTimeoutMS=4*60*60*1000;
+  InstagramBadTimeoutMS=30*60*1000;
 
 function ConvDate1(const x:string):TDateTime;
 var
@@ -1542,7 +1542,9 @@ begin
          end;
         }
 
-        rw:=LoadExternal(feedurl+'?__a=1','xmls\'+Format('%.4d',[feedid])+'.json',feedlastmod,
+        if (feedurl<>'') and (feedurl[Length(feedurl)]<>'/') then feedurl:=feedurl+'/';
+
+        rw:=LoadExternal(feedurl+'channel/?__a=1','xmls\'+Format('%.4d',[feedid])+'.json',feedlastmod,
           'application/json',true);
 
         ParseExternalHeader;
@@ -2018,7 +2020,7 @@ begin
            begin
             jnodes:=JSONDocArray;
             jdoc:=JSON(['hub',JSON(['data',JSON([
-              FindMatch(rw,'"data":{"([^"]*?)":{"cards":'),
+              FindMatch(rw,'"data":{"([^"]*?)":{"[^"]+?":\['),
               JSON(['cards',jnodes])])])]);
             try
               jdoc.Parse(rw);
@@ -2049,7 +2051,10 @@ begin
                 itemid:=VarToStr(jn1['id']);
                 itemurl:=VarToStr(jn1['localLinkUrl']);
                 try
-                  pubDate:=ConvDate1(VarToStr(jn1['published']));
+                  if VarIsNull(jn1['published']) then
+                    pubDate:=ConvDate1(VarToStr(jn1['updated']))
+                  else
+                    pubDate:=ConvDate1(VarToStr(jn1['published']));
                 except
                   pubDate:=UtcNow;
                 end;
@@ -2058,6 +2063,7 @@ begin
                 //TODO: media, mediumIds (leadPhotoId?
 
                 content:=VarToStr(jn1['storyHTML']);
+                if content='' then content:=VarToStr(jn1['firstWords']);
 
                 //jn1['media']
                 if jthumbs.Count=0 then
@@ -2073,6 +2079,7 @@ begin
                 else
                  begin
                   jthumbs.LoadItem(0,jd1);
+                  if content='' then content:=VarToStr(jd1['caption']);
                   content:='<img src="'+
                     VarToStr(jd1['gcsBaseUrl'])+
                     VarToStr(VarArrLast(jd1['imageRenderedSizes']))+

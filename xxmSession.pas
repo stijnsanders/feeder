@@ -31,6 +31,7 @@ type
 
 procedure SetSession(Context: IXxmContext);
 procedure AbandonSession;
+procedure AbandonConnection;
 
 procedure AuthSession(const Key,Login,Name,Email:WideString);
 
@@ -271,6 +272,16 @@ begin
     end;
    end;
   Result:=WorkerThreadConnection;
+end;
+
+procedure AbandonConnection;
+begin
+  try
+    FreeAndNil(WorkerThreadConnection);
+  except
+    //log?
+    WorkerThreadConnection:=nil;
+  end;
 end;
 
 initialization

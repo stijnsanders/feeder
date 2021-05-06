@@ -75,6 +75,10 @@ begin
   Context.SendHTML('</div>');
   //TODO: e-mail
   Result:=true;
+
+  if (ExceptionClass='EPostgres') and (Pos('connection',string(ExceptionMessage))<>0) then
+    AbandonConnection;
+
 end;
 
 procedure TXxmfeeder.ReleasingContexts;

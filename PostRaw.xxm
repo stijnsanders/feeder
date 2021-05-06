@@ -5,6 +5,14 @@ db:TDataConnection;
 d1:TDateTime;
 s:UTF8String;
 d:AnsiChar;
+
+
+function u(a,b:integer):WideString;
+begin
+  //Result:=UTF8Decode(Copy(s,a,b));
+  Result:=UTF8ToWideString(Copy(s,a,b));
+end;
+
 ]][[
 Context.Include('dHead.xxmi');
 id:=Context['id'].AsInteger;
@@ -51,7 +59,7 @@ try
             j:=i+4;
             while (j+3<=l) and not((s[j]='-') and (s[j+1]='-') and (s[j+2]='>')) do inc(j);
             inc(j,2);
-            <<span class="c">>=Copy(s,i,j-i+1)<</span>>
+            <<span class="c">>=u(i,j-i+1)<</span>>
             i:=j;
            end
           else
@@ -61,7 +69,7 @@ try
              j:=i+8;
              while (j+3<=l) and not((s[j]=']') and (s[j+1]=']') and (s[j+2]='>')) do inc(j);
              inc(j,2);
-             <<span class="d">>=Copy(s,i,j-i+1)<</span>>
+             <<span class="d">>=u(i,j-i+1)<</span>>
              i:=j;
            end
           else
@@ -70,7 +78,7 @@ try
             //closing element
             j:=i+2;
             while (j<=l) and (s[j]<>'>') do inc(j);
-            <<span class="e">>=Copy(s,i,j-i+1)<</span>>
+            <<span class="e">>=u(i,j-i+1)<</span>>
             i:=j;
            end
           else
@@ -81,47 +89,47 @@ try
             while (j<=l) and (s[j]<' ') do inc(j);
             if (j<=l) and (s[j]='>') then
              begin
-              <<span class="e">>=Copy(s,i,j-i+1)<</span>>
+              <<span class="e">>=u(i,j-i+1)<</span>>
               i:=j;
              end
             else
             if (j+1<=l) and (s[j]='/') and (s[j+1]='>') then
              begin
               inc(j);
-              <<span class="e">>=Copy(s,i,j-i+1)<</span>>
+              <<span class="e">>=u(i,j-i+1)<</span>>
               i:=j;
              end;
             if i<>j then
              begin
-              <<span class="e">>=Copy(s,i,j-i)<</span>>
+              <<span class="e">>=u(i,j-i)<</span>>
               i:=j;
               while (i<=l) and (s[i]<>'>') do
                begin
                 //attributes
                 j:=i;
                 while (j<=l) and (s[j]<>'=') and (s[j]>' ') do inc(j);
-                <<span class="a">>=Copy(s,i,j-i)<</span>>
+                <<span class="a">>=u(i,j-i)<</span>>
                 if (j+1<=l) and (s[j]='=') and ((s[j+1]='"') or (s[j+1]='''')) then
                  begin
                   d:=s[j+1];
                   //attribute value enclosed in double or single quotes
-                  <<span class="c">>=Copy(s,j,2)<</span><span class="v">>
+                  <<span class="c">>=u(j,2)<</span><span class="v">>
                   inc(j,2);
                   i:=j;
                   while (j<=l) and (s[j]<>d) do
                     if s[j]='&' then
                      begin
-                      Context.Send(Copy(s,i,j-i));
+                      Context.Send(u(i,j-i));
                       i:=j;
                       inc(j);//'&'
                       while (j<=l) and not(s[j]=';') and not(s[j]='>') and not(s[j]='&') and not(s[j]<=' ') do inc(j);
                       if (j<=l) and (s[j]=';') then inc(j);
-                      <</span><span class="x">>=Copy(s,i,j-i)<</span><span class="v">>
+                      <</span><span class="x">>=u(i,j-i)<</span><span class="v">>
                       i:=j;
                      end
                     else
                       inc(j); 
-                  Context.Send(Copy(s,i,j-i));
+                  Context.Send(u(i,j-i));
                   <</span>>
                   if (j<=l) then
                    begin
@@ -137,14 +145,14 @@ try
                   inc(j);
                   i:=j;
                   while (j<=l) and (s[j]<>'>') and (s[j]>' ') do inc(j);
-                  <<span class="v">>=Copy(s,i,j-i)<</span>>
+                  <<span class="v">>=u(i,j-i)<</span>>
                  end;
                 //else no value?
                 i:=j;
                 while (j<=l) and (s[j]<=' ') do inc(j);
                 if i<>j then 
                  begin
-                  Context.Send(Copy(s,i,j-i));
+                  Context.Send(u(i,j-i));
                   i:=j;
                  end;
                end;
@@ -154,6 +162,7 @@ try
                end;
              end;
            end;
+          inc(i); 
          end;
         '&'://start entity
          begin
@@ -161,13 +170,17 @@ try
           inc(j);//'&'
           while (j<=l) and not(s[j]=';') and not(s[j]='<') and not(s[j]='&') and not(s[j]<=' ') do inc(j);
           if (j<=l) and (s[j]=';') then inc(j);
-          <<span class="x">>=Copy(s,i,j-i)<</span>>
-          i:=j;
+          <<span class="x">>=u(i,j-i)<</span>>
+          i:=j+1;
          end;
         else
-          Context.Send(s[i]);
+         begin
+          j:=i;
+          while (j<=l) and not(s[j]='<') and not(s[j]='&') do inc(j);
+          Context.Send(u(i,j-i));
+          i:=j;
+         end;
       end;
-      inc(i);
      end;
     <</div>>
    end;
