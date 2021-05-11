@@ -1,0 +1,46 @@
+[[@MSXML2_TLB,VBScript_RegExp_55_TLB,Variants,ActiveX,xxmHeaders,xxmSession,DataLank]][[!var
+r:ServerXMLHTTP60;
+s:string;
+qr:TQueryResult;
+i,id:integer;
+c:WideString;
+r1:RegExp;
+mc:MatchCollection;
+m:Match;
+]][[
+
+s:=Context.ContextString(csReferer);
+if s<>'' then
+ begin
+  i:=Pos('/Post.xxm?id=',s);
+  if i=0 then s:='' else
+   begin
+    qr:=TQueryResult.Create(Session.Connection,'select content from "Post" where id=$1',[StrToInt(Copy(s,i+13,99))]);
+    try
+      if qr.Read then
+       begin
+        //s:=qr.GetStr('URL')
+        c:=qr['content'];
+        r1:=CoRegExp.Create;
+        r1.Pattern:='<a href="([^"]+?)">';
+        mc:=r1.Execute(c) as MatchCollection;
+        m:=mc[0] as Match;
+        s:=(m.SubMatches as SubMatches)[0];
+       end
+      else
+        s:='';
+    finally
+      qr.Free;
+    end;
+   end;
+ end;
+
+r:=CoServerXMLHTTP60.Create;
+r.open('GET',Context.ContextString(csQueryString),false,EmptyParam,EmptyParam);
+if s<>'' then r.setRequestHeader('Referer',s);
+r.send(EmptyParam);
+
+//(Context as IxxmHttpHeaders).ResponseHeaders['Content-Type']:=
+Context.SetStatus(r.status,r.statusText);
+Context.ContentType:=r.getResponseHeader('Content-Type');
+Context.SendStream(IUnknown(r.responseStream) as IStream);

@@ -1,0 +1,45 @@
+[[@DataLank,xxmSession,fCommon,Variants]][[!var
+qr:TQueryResult;
+id:integer;
+r:string;
+d1:TDateTime;
+]][[
+
+Context.Include('dHead.xxmi');
+
+//TODO: more options for parameters: by time, by category...
+
+qr:=TQueryResult.Create(Session.Connection,
+  'select P.id, P.guid, P.url, P.created, P.pubdate, P.title, O.opinion, O.created, S.label, S.color'+
+  ' from "Opinion" O'+
+  ' inner join "Post" P on P.id=O.post_id'+
+  ' inner join "Feed" F on F.id=P.feed_id'+
+  ' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'+
+  ' where O.user_id=$1'+
+  ' order by O.created desc limit 100'
+  ,[Session.UserID]);
+try
+  while qr.Read do
+   begin
+    id:=qr.GetInt('id');
+    d1:=double(qr['pubdate'])+Session.TimeBias;
+    <<div style="padding-bottom:4pt;">>
+    if UtcNow+Session.TimeBias-d1>180 then
+    begin
+      <<div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',d1)<</div>>
+    end
+    else
+    begin
+      <<div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('mm-dd hh:nn',d1)<</div>>
+    end;
+    ]]
+    [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+    <a href="[[=qr['url']]]" rel="noreferrer" style="font-weight:bold;">>#qr['title']<</a>
+    </div>
+    <div style="margin-left:2em;" title="[[=FormatDateTime('dddd yyyy-mm-dd hh:nn',double(qr['created'])+Session.TimeBias)]]">>=qr['opinion']<</div>>
+   end;
+finally
+  qr.Free;
+end;
+
+Context.Include('dFoot.xxmi');

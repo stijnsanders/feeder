@@ -2098,7 +2098,7 @@ begin
 
                  end;
 
-                if CheckNewItem then
+                if not((itemurl='') and (content='')) and CheckNewItem then
                  begin
                   feedtagprefix:='tag';
                   feedtags:=jn1['tagIds'];
@@ -2882,6 +2882,7 @@ begin
             dbA.BeginTrans;
             try
               dbA.Execute('delete from "UserPost" where post_id=$1',[i]);
+              dbA.Execute('delete from "Opinion" where post_id=$1',[i]);
               dbA.Execute('delete from "Post" where id=$1',[i]);
               dbA.CommitTrans;
             except
@@ -2908,6 +2909,7 @@ begin
             dbA.BeginTrans;
             try
               dbA.Execute('delete from "UserPost" where post_id in (select P.id from "Post" P where P.feed_id=$1)',[i]);
+              dbA.Execute('delete from "Opinion" where post_id in (select P.id from "Post" P where P.feed_id=$1)',[i]);
               dbA.Execute('delete from "Post" where feed_id=$1',[i]);
               dbA.Execute('delete from "Feed" where id=$1',[i]);
               dbA.CommitTrans;

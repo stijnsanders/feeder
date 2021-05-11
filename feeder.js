@@ -48,6 +48,10 @@ function doHere(){
   window.open(document.getElementById("postlink").href,"postview");
   return false;
 }
+function doExpress(){
+  window.open("Express.xxm"+currentPostLink.lastElementChild.getAttribute("postqs"),"postview");
+  return false;
+}
 function doNext(){
   var p=null;
   if(currentPostLink)p=currentPostLink.nextSibling;

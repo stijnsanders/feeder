@@ -1,0 +1,60 @@
+[[@DataLank,xxmSession,VBScript_RegExp_55_TLB,fCommon]][[!var
+qr:TQueryResult;
+id,i:integer;
+r:string;
+db:TDataConnection;
+d1:TDateTime;
+]][[
+id:=Context['id'].AsInteger;
+
+r:=Context.URL;
+i:=Length(r);
+while (i<>0) and (r[i]<>'/') do dec(i);
+SetLength(r,i);
+
+db:=Session.Connection;
+
+db.BeginTrans;
+try
+  db.Execute('delete from "Opinion" where user_id=$1 and post_id=$2',[Session.UserID,id]);
+  if Context['opinion'].Value<>'' then
+    db.Execute('insert into "Opinion" (user_id,post_id,opinion,created) values ($1,$2,$3,$4)',[Session.UserID,id,Context['opinion'].Value,double(UtcNow)]);
+  db.CommitTrans;
+except
+  db.RollbackTrans;
+  raise;
+end;
+
+qr:=TQueryResult.Create(db,
+  'select P.guid, P.url, P.created, P.pubdate, P.title, O.opinion, S.label, S.color'+
+  ' from "Post" P'+
+  ' inner join "Feed" F on F.id=P.feed_id'+
+  ' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'+
+  ' left outer join "Opinion" O on O.user_id=$1 and O.post_id=P.id'+
+  ' where P.id=$2',[Session.UserID,id]);
+try
+  Context.Include('dHead.xxmi',[r]);
+  d1:=double(qr['pubdate'])+Session.TimeBias;
+  <<div style="padding-bottom:4pt;">>
+  if UtcNow+Session.TimeBias-d1>180 then
+   begin
+    <<div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',d1)<</div>>
+   end
+  else
+   begin
+    <<div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('mm-dd hh:nn',d1)<</div>>
+   end;
+  ]]
+  [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+  <b>>#qr['title']<</b>
+  </div>
+  <div style="border:1px solid black;padding:3px;">>=qr['opinion']<</div>
+  <div style="height:75vh;margin-top:4pt;border-top:4px solid gold;color:#9999AA;font-size:0.8em;">
+  <span title="[[=qr['guid']]]">>=qr['url']<</span>
+  <a class="raw" target="postview" href="[[=r]]Post.xxm?id=[[=id]]"
+    title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',double(qr['created']))]]">&emsp;&#x2139;&emsp;</a>
+  </div>>
+finally
+  qr.Free;
+end;
+Context.Include('dFoot.xxmi');

@@ -111,6 +111,20 @@ constraint FK_SubCount_Subscription foreign key (subscription_id) references "Su
 
 create unique index IX_SubCount on "SubCount" (month,subscription_id);
 
+
+create table "Opinion" (
+id serial primary key,
+user_id integer not null,
+post_id integer not null,
+opinion text not null,
+created float not null,
+constraint FK_Opinion_User foreign key (user_id) references "User" (id),
+constraint FK_Opinion_Post foreign key (post_id) references "Post" (id)
+);
+
+create unique index IX_Opinion on "Opinion" (user_id,post_id);
+
+
 --PostgreSQL:
 alter default privileges grant select,insert,delete,update on tables to feeder;
 alter default privileges grant usage,select,update on sequences to feeder;

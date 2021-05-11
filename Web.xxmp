@@ -76,6 +76,21 @@
 			"path": "Badge.xxm",
 			"unitName": "badge_xxm1",
 			"unitPath": ""
+		},
+		"express_xxm": {
+			"path": "Express.xxm",
+			"unitName": "express_xxm1",
+			"unitPath": ""
+		},
+		"expressnew_xxm": {
+			"path": "ExpressNew.xxm",
+			"unitName": "expressnew_xxm1",
+			"unitPath": ""
+		},
+		"opinions_xxm": {
+			"path": "Opinions.xxm",
+			"unitName": "opinions_xxm1",
+			"unitPath": ""
 		}
 	},
 	"units": {

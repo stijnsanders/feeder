@@ -19,6 +19,7 @@ if id=0 then
   <b>Feeds</b>:
   &nbsp;<a href="New.xxm">Add</a>
   &nbsp;<a href="OPML.xxm">OPML</a>
+  &nbsp;<a href="Opinions.xxm">Opinions</a>
   &nbsp;<a href="Config.xxm"><img src="img_c.png" width="16" height="16" border="0" alt="Settings..." /> Settings</a>
   &nbsp;
   |
