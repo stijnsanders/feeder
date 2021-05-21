@@ -1,7 +1,9 @@
-[[@DataLank,xxmSession,fCommon,Variants]][[!var
+[[@DataLank,xxmSession,fCommon,VBScript_RegExp_55_TLB,Variants]][[!var
 qr:TQueryResult;
-id:integer;
-r:string;
+id,i:integer;
+sql:string;
+rp1,rp2,rp3:IRegExp2;
+c:WideString;
 d1:TDateTime;
 ]][[
 
@@ -9,16 +11,50 @@ Context.Include('dHead.xxmi');
 
 //TODO: more options for parameters: by time, by category...
 
-qr:=TQueryResult.Create(Session.Connection,
-  'select P.id, P.guid, P.url, P.created, P.pubdate, P.title, O.opinion, O.created, S.label, S.color'+
+d1:=UtcNow;
+sql:='select P.id, P.guid, P.url, P.created, P.pubdate, P.title, O.opinion, O.created, S.label, S.color'+
   ' from "Opinion" O'+
   ' inner join "Post" P on P.id=O.post_id'+
   ' inner join "Feed" F on F.id=P.feed_id'+
   ' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'+
-  ' where O.user_id=$1'+
-  ' order by O.created desc limit 100'
-  ,[Session.UserID]);
+  ' where O.user_id=$1';
+
+if Context['today'].AsInteger=1 then
+ begin
+  sql:=sql+' and O.created>$2 order by O.created';
+  d1:=d1-1.0;
+ end
+else
+ begin
+  sql:=sql+' order by O.created';
+  if Context['a'].AsInteger=0 then sql:=sql+' desc';
+  if Context['l'].Value='' then
+    sql:=sql+' limit 100'
+  else
+   begin
+    i:=Context['l'].AsInteger;
+    if i<>0 then sql:=sql+' limit '+IntToStr(i);
+   end;
+ end;
+
+rp1:=CoRegExp.Create;
+rp1.Pattern:='\[([^\]]+?)\]\(([^\)]+?)\)';
+rp1.Global:=true;
+rp2:=CoRegExp.Create;
+rp2.Pattern:='\*\*([^\*]+?)\*\*';
+rp2.Global:=true;
+rp3:=CoRegExp.Create;
+rp3.Pattern:='__([^_]+?)__';
+rp3.Global:=true;
+
+
+qr:=TQueryResult.Create(Session.Connection,sql,[Session.UserID,double(d1)]);
 try
+  if qr.EOF then
+   begin
+    <<i>none (yet)</i>>
+   end
+  else
   while qr.Read do
    begin
     id:=qr.GetInt('id');
@@ -36,7 +72,17 @@ try
     [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
     <a href="[[=qr['url']]]" rel="noreferrer" style="font-weight:bold;">>#qr['title']<</a>
     </div>
-    <div style="margin-left:2em;" title="[[=FormatDateTime('dddd yyyy-mm-dd hh:nn',double(qr['created'])+Session.TimeBias)]]">>=qr['opinion']<</div>>
+    <div style="margin-left:2em;margin-bottom:0.4em;" title="[[=FormatDateTime('dddd yyyy-mm-dd hh:nn',double(qr['created'])+Session.TimeBias)]]">>
+
+    c:=HTMLEncode(qr.GetStr('opinion'));
+
+    c:=rp1.Replace(c,'<a href="$2">$1</a>');
+    c:=rp2.Replace(c,'<b>$1</b>');
+    c:=rp3.Replace(c,'<i>$1</i>');
+
+    Context.SendHTML(c);
+
+    <</div>>
    end;
 finally
   qr.Free;

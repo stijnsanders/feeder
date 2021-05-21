@@ -4,6 +4,8 @@ id,i:integer;
 r:string;
 db:TDataConnection;
 d1:TDateTime;
+rp1,rp2,rp3:IRegExp2;
+c:WideString;
 ]][[
 id:=Context['id'].AsInteger;
 
@@ -24,6 +26,16 @@ except
   db.RollbackTrans;
   raise;
 end;
+
+rp1:=CoRegExp.Create;
+rp1.Pattern:='\[([^\]]+?)\]\(([^\)]+?)\)';
+rp1.Global:=true;
+rp2:=CoRegExp.Create;
+rp2.Pattern:='\*\*([^\*]+?)\*\*';
+rp2.Global:=true;
+rp3:=CoRegExp.Create;
+rp3.Pattern:='__([^_]+?)__';
+rp3.Global:=true;
 
 qr:=TQueryResult.Create(db,
   'select P.guid, P.url, P.created, P.pubdate, P.title, O.opinion, S.label, S.color'+
@@ -48,7 +60,17 @@ try
   [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
   <b>>#qr['title']<</b>
   </div>
-  <div style="border:1px solid black;padding:3px;">>=qr['opinion']<</div>
+  <div style="padding:0.4em;background-color:#FFFFDD;">>
+  
+  c:=HTMLEncode(qr.GetStr('opinion'));
+
+  c:=rp1.Replace(c,'<a href="$2">$1</a>');
+  c:=rp2.Replace(c,'<b>$1</b>');
+  c:=rp3.Replace(c,'<i>$1</i>');
+
+  Context.SendHTML(c);
+
+  <</div>
   <div style="height:75vh;margin-top:4pt;border-top:4px solid gold;color:#9999AA;font-size:0.8em;">
   <span title="[[=qr['guid']]]">>=qr['url']<</span>
   <a class="raw" target="postview" href="[[=r]]Post.xxm?id=[[=id]]"
