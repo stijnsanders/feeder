@@ -1932,6 +1932,8 @@ begin
 
             //TODO: if rw='[]' and '/wp/v2/posts' switch to '/wp/v2/articles'? episodes? media?
 
+            hasReplaces:=FileExists('feeds\'+Format('%.4d',[feedid])+'r.json');
+
             jnodes:=JSONDocArray;
             jdoc:=JSON(['items',jnodes]);
             jdoc.Parse('{"items":'+rw+'}');
@@ -1963,6 +1965,9 @@ begin
                   rhImgData.Global:=true;
                  end;
                 content:=rhImgData.Replace(content,'<img$1$2$3');
+
+                if hasReplaces then
+                  PerformReplaces(feedid,content);
 
                 RegisterItem;
                end;
@@ -2063,7 +2068,8 @@ begin
                 //TODO: media, mediumIds (leadPhotoId?
 
                 content:=VarToStr(jn1['storyHTML']);
-                if content='' then content:=VarToStr(jn1['firstWords']);
+                if content='' then content:=VarToStr(jn1['firstWords'])
+                  +'<span style="color:silver;">...</span>';
 
                 //jn1['media']
                 if jthumbs.Count=0 then
