@@ -2068,8 +2068,12 @@ begin
                 //TODO: media, mediumIds (leadPhotoId?
 
                 content:=VarToStr(jn1['storyHTML']);
-                if content='' then content:=VarToStr(jn1['firstWords'])
-                  +'<span style="color:silver;">...</span>';
+                if content='' then
+                 begin
+                  content:=VarToStr(jn1['firstWords']);
+                  if content<>'' then
+                    content:=content+'<span style="color:silver;">...</span>';
+                 end;
 
                 //jn1['media']
                 if jthumbs.Count=0 then
