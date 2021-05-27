@@ -69,7 +69,7 @@ try
       <<div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('mm-dd hh:nn',d1)<</div>>
     end;
     ]]
-    [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+    [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')]]
     <a href="[[=qr['url']]]" rel="noreferrer" style="font-weight:bold;">>#qr['title']<</a>
     </div>
     <div style="margin-left:2em;margin-bottom:0.4em;" title="[[=FormatDateTime('dddd yyyy-mm-dd hh:nn',double(qr['created'])+Session.TimeBias)]]">>

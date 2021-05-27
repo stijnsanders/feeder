@@ -139,7 +139,7 @@ case Context['x'].AsInteger of
 
       <<div class="post">
       <div class="date">>=FormatDateTime('yyyy-mm-dd',double(d)+Session.TimeBias)<</div>
-      [[#ShowLabel(lbl,c)]]
+      [[#ShowLabel(lbl,c,'')]]
       "[[=t]]"
       <span style="color:#CCCCCC;">>=s<</span>
       </div>>

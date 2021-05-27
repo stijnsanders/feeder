@@ -3,7 +3,7 @@ unit fCommon;
 interface
 
 function NameFromFeedURL(const url:string):string;
-function ShowLabel(const Lbl,LblColor:string):string;
+function ShowLabel(const Lbl,LblColor,ClassPrefix:string):string;
 function ColorPicker(const ValColor:string):string;
 function CheckColor(const ValColor:string):string;
 function UtcNow:TDateTime;
@@ -67,13 +67,13 @@ begin
   ;
 end;
 
-function ShowLabel(const Lbl,LblColor:string):string;
+function ShowLabel(const Lbl,LblColor,ClassPrefix:string):string;
 var
   c:string;
   i,j,k:integer;
 begin
   if (Lbl='') and (LblColor='') then
-    Result:='<div class="label" title="feeder: system message" style="background-color:#FFCC00;color:#000000;border:1px solid #000000;border-radius:0;">feeder</div>'
+    Result:='<div class="'+ClassPrefix+'label" title="feeder: system message" style="background-color:#FFCC00;color:#000000;border:1px solid #000000;border-radius:0;">feeder</div>'
   else
    begin
     c:=LblColor;
@@ -102,7 +102,7 @@ begin
       k:= i         and $FF; inc(j,((k*k) shr 8)*2);//B
       if j<750 then c:=c+';color:#DDDDDD';
     end;
-    Result:='<div class="label" style="background-color:#'+c+';">'+HTMLEncode(Lbl)+'</div>';
+    Result:='<div class="'+ClassPrefix+'label" style="background-color:#'+c+';">'+HTMLEncode(Lbl)+'</div>';
    end;
 end;
 

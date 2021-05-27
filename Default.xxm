@@ -261,7 +261,7 @@ else
          end;
         <<div class="post[[if qr.IsNull('ReadID') then Context.SendHTML('read');]]" id="p[[=qr['id']]]">
         <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('hh:nn',d1)<</div>
-        [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+        [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')]]
         <a href="[[=qr['url']]]" postqs="[[?'id',qr['id']]]" onclick="return doPost(this,event);">>#qr['title']<</a>
         </div>>
       end;

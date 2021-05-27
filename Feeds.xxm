@@ -51,7 +51,7 @@ if id=0 then
        end;
       <<div class="post">
       <div class="date">>=FormatDateTime('yyyy-mm-dd',double(qr['created'])+Session.TimeBias)<</div>
-      [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+      [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')]]
       <a href="?id=[[.id]]">"[[.name]]"</a>
       <a href=".?f=[[.feed_id]]" id="pc[[.id]]" style="color:#0000CC;">...</a>
       [[
