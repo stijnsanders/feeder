@@ -955,9 +955,9 @@ begin
     r.LoadItem(i,rd);
     re:=CoRegExp.Create;
     re.Pattern:=rd['x'];
-    if not(VarIsNull(rd['g'])) then re.Global:=rd['g'];
-    if not(VarIsNull(rd['m'])) then re.Multiline:=rd['m'];
-    if not(VarIsNull(rd['i'])) then re.IgnoreCase:=rd['g'];
+    if not(VarIsNull(rd['g'])) then re.Global:=boolean(rd['g']);
+    if not(VarIsNull(rd['m'])) then re.Multiline:=boolean(rd['m']);
+    if not(VarIsNull(rd['i'])) then re.IgnoreCase:=boolean(rd['i']);
     data:=re.Replace(data,rd['s']);
    end;
 end;
