@@ -975,6 +975,7 @@ var
   jnodes,jcaption,jthumbs:IJSONDocArray;
   xl,xl1:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
+  x1:IXMLDOMNode;
   feedurl,feedurl0,feedurlskip,feedresult,itemid,itemurl:string;
   feedname,feedname0,title,content:WideString;
   feedload,pubDate:TDateTime;
@@ -1518,7 +1519,7 @@ begin
     try
 
       //new feed? youtube channel?
-      if (reedresult0='') and (Copy(feedurl,1,Length(YoutubePrefix1))=YoutubePrefix1) then
+      if (feedresult0='') and (Copy(feedurl,1,Length(YoutubePrefix1))=YoutubePrefix1) then
         feedurl:=YoutubePrefix2+
           Copy(feedurl,Length(YoutubePrefix1)+1,Length(feedurl)-Length(YoutubePrefix1));
 
@@ -2257,7 +2258,9 @@ begin
               //RSS
               if doc.documentElement.nodeName='rss' then
                begin
-                doc.setProperty('SelectionNamespaces','xmlns:content="http://purl.org/rss/1.0/modules/content/"');
+                doc.setProperty('SelectionNamespaces',
+                  'xmlns:content="http://purl.org/rss/1.0/modules/content/" '+
+                  'xmlns:media="http://search.yahoo.com/mrss/"');
 
                 hasFoaf:=false;
                 i:=0;
@@ -2313,10 +2316,21 @@ begin
                        end;
                      end;
                     xl1:=nil;
+
                     if hasFoaf and rhImgFoaf.Test(content) then
                       content:=rhImgFoaf.Replace(content,'$1');
+
+                    if ((content='') or (content[1]<>'<')) then //not HTML
+                     begin
+                      //x1:=x.selectSingleNode('media:content/@url'); if x1=nil then
+                      x1:=x.selectSingleNode('media:thumbnail/@url');
+                      if x1<>nil then //<a href="?
+                        content:='<img src="'+HTMLEncode(x1.text)+'" /><br />'+content;
+                     end;
+
                     if hasReplaces then
                       PerformReplaces(feedid,content);
+
                     RegisterItem;
                    end;
 
@@ -2329,8 +2343,9 @@ begin
               //RDF
               if doc.documentElement.nodeName='rdf:RDF' then
                begin
-                doc.setProperty('SelectionNamespaces','xmlns:rss=''http://purl.org/rss/1.0/'''+
-                 ' xmlns:dc=''http://purl.org/dc/elements/1.1/''');
+                doc.setProperty('SelectionNamespaces',
+                 'xmlns:rss="http://purl.org/rss/1.0/"'+
+                 ' xmlns:dc="http://purl.org/dc/elements/1.1/"');
                 x:=doc.documentElement.selectSingleNode('rss:channel/rss:title') as IXMLDOMElement;
                 if x<>nil then feedname:=x.text;
 
@@ -2362,8 +2377,8 @@ begin
                 if c2=0 then
                  begin
                   doc.setProperty('SelectionNamespaces',
-                   'xmlns:rdf=''http://www.w3.org/1999/02/22-rdf-syntax-ns#'''+
-                   ' xmlns:schema=''http://schema.org/''');
+                   'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"'+
+                   ' xmlns:schema="http://schema.org/"');
                   xl:=doc.documentElement.selectNodes('rdf:Description/schema:hasPart/rdf:Description');
                   x:=xl.nextNode as IXMLDOMElement;
                   while x<>nil do
@@ -2400,7 +2415,7 @@ begin
               if doc.documentElement.nodeName='sparql' then
                begin
                 doc.setProperty('SelectionNamespaces',
-                 'xmlns:s=''http://www.w3.org/2005/sparql-results#''');
+                 'xmlns:s="http://www.w3.org/2005/sparql-results#"');
 
                 //feedname:=??
                 xl:=doc.documentElement.selectNodes('s:results/s:result');
