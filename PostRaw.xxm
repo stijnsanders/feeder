@@ -27,7 +27,7 @@ try
   d1:=double(qr['pubdate'])+Session.TimeBias;
   <<div style="padding-bottom:4pt;">
   <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('mm-dd hh:nn',d1)<</div>
-  [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'))]]
+  [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')]]
   <b>>=qr['title']<</b>
   </div>>
 

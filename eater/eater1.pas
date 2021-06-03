@@ -698,6 +698,9 @@ const
   Base64Codes:array[0..63] of AnsiChar=
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
+  YoutubePrefix1='https://www.youtube.com/channel/';
+  YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
+
 function Base64Encode(const x:UTF8String):UTF8String;
 var
   i,j,l:cardinal;
@@ -1513,6 +1516,11 @@ begin
     c2:=0;
     loadext:=FileExists('feeds\'+Format('%.4d',[feedid])+'.txt');
     try
+
+      //new feed? youtube channel?
+      if (reedresult0='') and (Copy(feedurl,1,Length(YoutubePrefix1))=YoutubePrefix1) then
+        feedurl:=YoutubePrefix2+
+          Copy(feedurl,Length(YoutubePrefix1)+1,Length(feedurl)-Length(YoutubePrefix1));
 
       if InstagramLoadExternal and (Copy(feedurl,1,26)='https://www.instagram.com/') then
        begin
@@ -2499,6 +2507,7 @@ begin
 
         if newfeed or
           (feedurl<>feedurl0) or (feedname<>feedname0) then
+         begin
           dbA.Update('Feed',
             ['id',feedid
             ,'name',feedname
@@ -2509,7 +2518,10 @@ begin
             ,'itemcount',c1
             ,'totalcount',totalcount+c2
             ,'regime',feedregime
-            ])
+            ]);
+          if (NewFeedEvent<>0) and (feedurl<>feedurl0) then
+            SetEvent(NewFeedEvent);
+         end
         else
           dbA.Update('Feed',
             ['id',feedid

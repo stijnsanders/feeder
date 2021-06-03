@@ -36,12 +36,17 @@ try
   [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')]]
   <b>>#qr['title']<</b>
   </div>
-  <form method="post" action="ExpressNew.xxm">
+  <form method="post" action="ExpressNew.xxm" onsubmit="fsub()">
   <input type="hidden" name="id" value="[[=id]]" />
   <textarea name="opinion" id="op1" wordwrap="soft" style="width:90%;height:3em;" >>=qr['opinion']<</textarea><br />
-  <input type="submit" value="Express" />
+  <input type="submit" value="Express" id="subm1" />
   </form>
-  <script>document.getElementById("op1").focus();</script>
+  <script>
+  document.getElementById("op1").focus();
+  function fsub(){
+    document.getElementById("subm1").value="Posting...";
+  }
+  </script>
   <div style="height:75vh;margin-top:4pt;border-top:4px solid gold;color:#9999AA;font-size:0.8em;">
   <span title="[[=qr['guid']]]">>=qr['url']<</span>
   <a class="raw" target="postview" href="[[=r]]Post.xxm?[[=Context.ContextString(csQueryString)]]"
