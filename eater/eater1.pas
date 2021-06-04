@@ -934,6 +934,15 @@ begin
   Result:=d;
 end;
 
+function IsProbablyHTML(const x:WideString):boolean;
+var
+  i:integer;
+begin
+  i:=1;
+  while (i<=Length(x)) and (x[i]<=' ') do inc(i); //skip whitespace
+  Result:=(i<=Length(x)) and (x[i]='<');
+end;
+
 procedure PerformReplaces(feedid:integer;var data:WideString);
 var
   sl:TStringList;
@@ -1846,12 +1855,6 @@ begin
                   if s='' then s:=VarToStr(jn1['thumbnail_src']);
                   if s='' then s:=VarToStr(jn1['display_url']);
 
-                  {
-                  if s<>'' then content:=
-                    '<a href="'+HTMLEncode(itemurl)+'"><img src="'+
-                    HTMLEncode(s)+'" border="0" /></a><br />'#13#10+
-                    content;
-                  }
                   if s<>'' then
                    begin
                     r:=CoServerXMLHTTP60.Create;
@@ -2089,7 +2092,7 @@ begin
                  begin
                   v:=jn1['mediumIds'];
                   if (p1<>'') and VarIsArray(v) and (VarArrayLowBound(v,1)<=VarArrayHighBound(v,1)) then
-                    content:='<img src="'+p1+
+                    content:='<img class="postthumb" src="'+p1+
                       VarToStr(v[VarArrayLowBound(v,1)])+
                       p2+
                       '" /><br />'#13#10+content;
@@ -2099,7 +2102,7 @@ begin
                  begin
                   jthumbs.LoadItem(0,jd1);
                   if content='' then content:=VarToStr(jd1['caption']);
-                  content:='<img src="'+
+                  content:='<img class="postthumb" src="'+
                     VarToStr(jd1['gcsBaseUrl'])+
                     VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
                     VarToStr(jd1['imageFileExtension'])+
@@ -2223,21 +2226,6 @@ begin
                     xl1:=nil;
                     if itemid='' then itemid:=itemurl;
                    end;
-                  y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
-                  if y=nil then title:='' else title:=y.text;
-                  y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
-                  if y=nil then y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
-                  if y=nil then
-                   begin
-                    y:=x.selectSingleNode('media:group/media:description') as IXMLDOMElement;
-                    if y=nil then
-                      content:=''
-                    else
-                      content:=EncodeNonHTMLContent(y.text);
-                   end
-                  else
-                    content:=y.text;
                   try
                     y:=x.selectSingleNode('atom:published') as IXMLDOMElement;
                     if y=nil then y:=x.selectSingleNode('atom:issued') as IXMLDOMElement;
@@ -2247,7 +2235,51 @@ begin
                   except
                     pubDate:=UtcNow;
                   end;
-                  if CheckNewItem then RegisterItem;
+
+                  if CheckNewItem then
+                   begin
+
+                    y:=x.selectSingleNode('atom:title') as IXMLDOMElement;
+                    if y=nil then y:=x.selectSingleNode('media:group/media:title') as IXMLDOMElement;
+                    if y=nil then title:='' else title:=y.text;
+                    y:=x.selectSingleNode('atom:content') as IXMLDOMElement;
+                    if y=nil then y:=x.selectSingleNode('atom:summary') as IXMLDOMElement;
+                    if y=nil then
+                     begin
+                      y:=x.selectSingleNode('media:group/media:description') as IXMLDOMElement;
+                      if y=nil then
+                        content:=''
+                      else
+                        content:=EncodeNonHTMLContent(y.text);
+                     end
+                    else
+                      content:=y.text;
+
+                    xl1:=x.selectNodes('atom:category');
+                    if xl1.length<>0 then
+                     begin
+                      feedtagprefix:='category';
+                      feedtags:=VarArrayCreate([0,xl1.length-1],varOleStr);
+                      i:=0;
+                      y:=xl1.nextNode as IXMLDOMElement;
+                      while y<>nil do
+                       begin
+                        feedtags[i]:=y.getAttribute('term');
+                        inc(i);
+                        y:=xl1.nextNode as IXMLDOMElement;
+                       end;
+                     end;
+                    xl1:=nil;
+
+                    if not IsProbablyHTML(content) then
+                     begin
+                      x1:=x.selectSingleNode('atom:link[@rel="enclosure" and @type="image/jpeg"]/@href');
+                      if x1<>nil then //<a href="?
+                        content:='<img class="postthumb" src="'+HTMLEncode(x1.text)+'" /><br />'+content;
+                     end;
+
+                    RegisterItem;
+                   end;
 
                   x:=xl.nextNode as IXMLDOMElement;
                  end;
@@ -2320,13 +2352,20 @@ begin
                     if hasFoaf and rhImgFoaf.Test(content) then
                       content:=rhImgFoaf.Replace(content,'$1');
 
-                    if ((content='') or (content[1]<>'<')) then //not HTML
+                    if not IsProbablyHTML(content) then
                      begin
-                      //x1:=x.selectSingleNode('media:content/@url'); if x1=nil then
+                      //x1:=x.selectSingleNode('media:content/@url');
+                      //if x1=nil then
                       x1:=x.selectSingleNode('media:thumbnail/@url');
-                      if x1<>nil then //<a href="?
-                        content:='<img src="'+HTMLEncode(x1.text)+'" /><br />'+content;
+                      if x1=nil then
+                      x1:=x.selectSingleNode('media:content[@medium="image"]/media:thumbnail/@url');
                      end;
+                    if x1=nil then
+                      x1:=x.selectSingleNode('enclosure[@type="image/jpeg"]/@url');
+                    if x1=nil then
+                      x1:=x.selectSingleNode('enclosure[@type="image/png"]/@url');
+                    if x1<>nil then //<a href="?
+                      content:='<img class="postthumb" src="'+HTMLEncode(x1.text)+'" /><br />'+content;
 
                     if hasReplaces then
                       PerformReplaces(feedid,content);
