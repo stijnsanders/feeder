@@ -2133,7 +2133,6 @@ begin
           else
            begin
 
-
             doc:=CoDOMDocument60.Create;
             doc.async:=false;
             doc.validateOnParse:=false;
@@ -2276,6 +2275,7 @@ begin
                       x1:=x.selectSingleNode('atom:link[@rel="enclosure" and @type="image/jpeg"]/@href');
                       if x1<>nil then //<a href="?
                         content:='<img class="postthumb" src="'+HTMLEncode(x1.text)+'" /><br />'+content;
+                      x1:=nil;
                      end;
 
                     RegisterItem;
@@ -2283,6 +2283,7 @@ begin
 
                   x:=xl.nextNode as IXMLDOMElement;
                  end;
+                xl:=nil;
                 feedresult:=Format('Atom %d/%d',[c2,c1]);
                end
               else
@@ -2352,7 +2353,9 @@ begin
                     if hasFoaf and rhImgFoaf.Test(content) then
                       content:=rhImgFoaf.Replace(content,'$1');
 
-                    if not IsProbablyHTML(content) then
+                    if IsProbablyHTML(content) then
+                      x1:=nil //see below
+                    else
                      begin
                       //x1:=x.selectSingleNode('media:content/@url');
                       //if x1=nil then
@@ -2365,7 +2368,10 @@ begin
                     if x1=nil then
                       x1:=x.selectSingleNode('enclosure[@type="image/png"]/@url');
                     if x1<>nil then //<a href="?
+                     begin
                       content:='<img class="postthumb" src="'+HTMLEncode(x1.text)+'" /><br />'+content;
+                      x1:=nil;
+                     end;
 
                     if hasReplaces then
                       PerformReplaces(feedid,content);
@@ -2375,6 +2381,7 @@ begin
 
                   x:=xl.nextNode as IXMLDOMElement;
                  end;
+                xl:=nil;
                 feedresult:=Format('RSS %d/%d',[c2,c1]);
                end
               else
@@ -2412,6 +2419,7 @@ begin
                   if CheckNewItem then RegisterItem;
                   x:=xl.nextNode as IXMLDOMElement;
                  end;
+                xl:=nil;
 
                 if c2=0 then
                  begin
@@ -2431,7 +2439,6 @@ begin
                     y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
                     if y<>nil then title:=title+' '#$2014' '+y.text;
 
-
                     y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
                     if y=nil then content:='' else content:=y.text;
                     try
@@ -2443,6 +2450,7 @@ begin
                     if CheckNewItem then RegisterItem;
                     x:=xl.nextNode as IXMLDOMElement;
                    end;
+                  xl:=nil;
                  end;
 
 
@@ -2480,6 +2488,7 @@ begin
                   if CheckNewItem then RegisterItem;
                   x:=xl.nextNode as IXMLDOMElement;
                  end;
+                xl:=nil;
 
                 feedresult:=Format('SPARQL %d/%d',[c2,c1]);
                end
