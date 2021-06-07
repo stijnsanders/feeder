@@ -103,7 +103,7 @@ try
              begin
               <<span class="e">>=u(i,j-i)<</span>>
               i:=j;
-              while (i<=l) and (s[i]<>'>') do
+              while (i<=l) and (s[i]<>'>') and (s[i]<>'/') do
                begin
                 //attributes
                 j:=i;
@@ -144,7 +144,7 @@ try
                   <<span class="c">>=s[j]<</span>>
                   inc(j);
                   i:=j;
-                  while (j<=l) and (s[j]<>'>') and (s[j]>' ') do inc(j);
+                  while (j<=l) and (s[j]<>'>') and (s[j]<>'/') and (s[j]>' ') do inc(j);
                   <<span class="v">>=u(i,j-i)<</span>>
                  end;
                 //else no value?
@@ -156,9 +156,16 @@ try
                   i:=j;
                  end;
                end;
-              if (i<=l)  then
+              if (i<=l) then
                begin
-                <<span class="e">>=s[i]<</span>> //assert '>'
+                <<span class="e">>
+                if (i<=l) and (s[i]='/') then
+                 begin
+                  Context.Send(s[i]);
+                  inc(i);
+                 end;
+                Context.Send(s[i]);//assert '>'
+                <</span>> 
                end;
              end;
            end;
