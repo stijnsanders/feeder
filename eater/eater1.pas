@@ -2134,6 +2134,51 @@ begin
             feedresult:=Format('Titanium %d/%d',[c2,c1]);
            end
           else
+          if ((feedresult0='') or (Copy(feedresult0,1,6)='Fusion'))
+            and FindPrefixAndCrop(rw,'Fusion.globalContent=') then
+           begin
+            jnodes:=JSONDocArray;
+            jd1:=JSON;
+            jdoc:=JSON(['result',JSON(['articles',jnodes,'section',jd1])]);
+            try
+              jdoc.Parse(rw);
+            except
+              on EJSONDecodeException do
+                ;//ignore "data past end"
+            end;
+            feedname:=jd1['title'];
+            jn0:=JSON;
+            p1:='';
+            p2:='';
+            for i:=0 to jnodes.Count-1 do
+             begin
+              jnodes.LoadItem(i,jn0);
+
+              itemid:=jn0['id'];
+              itemurl:=jn0['canonical_url'];
+              try
+                pubDate:=ConvDate1(VarToStr(jn0['display_time']));//published_time?
+              except
+                pubDate:=UtcNow;
+              end;
+              title:=jn0['title'];
+              v:=jn0['subtitle'];
+              if not(VarIsNull(v)) then title:=title+' '#$2014' '+v;
+              content:=jn0['description'];
+
+              if CheckNewItem then
+               begin
+                jn1:=JSON(jn0['thumbnail']);
+                if jn1<>nil then
+                  content:='<img class="postthumb" src="'+jn1['url']+
+                    '" alt="'+HTMLEncode(VarToStr(jn1['caption']))+
+                    '" /><br />'#13#10+content;
+                RegisterItem;
+               end;
+             end;
+            feedresult:=Format('Fusion %d/%d',[c2,c1]);
+           end
+          else
            begin
 
             doc:=CoDOMDocument60.Create;

@@ -74,6 +74,11 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 </tr>
 
 <tr>
+<td>Fusion</td>
+<td>Loads page HTML, locates <code>Fusion.globalContent=</code>, loads JSON from that point and processes data.</td>
+</tr>
+
+<tr>
 <td>HTML</td>
 <td>Searches header for appropriate <code>&lt;link rel="alternative"</code> element to update feed URL</td>
 </tr>
