@@ -122,10 +122,13 @@ try
                       Context.Send(u(i,j-i));
                       i:=j;
                       inc(j);//'&'
-                      while (j<=l) and not(s[j]=';') and not(s[j]='>') and not(s[j]='&') and not(s[j]<=' ') do inc(j);
-                      if (j<=l) and (s[j]=';') then inc(j);
-                      <</span><span class="x">>=u(i,j-i)<</span><span class="v">>
-                      i:=j;
+                      while (j<=l) and not(s[j]=';') and not(s[j]='>') and not(s[j]='&') and not(s[j]<=' ') and (j-i<=8) do inc(j);
+                      if (j-i<=8) then
+                       begin
+                        if (j<=l) and (s[j]=';') then inc(j);
+                        <</span><span class="x">>=u(i,j-i)<</span><span class="v">>
+                        i:=j;
+                       end;
                      end
                     else
                       inc(j); 
