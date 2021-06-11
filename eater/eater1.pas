@@ -982,6 +982,7 @@ var
   doc:DOMDocument60;
   jdoc,jdoc1,jn0,jn1,jc0,jc1,jd1:IJSONDocument;
   jnodes,jcaption,jthumbs:IJSONDocArray;
+  je:IJSONEnumerator;
   xl,xl1:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
   x1:IXMLDOMNode;
@@ -1654,6 +1655,8 @@ begin
            end
           else
             r.setRequestHeader('User-Agent','FeedEater/1.0');
+          if Copy(feedurl,1,30)='https://www.washingtonpost.com' then
+            r.setRequestHeader('Cookie','wp_gdpr=1|1');
           //TODO: ...'/wp/v2/posts' param 'after' last load time?
           if (feedlastmod<>'') and not(FeedAll) then
             r.setRequestHeader('If-Modified-Since',feedlastmod);
@@ -2082,7 +2085,7 @@ begin
                 content:=VarToStr(jn1['storyHTML']);
                 if content='' then
                  begin
-                  content:=VarToStr(jn1['firstWords']);
+                  content:=HTMLEncode(VarToStr(jn1['firstWords']));
                   if content<>'' then
                     content:=content+'<span style="color:silver;">...</span>';
                  end;
@@ -2164,19 +2167,74 @@ begin
               title:=jn0['title'];
               v:=jn0['subtitle'];
               if not(VarIsNull(v)) then title:=title+' '#$2014' '+v;
-              content:=jn0['description'];
+              content:=HTMLEncode(jn0['description']);
 
               if CheckNewItem then
                begin
                 jn1:=JSON(jn0['thumbnail']);
                 if jn1<>nil then
-                  content:='<img class="postthumb" src="'+jn1['url']+
+                  content:='<img class="postthumb" src="'+HTMLEncode(jn1['url'])+
                     '" alt="'+HTMLEncode(VarToStr(jn1['caption']))+
                     '" /><br />'#13#10+content;
                 RegisterItem;
                end;
              end;
             feedresult:=Format('Fusion %d/%d',[c2,c1]);
+           end
+          else
+          if ((feedresult0='') or (Copy(feedresult0,1,5)='NextData'))
+            and FindPrefixAndCrop(rw,'<script id="__NEXT_DATA__" type="application/json">') then
+           begin
+            jd1:=JSON;
+            jdoc:=JSON(['props',JSON(['pageProps',JSON(['contentState',jd1])])]);
+            try
+              jdoc.Parse(rw);
+            except
+              on EJSONDecodeException do
+                ;//ignore "data past end"
+            end;
+            //feedname?
+            je:=JSONEnum(jd1);
+            while je.Next do
+             begin
+              jn0:=JSON(je.Value);
+              if jn0<>nil then
+               begin
+                itemid:=VarToStr(jn0['_id']);
+                itemurl:=VarToStr(jn0['canonical_url']);
+               end;
+              if (jn0<>nil) and (itemid<>'') and (itemurl<>'') then
+               begin
+                try
+                  pubDate:=ConvDate1(VarToStr(jn0['display_date']));//publish_date?
+                except
+                  pubDate:=UtcNow;
+                end;
+                if CheckNewItem then
+                 begin
+                  title:=JSON(jn0['headlines'])['basic'];
+
+                  jn1:=JSON(jn0['description']);
+                  if jn1=nil then content:='' else content:=HTMLEncode(jn1['basic']);
+
+                  p1:='';//default;
+                  jn1:=JSON(jn0['promo_items']);
+                  if jn1<>nil then
+                    begin
+                     jn1:=JSON(jn1['basic']);
+                     if jn1<>nil then p1:=VarToStr(jn1['url']);
+                    end;
+                  if p1<>'' then
+                    content:=
+                      '<img class="postthumb" src="'+
+                      HTMLEncode(JSON(JSON(jn0['promo_items'])['basic'])['url'])+
+                      '" /><br />'#13#10+content;
+
+                  RegisterItem;
+                 end;
+               end;
+             end;
+            feedresult:=Format('NextData %d/%d',[c2,c1]);
            end
           else
            begin
