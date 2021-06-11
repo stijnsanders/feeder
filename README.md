@@ -49,7 +49,7 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 
 <tr>
 <td>Instagram</td>
-<td>Loads page HTML, locates <code>'"graphql":{'</code>, loads JSON from that point and processes data.</td>
+<td>Posts are created from <code>'"graphql":{'</code> JSON in page source</td>
 </tr>
 
 <tr>
@@ -65,22 +65,27 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 
 <tr>
 <td>WordPress API</td>
-<td>If HTML declares <code>&lt;link rel="https://api.w.org/"</code>, a suffix of <code>/wp/v2/posts</code> by default serves JSON for the 10 most recent posts</td>
+<td>If HTML declares <code>&lt;link rel="https://api.w.org/"</code>, posts are loaded from <code>/wp/v2/posts</code> JSON.</td>
 </tr>
 
 <tr>
 <td>Titanium</td>
-<td>Loads page HTML, locates <code>window['titanium-state'] = </code>, loads JSON from that point and processes data.</td>
+<td>Posts are loaded from <code>window['titanium-state'] = </code> JSON.</td>
 </tr>
 
 <tr>
 <td>Fusion</td>
-<td>Loads page HTML, locates <code>Fusion.globalContent=</code>, loads JSON from that point and processes data.</td>
+<td>Posts are loaded from <code>Fusion.globalContent=</code> JSON.</td>
+</tr>
+
+<tr>
+<td>NextData</td>
+<td>Posts are loaded from <code>&lt;script id="__NEXT_DATA__" type="application/json"&gt;</code> JSON.</td>
 </tr>
 
 <tr>
 <td>HTML</td>
-<td>Searches header for appropriate <code>&lt;link rel="alternative"</code> element to update feed URL</td>
+<td>Headers are searched for an appropriate <code>&lt;link rel="alternative"</code> element to update feed URL.</td>
 </tr>
 
 </table>
