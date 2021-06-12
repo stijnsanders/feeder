@@ -2182,7 +2182,7 @@ begin
             feedresult:=Format('Fusion %d/%d',[c2,c1]);
            end
           else
-          if ((feedresult0='') or (Copy(feedresult0,1,5)='NextData'))
+          if ((feedresult0='') or (Copy(feedresult0,1,8)='NextData'))
             and FindPrefixAndCrop(rw,'<script id="__NEXT_DATA__" type="application/json">') then
            begin
             jd1:=JSON;
