@@ -2085,7 +2085,7 @@ begin
                 content:=VarToStr(jn1['storyHTML']);
                 if content='' then
                  begin
-                  content:=HTMLEncode(VarToStr(jn1['firstWords']));
+                  content:=VarToStr(jn1['firstWords']);
                   if content<>'' then
                     content:=content+'<span style="color:silver;">...</span>';
                  end;
