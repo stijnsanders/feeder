@@ -1733,7 +1733,7 @@ begin
 
     if notmod then
      begin
-      feedresult:=feedresult0+' [HTTP 403]';
+      feedresult:=feedresult0+' [HTTP 304]';
       if not loadext then Writeln(' HTTP 304');
      end
     else
