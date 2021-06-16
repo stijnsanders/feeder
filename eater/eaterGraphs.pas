@@ -1,23 +1,22 @@
-unit eater2;
+unit eaterGraphs;
 
 interface
 
-uses SysUtils;
+uses SysUtils, DataLank;
 
-procedure DoCharts;
+procedure DoGraphs(db:TDataConnection);
 
 implementation
 
-uses eater1, Windows, Classes, DataLank, Graphics, Vcl.Imaging.PngImage;
+uses eaterUtils, Windows, Classes, Graphics, Vcl.Imaging.PngImage;
 
-procedure DoCharts;
+procedure DoGraphs(db:TDataConnection);
 const
   bw=60;
   bh=40;
   fw=2;
   fh=1;
 var
-  db:TDataConnection;
   qr:TQueryResult;
   sl:TStringList;
   s:string;
@@ -31,13 +30,6 @@ var
   end;
 begin
   OutLn('Generating post volume graphs...');
-  sl:=TStringList.Create;
-  try
-    sl.LoadFromFile(FeederIniPath);
-    db:=TDataConnection.Create(sl.Text);
-  finally
-    sl.Free;
-  end;
   sl:=TStringList.Create;
   try
     qr:=TQueryResult.Create(db,
@@ -142,7 +134,6 @@ begin
     Write(#13);
     OutLn(IntToStr(sl.Count)+' charts generated');
   finally
-    db.Free;
     sl.Free;
   end;
 end;

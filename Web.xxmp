@@ -91,6 +91,11 @@
 			"path": "Opinions.xxm",
 			"unitName": "opinions_xxm1",
 			"unitPath": ""
+		},
+		"fire_xxm": {
+			"path": "Fire.xxm",
+			"unitName": "fire_xxm1",
+			"unitPath": ""
 		}
 	},
 	"units": {

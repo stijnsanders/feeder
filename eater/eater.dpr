@@ -4,21 +4,36 @@ uses
   SysUtils,
   Winapi.Windows,
   ActiveX,
-  eater1 in 'eater1.pas',
   LibPQ in '..\LibPQ.pas',
   LibPQData in '..\LibPQData.pas',
   DataLank in '..\DataLank.pas',
   MSXML2_TLB in '..\MSXML2_TLB.pas',
   VBScript_RegExp_55_TLB in '..\VBScript_RegExp_55_TLB.pas',
   jsonDoc in 'jsonDoc.pas',
-  eater2 in 'eater2.pas';
+  eaterReg in 'eaterReg.pas',
+  eaterFeeds in 'eaterFeeds.pas',
+  eaterGraphs in 'eaterGraphs.pas',
+  eaterUtils in 'eaterUtils.pas',
+  eaterSanitize in 'eaterSanitize.pas',
+  feedAtom in 'feedAtom.pas',
+  feedRSS in 'feedRSS.pas',
+  feedRDF in 'feedRDF.pas',
+  feedSPARQL in 'feedSPARQL.pas',
+  feedInstagram in 'feedInstagram.pas',
+  feedRSSinJSON in 'feedRSSinJSON.pas',
+  feedWPv2 in 'feedWPv2.pas',
+  feedJSON in 'feedJSON.pas',
+  feedTitanium in 'feedTitanium.pas',
+  feedFusion in 'feedFusion.pas',
+  feedNextData in 'feedNextData.pas',
+  eaterRun in 'eaterRun.pas';
 
 {$R *.res}
 {$APPTYPE CONSOLE}
 
 var
   h:THandle;
-  n:boolean;
+  r:TEaterRunner;
 begin
   try
     h:=CreateMutex(nil,true,'Global\FeederEater');
@@ -27,17 +42,14 @@ begin
       if GetLastError=ERROR_ALREADY_EXISTS then
         raise Exception.Create('Another running instance of Eater detected.');
       CoInitialize(nil);
-      DoProcessParams;
-      repeat
-        n:=FeedNew;
 
-        DoUpdateFeeds;
+      r:=TEaterRunner.Create;
+      try
+        r.RunFeedEater;
+      finally
+        r.Free;
+      end;
 
-        if not(n) then DoCharts;
-
-        //DoAnalyze;
-
-      until DoCheckRunDone;
     finally
       CloseHandle(h);
     end;

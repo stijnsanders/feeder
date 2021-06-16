@@ -1,0 +1,9 @@
+[[@Windows]][[!var
+h:THandle;]][[
+  
+h:=OpenEvent(EVENT_MODIFY_STATE,true,'Global\FeederEaterNewFeed');
+SetEvent(h);
+
+<<p>>=SysErrorMessage(GetLastError)<</p>>
+
+CloseHandle(h);
