@@ -722,7 +722,7 @@ begin
           else
            begin
             //stale? update regime
-            if (FPostsNew=0) and (FPostsTotal<>0) then
+            if (FPostsNew=0) and (FPostsTotal>FFeed.Regime*2+5) then
              begin
               i:=0;
               if FFeed.Regime>=0 then
@@ -1021,7 +1021,7 @@ begin
       ' select S.user_id,$1 from "Subscription" S'+
       ' left outer join "UserBlock" B on B.user_id=S.user_id'+
       ' and (B.url=left($2,length(B.url))'+tsql+')'+
-      ' where S.feed_id=$3 and B.id is null',[postid,FPostID,FFeed.id]);
+      ' where S.feed_id=$3 and B.id is null',[postid,FPostURL,FFeed.id]);
     FDB.CommitTrans;
   except
     FDB.RollbackTrans;
