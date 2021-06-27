@@ -285,7 +285,7 @@ begin
     Result.FeedCount:=0;
     Result.PostCount:=0;
 
-    if SpecificFeedID<>0 then
+    if SpecificFeedID>0 then
      begin
       ids_l:=1;
       SetLength(ids,1);
