@@ -72,6 +72,7 @@ begin
     if y=nil then content:='' else content:=y.text;
     try
       y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
+      if y=nil then y:=x.selectSingleNode('pubdate') as IXMLDOMElement; //reddit??!!
       if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
     except
       pubDate:=UtcNow;
