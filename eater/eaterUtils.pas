@@ -472,23 +472,11 @@ end;
 function UtcNow:TDateTime;
 var
   st:TSystemTime;
-  tz:TTimeZoneInformation;
-  tx:cardinal;
-  bias:TDateTime;
 begin
-  GetLocalTime(st);
-  tx:=GetTimeZoneInformation(tz);
-  case tx of
-    //TIME_ZONE_ID_INVALID:RaiseLastOSError;
-    TIME_ZONE_ID_UNKNOWN:  bias:=tz.Bias/1440.0;
-    TIME_ZONE_ID_STANDARD: bias:=(tz.Bias+tz.StandardBias)/1440.0;
-    TIME_ZONE_ID_DAYLIGHT: bias:=(tz.Bias+tz.DaylightBias)/1440.0;
-    else                   bias:=0.0;
-  end;
+  GetSystemTime(st);
   Result:=
     EncodeDate(st.wYear,st.wMonth,st.wDay)+
-    EncodeTime(st.wHour,st.wMinute,st.wSecond,st.wMilliseconds)+
-    bias;
+    EncodeTime(st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
 end;
 
 function HTMLEncode(const x:string):string;
