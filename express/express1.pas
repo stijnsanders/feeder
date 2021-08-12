@@ -10,7 +10,8 @@ const
 
 implementation
 
-uses Windows, SysUtils, Classes, DataLank, VBScript_RegExp_55_TLB, fCommon;
+uses Windows, SysUtils, Classes, DataLank, Variants, VBScript_RegExp_55_TLB,
+  fCommon, MSXML2_TLB, ActiveX;
 
 function UtcNow:TDateTime;
 var
@@ -47,19 +48,62 @@ begin
       ;
 end;
 
+function URLEncode(const Data:string):AnsiString;
+const
+  Hex: array[0..15] of AnsiChar='0123456789ABCDEF';
+var
+  s,t:AnsiString;
+  p,q,l:integer;
+begin
+  s:=UTF8Encode(Data);
+  q:=1;
+  l:=Length(s)+$80;
+  SetLength(t,l);
+  for p:=1 to Length(s) do
+   begin
+    if q+4>l then
+     begin
+      inc(l,$80);
+      SetLength(t,l);
+     end;
+    case s[p] of
+      #0..#31,'"','#','$','%','&','''','+','/',
+      '<','>','?','@','[','\',']','^','`','{','|','}',
+      #$80..#$FF:
+       begin
+        t[q]:='%';
+        t[q+1]:=Hex[byte(s[p]) shr 4];
+        t[q+2]:=Hex[byte(s[p]) and $F];
+        inc(q,2);
+       end;
+      ' ':
+        t[q]:='+';
+      else
+        t[q]:=s[p];
+    end;
+    inc(q);
+   end;
+  SetLength(t,q-1);
+  Result:=t;
+end;
+
+
+
 procedure BuildExpress;
 var
   UserID,i,tz,q:integer;
   d0,d1:TDateTime;
   TimeBias:double;
-  s,fn,html,c,ClassPrefix:string;
+  s,fn,html,c,ClassPrefix,pl,XURL:string;
   sl:TStringList;
   db:TDataConnection;
   qr:TQueryResult;
   f:TFileStream;
   w:word;
   rp1,rp2,rp3:IRegExp2;
-  DoStyle:boolean;
+  DoSave,DoStyle,DoPermaLink:boolean;
+  r:ServerXMLHTTP60;
+  rd:AnsiString;
 
   function PNext:string;
   begin
@@ -74,7 +118,10 @@ begin
   d0:=Trunc(UtcNow);
   ClassPrefix:='';
   fn:='';
+  DoSave:=true;
   DoStyle:=true;
+  DoPermaLink:=false;
+  XURL:='';
 
   //arguments
   i:=1;
@@ -98,8 +145,17 @@ begin
       if s='-o' then
         fn:=PNext
       else
+      if s='-nosave' then
+        DoSave:=false
+      else
       if s='-nostyle' then
         DoStyle:=false
+      else
+      if s='-url' then
+        XURL:=PNext
+      else
+      if s='-pl' then
+        DoPermaLink:=true
       else
         raise Exception.Create('Unknown argument "'+s+'"');
     except
@@ -112,6 +168,7 @@ begin
 
    end;
 
+  //mini-markdown
   rp1:=CoRegExp.Create;
   rp1.Pattern:='\[([^\]]+?)\]\(([^\)]+?)\)';
   rp1.Global:=true;
@@ -145,14 +202,23 @@ begin
     q:=0;
 
     if DoStyle then
+     begin
       html:='<style type="text/css">'
         +#13#10'DIV.feeder{background-color:#FFFFFF;padding:0.2em;}'
         +#13#10'DIV.label{display:inline;font-size:10pt;padding:2pt;border-radius:4pt;white-space:nowrap;}'
         +#13#10'DIV.date{display:inline;font-size:10pt;background-color:#CCCCCC;padding:2pt;border-radius:4pt;}'
+        +#13#10'DIV.express{margin:0.2em 0.2em 0.4em 1em;}'
+        ;
+      if DoPermaLink then html:=html
+        +#13#10'DIV.feeder A.pl{color:#FFFFFF;text-decoration:none;}'
+        +#13#10'DIV.feeder:hover A.pl{color:#999999;}'
+        ;
+      html:=html
         +#13#10'</style>'
-        +#13#10'<div style="feeder">'
+        +#13#10'<div class="feeder">'
         +#13#10#13#10
         ;
+     end;
 
     qr:=TQueryResult.Create(db,
       'select P.id, P.guid, P.url, P.created, P.pubdate, P.title, O.opinion, O.created, S.label, S.color'+
@@ -168,15 +234,21 @@ begin
        begin
         inc(q);
         d1:=double(qr['pubdate'])+TimeBias;
+        pl:=FormatDateTime('yyyy-mm-dd',d0)+'-'+IntToStr(q);
         html:=html
           +'<div class="'+ClassPrefix+'date" title="'+FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)+'">'
           +FormatDateTime('mm-dd hh:nn',d1)+'</div>&nbsp;'
           +ShowLabel(qr.GetStr('label'),qr.GetStr('color'),ClassPrefix)
-          +'<a name="'+FormatDateTime('yyyy-mm-dd',d0)+'-'+IntToStr(q)+'"></a>&nbsp;'
+          +'<a name="'+pl+'"></a>&nbsp;'
           +'<a href="'+HTMLEncode(qr.GetStr('url'))+'" rel="noreferrer" target="_blank" style="font-weight:bold;">'
-          +qr.GetStr('title')+'</a></div>'
-          +'<div style="margin-left:2em;margin-bottom:0.4em;" title="'
-          +FormatDateTime('dddd yyyy-mm-dd hh:nn',double(qr['created'])+TimeBias)+'">'
+          +qr.GetStr('title')+'</a>'
+          ;
+        if DoPermaLink then html:=html
+          +'<a class="pl" href="#'+pl+'">&nbsp;#&nbsp;</a>'
+          ;
+        html:=html
+          +'<div class="express" title="'
+          +FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',double(qr['created'])+TimeBias)+'">'
           ;
 
         c:=HTMLEncode(qr.GetStr('opinion'));
@@ -197,15 +269,37 @@ begin
 
     if q<>0 then
      begin
-      if fn='' then fn:=FormatDateTime('yyyy-mm-dd',d0)+'.html';
-      f:=TFileStream.Create(fn,fmCreate);
-      try
-        w:=$FEFF;
-        f.Write(w,2);
-        f.Write(html[1],Length(html)*2);
-      finally
-        f.Free;
-      end;
+      if DoSave then
+       begin
+        if fn='' then fn:=FormatDateTime('yyyy-mm-dd',d0)+'.html';
+        f:=TFileStream.Create(fn,fmCreate);
+        try
+          w:=$FEFF;
+          f.Write(w,2);
+          f.Write(html[1],Length(html)*2);
+        finally
+          f.Free;
+        end;
+       end;
+
+      if XURL<>'' then
+       begin
+
+        rd:='d='+AnsiString(IntToStr(Trunc(UtcNow-d0)))
+          +'&label='+AnsiString(FormatDateTime('yyyy-mm-dd',d0))
+          +'&data='+URLEncode(html);
+
+        r:=CoServerXMLHTTP60.Create;
+        try
+          r.open('POST',XURL,false,EmptyParam,EmptyParam);
+          r.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+          r.send(rd);
+          Writeln(IntToStr(r.Status)+' '+r.StatusText+' ('+IntToStr(Length(r.responseText))+')');
+        finally
+          r:=nil;
+        end;
+       end;
+
      end;
 
   finally

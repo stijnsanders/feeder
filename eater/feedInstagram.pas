@@ -120,13 +120,14 @@ function TInstagramFeedProcessor.Determine(Store:IFeedStore;const FeedURL:WideSt
       var FeedData:WideString;const FeedDataType:WideString):boolean;
 begin
   rt:=FeedDataType;
-  Result:=StartsWith(FeedURL,'https://www.instagram.com/');
+  Result:=StartsWith(FeedURL,'https://www.instagram.com/')
+    ;//and FindPrefixAndCrop(FeedData,'window._sharedData = ');
 end;
 
 procedure TInstagramFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  jnodes,jcaption,jthumbs:IJSONDocArray;
+  jnodes,jcaption,jthumbs,ja1:IJSONDocArray;
   jdoc,jdoc1,jd1,jn0,jn1,jc0,jc1:IJSONDocument;
   i,j,c:integer;
   itemid,itemurl,s:string;
@@ -143,8 +144,23 @@ begin
     ]);
 
   c:=0;
-  if rt='application/json' then
+  //if rt='application/json' then
    begin
+
+    {
+    ja1:=JSONDocArray;
+    jd1:=JSON(['entry_data',JSON(['ProfilePage',ja1])]);
+    try
+      jd1.Parse(FeedData);
+    except
+      on EJSONDecodeException do
+        ;//ignore "data past end"
+    end;
+    if ja1.Count<>0 then
+      raise Exception.Create('Unexpected ProfilePage count');
+    jdoc1:=JSON(['graphql',jdoc]);
+    ja1.LoadItem(0,jdoc1);
+    }
 
     jdoc1:=JSON(['graphql',jdoc]);
     try

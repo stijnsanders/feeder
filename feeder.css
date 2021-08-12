@@ -3,10 +3,12 @@ BUTTON,INPUT,SELECT,TEXTAREA{font-family:"PT Sans",Calibri,sans-serif;font-size:
 DL{margin:0;}
 DT{font-weight:bold;}
 
+DIV.post {overflow:hidden;}
 DIV.post A{text-decoration:none;color:#000020;}
 DIV.label{display:inline;font-size:10pt;padding:2pt;border-radius:4pt;white-space:nowrap;}
 DIV.date{display:inline;font-size:10pt;background-color:#CCCCCC;padding:2pt;border-radius:4pt;}
 
+DIV.postread {overflow:hidden;}
 DIV.postread A{text-decoration:none;color:#9999AA;}
 
 DIV.catlink{display:inline;font-size:10pt;padding:2pt;border-radius:4pt;background-color:#666666;white-space:nowrap;}

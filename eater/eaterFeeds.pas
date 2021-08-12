@@ -687,7 +687,6 @@ begin
                       inc(handler_i);
                    end;
 
-
                   //still nothing?
                   if FFeed.Result='' then
                     if not((FeedDataType='text/html') and FindFeedURL(FeedData)) then
@@ -696,6 +695,10 @@ begin
                  end
                 else
                  begin
+                  if FeedData='' then
+                    FFeed.Result:='[No Data]'
+                  else
+
                   //XML parse failed
                   if not((FeedDataType='text/html') and FindFeedURL(FeedData)) then
                     FFeed.Result:='[XML'+IntToStr(doc.parseError.line)+':'+
