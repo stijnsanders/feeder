@@ -235,6 +235,7 @@ begin
         inc(q);
         d1:=double(qr['pubdate'])+TimeBias;
         pl:=FormatDateTime('yyyy-mm-dd',d0)+'-'+IntToStr(q);
+        if DoPermaLink then html:=html+'<div id="fx'+pl+'">';
         html:=html
           +'<div class="'+ClassPrefix+'date" title="'+FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)+'">'
           +FormatDateTime('mm-dd hh:nn',d1)+'</div>&nbsp;'
@@ -257,8 +258,10 @@ begin
         c:=rp2.Replace(c,'<b>$1</b>');
         c:=rp3.Replace(c,'<i>$1</i>');
 
-        html:=html+c+'</div>'#13#10;
+        html:=html+c;
 
+        if DoPermaLink then html:=html+'</div>';
+        html:=html+'</div>'#13#10;
        end;
     finally
       qr.Free;
