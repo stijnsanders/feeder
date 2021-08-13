@@ -127,7 +127,7 @@ end;
 procedure TInstagramFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  jnodes,jcaption,jthumbs,ja1:IJSONDocArray;
+  jnodes,jcaption,jthumbs:IJSONDocArray;
   jdoc,jdoc1,jd1,jn0,jn1,jc0,jc1:IJSONDocument;
   i,j,c:integer;
   itemid,itemurl,s:string;

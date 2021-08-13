@@ -99,7 +99,8 @@ begin
       if hasFoaf then //and rhImgFoaf.Test(content) then
         SanitizeFoafImg(content);
 
-      if Copy(content,1,5)<>'<img ' then //not already starts with image
+      //pustthumb if not already starts with image
+      if not StartsWith(StripWhiteSpace(Copy(content,1,100)),'<img ') then
        begin
         if IsProbablyHTML(content) then
           x1:=nil //see below

@@ -53,6 +53,9 @@ begin
     except
       pubDate:=UtcNow;
     end;
+
+    //TODO: duplicate more here from TRSSFeedProcessor.ProcessFeed
+
     if Handler.CheckNewPost(itemid,itemurl,pubdate) then
      begin
       title:=VarToStr(jn0['title']);
