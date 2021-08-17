@@ -9,6 +9,7 @@ procedure SaveUTF16(const fn:string;const Data:WideString);
 
 function StartsWith(const Value,Prefix:string):boolean;
 function StartsWithX(const Value,Prefix:string;var Suffix:string):boolean;
+function StartsWithIWS(const Value,Prefix:string):boolean;
 
 function ConvDate1(const x:string):TDateTime;
 function ConvDate2(const x:string):TDateTime;
@@ -73,6 +74,17 @@ begin
    end
   else
     Result:=false;
+end;
+
+function StartsWithIWS(const Value,Prefix:string):boolean;
+var
+  i,l:integer;
+begin
+  i:=1;
+  l:=Length(Value);
+  //ignore white space
+  while (i<=l) and (Value[i]<=' ') do inc(i);
+  Result:=Copy(Value,i,Length(Prefix))=Prefix;
 end;
 
 function ConvDate1(const x:string):TDateTime;

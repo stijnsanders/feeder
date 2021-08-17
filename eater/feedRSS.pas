@@ -100,7 +100,7 @@ begin
         SanitizeFoafImg(content);
 
       //pustthumb if not already starts with image
-      if not StartsWith(StripWhiteSpace(Copy(content,1,100)),'<img ') then
+      if not StartsWithIWS(content,'<img ') then
        begin
         if IsProbablyHTML(content) then
           x1:=nil //see below
