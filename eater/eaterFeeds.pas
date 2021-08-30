@@ -526,6 +526,14 @@ begin
                 r.setRequestHeader('Accept','application/json');
                end
               else
+              if StartsWith(FFeed.URL,'https://soundcloud.com/') then
+               begin
+                r.open('GET','https://api-v2.soundcloud.com/resolve?url='+
+                  string(URLEncode(FFeed.URL))+'&client_id='+SoundCloudClientID,
+                  false,EmptyParam,EmptyParam);
+                r.setRequestHeader('Accept','application/json');
+               end
+              else
                begin
                 r.open('GET',FFeed.URL,false,EmptyParam,EmptyParam);
                 if Pos('sparql',FFeed.URL)<>0 then

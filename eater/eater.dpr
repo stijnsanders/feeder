@@ -20,6 +20,7 @@ uses
   feedRDF in 'feedRDF.pas',
   feedSPARQL in 'feedSPARQL.pas',
   feedInstagram in 'feedInstagram.pas',
+  feedSoundCloud in 'feedSoundCloud.pas',
   feedRSSinJSON in 'feedRSSinJSON.pas',
   feedWPv2 in 'feedWPv2.pas',
   feedJSON in 'feedJSON.pas',

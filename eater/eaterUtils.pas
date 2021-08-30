@@ -16,6 +16,7 @@ function ConvDate2(const x:string):TDateTime;
 function UtcNow:TDateTime;
 
 function HTMLEncode(const x:string):string;
+function URLEncode(const x:string):AnsiString;
 function StripWhiteSpace(const x:WideString):WideString;
 function IsSomethingEmpty(const x:WideString):boolean;
 function StripHTML(const x:WideString;MaxLength:integer):WideString;
@@ -25,6 +26,8 @@ function IsProbablyHTML(const x:WideString):boolean;
 function VarArrFirst(const v:Variant):Variant;
 function VarArrLast(const v:Variant):Variant;
 
+const
+  SoundCloudClientID='kU40MluHCZNRiGLox5HZ2RZfBfNldvEK';//see also feedSoundCloud
 
 implementation
 
@@ -502,6 +505,45 @@ begin
       ,'<','&lt;',[rfReplaceAll])
       ,'>','&gt;',[rfReplaceAll])
   ;
+end;
+
+function URLEncode(const x:string):AnsiString;
+const
+  Hex:array[0..15] of AnsiChar='0123456789abcdef';
+var
+  s,t:AnsiString;
+  p,q,l:integer;
+begin
+  s:=UTF8Encode(x);
+  q:=1;
+  l:=Length(s)+$80;
+  SetLength(t,l);
+  for p:=1 to Length(s) do
+   begin
+    if q+4>l then
+     begin
+      inc(l,$80);
+      SetLength(t,l);
+     end;
+    case s[p] of
+      #0..#31,'"','#','$','%','&','''','+','/',
+      '<','>','?','@','[','\',']','^','`','{','|','}',
+      #$80..#$FF:
+       begin
+        t[q]:='%';
+        t[q+1]:=Hex[byte(s[p]) shr 4];
+        t[q+2]:=Hex[byte(s[p]) and $F];
+        inc(q,2);
+       end;
+      ' ':
+        t[q]:='+';
+      else
+        t[q]:=s[p];
+    end;
+    inc(q);
+   end;
+  SetLength(t,q-1);
+  Result:=t;
 end;
 
 function StripWhiteSpace(const x:WideString):WideString;

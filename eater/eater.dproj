@@ -115,7 +115,7 @@
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName)</VerInfo_Keys>
         <Icon_MainIcon>eater_Icon.ico</Icon_MainIcon>
-        <Debugger_RunParams>/x /s /f225</Debugger_RunParams>
+        <Debugger_RunParams>/x /s /f379</Debugger_RunParams>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
@@ -137,6 +137,7 @@
         <DCCReference Include="feedRDF.pas"/>
         <DCCReference Include="feedSPARQL.pas"/>
         <DCCReference Include="feedInstagram.pas"/>
+        <DCCReference Include="feedSoundCloud.pas"/>
         <DCCReference Include="feedRSSinJSON.pas"/>
         <DCCReference Include="feedWPv2.pas"/>
         <DCCReference Include="feedJSON.pas"/>

@@ -69,6 +69,11 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 </tr>
 
 <tr>
+<td>SoundCloud API</td>
+<td>Use a user's URL to see new tracks as posts.</td>
+</tr>
+
+<tr>
 <td>Titanium</td>
 <td>Posts are loaded from <code>window['titanium-state'] = </code> JSON.</td>
 </tr>
