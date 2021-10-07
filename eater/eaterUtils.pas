@@ -26,9 +26,6 @@ function IsProbablyHTML(const x:WideString):boolean;
 function VarArrFirst(const v:Variant):Variant;
 function VarArrLast(const v:Variant):Variant;
 
-const
-  SoundCloudClientID='kU40MluHCZNRiGLox5HZ2RZfBfNldvEK';//see also feedSoundCloud
-
 implementation
 
 uses Windows, SysUtils, Variants, Classes;

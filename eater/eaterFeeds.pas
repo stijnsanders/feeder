@@ -66,7 +66,7 @@ var
 implementation
 
 uses Windows, SysUtils, Variants, ComObj, eaterUtils, eaterSanitize, MSXML2_TLB,
-  jsonDoc, VBScript_RegExp_55_TLB, eaterGraphs;
+  jsonDoc, VBScript_RegExp_55_TLB, eaterGraphs, feedSoundCloud;
 
 const
   FeederIniPath='..\..\feeder.ini';
@@ -999,7 +999,6 @@ begin
 
   //content starts with <img>? inject a <br />
   SanitizeStartImg(content);
-
 
   if FHasReplaces then
     PerformReplaces(content);
