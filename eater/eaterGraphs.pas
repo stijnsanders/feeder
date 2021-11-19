@@ -19,7 +19,7 @@ const
 var
   qr:TQueryResult;
   sl:TStringList;
-  s:string;
+  s,t:string;
   UserID,tz,si,i,d,d1:integer;
   q1,q3,qi:cardinal;
   TimeBias:TDateTime;
@@ -117,9 +117,12 @@ begin
          end;
         b.Canvas.Font.Name:='Verdana';
         b.Canvas.Font.Height:=-10;
-        b.Canvas.Font.Color:=$CC6600;
         b.Canvas.Brush.Style:=bsClear;
-        b.Canvas.TextOut(2,bh*fh-12,Format('%d (%d)',[q1,q3]));
+        t:=Format('%d (%d)',[q1,q3]);
+        b.Canvas.Font.Color:=$FFFFFF;
+        b.Canvas.TextOut(3,bh*fh-11,t);
+        b.Canvas.Font.Color:=$CC6600;
+        b.Canvas.TextOut(2,bh*fh-12,t);
         p:=TPngImage.Create;
         try
           p.Assign(b);

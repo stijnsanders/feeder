@@ -627,6 +627,8 @@ begin
         else
          begin
 
+          if (FFeed.Result='') and (FeedData='') then FFeed.Result:='[NoData]';
+
           //process feed data
           if FFeed.Result='' then
             try

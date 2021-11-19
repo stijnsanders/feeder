@@ -38,7 +38,7 @@ try
   </div>
   <form method="post" action="ExpressNew.xxm" onsubmit="fsub()">
   <input type="hidden" name="id" value="[[=id]]" />
-  <textarea name="opinion" id="op1" wordwrap="soft" style="width:90%;height:3em;" >>=qr['opinion']<</textarea><br />
+  <textarea name="opinion" id="op1" wordwrap="soft" style="width:90%;height:5em;" >>=qr['opinion']<</textarea><br />
   <input type="submit" value="Express" id="subm1" />
   </form>
   <script>

@@ -40,10 +40,9 @@ begin
   jdoc:=JSON(['items',jnodes]);
   jdoc.Parse(FeedData);
   //if jdoc['version']='https://jsonfeed.org/version/1' then
-  feedname:=VarToStr(jdoc['title']);
-  Handler.UpdateFeedName(feedname);
   if feedname='News' then feedname:=VarToStr(jdoc['description']);//NPR?
   if Length(feedname)>200 then feedname:=Copy(feedname,1,197)+'...';
+  Handler.UpdateFeedName(feedname);
   //jdoc['home_page_url']?
   //jdoc['feed_url']?
   jn0:=JSON;
