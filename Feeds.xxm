@@ -1,6 +1,6 @@
 [[@xxmSession,DataLank,fCommon,Variants]][[!var
 qr:TQueryResult;
-category,feedlabel,readwidth,feedcolor,c,c1:string;
+category,feedlabel,readwidth,feedcolor,c,c1,c0:string;
 autounread:Variant;
 id,feedid,ur0,ur1:integer;
 const
@@ -28,65 +28,110 @@ if id=0 then
 
   <div style="height:1.5em;padding-bottom:2pt;">&nbsp;</div>>
 
+  c0:=Context['category'].Value;
   qr:=TQueryResult.Create(Session.Connection,
     'select S.*, F.name, F.url, F.itemcount, F.regime'+
     //', (select count(*) from "Post" P where P.feed_id=F.id) as PostCount'+
     //', (select count(*) from "UserPost" X inner join "Post" P on P.id=X.post_id where P.feed_id=F.id and X.user_id=S.user_id) as UnreadCount'+
     ' from "Subscription" S'+
     ' inner join "Feed" F on F.id=S.feed_id'+
-    ' where S.user_id=$1'+
+    ' where S.user_id=$1 and $2 in ('''',S.category)'+
     //' order by S.category, S.label, F.name, S.id',[Session.UserID]);
-    ' order by lower(S.category), lower(S.label), lower(F.name), S.id',[Session.UserID]);
+    ' order by lower(S.category), lower(S.label), lower(F.name), S.id',[Session.UserID,c0]);
   try
-    c:='';
-    while qr.Read do
+
+
+    if (Context['all'].AsInteger=0) and (qr.Count>25) then
      begin
-      c1:=qr.GetStr('category');
-      if c<>c1 then
+
+      c:='';
+      while qr.Read do
        begin
-        <<div>
-        <div class="catlink"><a>>=c1<</a></div>
+
+        c1:=qr.GetStr('category');
+        if c<>c1 then
+         begin
+          <<div>
+          <div class="catlink"><a href="[[?'category',c1]]">>=c1<</a></div>
+          </div>>
+          c:=c1;
+         end;
+
+        <<a href="?id=[[.id]]" style="text-decoration:none;color:black;">>#StringReplace(
+          ShowLabel(qr.GetStr('label'),qr.GetStr('color'),''),
+          '<div ','<div title="'+HTMLEncode(qr.GetStr('name'))+'" ',[])<</a>>
+        if not(qr.IsNull('itemcount')) and (qr.GetInt('itemcount')=0) then
+         begin
+          <<span style="color:#CC0000;" title="Error reading feed">!</span>>
+         end;
+        if qr.GetInt('regime')>20 then
+         begin
+          <<span style="color:#660000;" title="Feed reading on a regime of once every [[.regime]] days">?</span>>
+         end;
+        ]]
+        <a href=".?f=[[.feed_id]]" id="pc[[.id]]" style="color:#0000CC;">...</a>
+        [[
+
+       end;
+
+      <<p><a href="?all=1">Extended view...</a></p>
+      <div id="trailer" style="height:0.2em;border-bottom:4px solid gold;"></div>>
+      
+     end
+    else
+     begin
+
+      c:='';
+      while qr.Read do
+       begin
+        c1:=qr.GetStr('category');
+        if c<>c1 then
+         begin
+          <<div>
+          <div class="catlink"><a>>=c1<</a></div>
+          </div>>
+          c:=c1;
+         end;
+        <<div class="post">
+        <div class="date">>=FormatDateTime('yyyy-mm-dd',double(qr['created'])+Session.TimeBias)<</div>
+        [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')]]
+        <a href="?id=[[.id]]">"[[.name]]"</a>
+        <a href=".?f=[[.feed_id]]" id="pc[[.id]]" style="color:#0000CC;">...</a>
+        [[
+        if not(qr.IsNull('itemcount')) and (qr.GetInt('itemcount')=0) then
+         begin
+          <<span style="color:#CC0000;">Error reading feed </span>>
+         end;
+        if qr.GetInt('regime')>20 then
+         begin
+          <<span style="color:#660000;" title="Feed reading on a regime of once every [[.regime]] days">Stale? </span>>
+         end;
+        ]]
+        <span style="color:#CCCCCC;">>.url<</span>
         </div>>
-        c:=c1;
        end;
-      <<div class="post">
-      <div class="date">>=FormatDateTime('yyyy-mm-dd',double(qr['created'])+Session.TimeBias)<</div>
-      [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')]]
-      <a href="?id=[[.id]]">"[[.name]]"</a>
-      <a href=".?f=[[.feed_id]]" id="pc[[.id]]" style="color:#0000CC;">...</a>
-      [[
-      if not(qr.IsNull('itemcount')) and (qr.GetInt('itemcount')=0) then
-       begin
-        <<span style="color:#CC0000;">Error reading feed </span>>
-       end;
-      if qr.GetInt('regime')>20 then
-       begin
-        <<span style="color:#660000;" title="Feed reading on a regime of once every [[.regime]] days">Stale? </span>>
-       end;
-      ]]
-      <span style="color:#CCCCCC;">>.url<</span>
-      </div>>
+
+      <<div id="trailer" style="height:100vh;border-bottom:4px solid gold;"></div>>
+
      end;
+
   finally
     qr.Free;
   end;
-
-  <<div id="trailer" style="height:100vh;border-bottom:4px solid gold;"></div>>
-
   Context.Flush;
   Session.Connection.Execute('set statement_timeout=10000',[]);
   qr:=TQueryResult.Create(Session.Connection,
-
     'select S.id, S.postsopened, F.totalcount as PostCount, X.UnreadCount'+
     ' from "Subscription" S'+
     ' left outer join ('+
     '   select P.feed_id, count(*) as UnreadCount from "Post" P inner join "UserPost" X on X.post_id=P.id where X.user_id=$1 group by P.feed_id'+
     ' ) X on X.feed_id=S.feed_id'+
     ' inner join "Feed" F on F.id=S.feed_id'+
-    ' where S.user_id=$1'
+    ' where S.user_id=$1 and $2 in ('''',S.category)'
     //+' order by S.category, S.label, F.name, S.id'
-    ,[Session.UserID]);
+    ,[Session.UserID,c0]);
   try
+
     <<script>
     function f(id,x1,x2,x3){
       var x=document.getElementById("pc"+id);
@@ -97,6 +142,7 @@ if id=0 then
     while qr.Read do
       Context.SendHTML(Format('f(%d,%d,%d,%d);'#13#10,[qr.GetInt('id'),qr.GetInt('UnreadCount'),qr.GetInt('PostCount'),qr.GetInt('postsopened')]));
     <</script>>
+    
   finally
     qr.Free;
   end;

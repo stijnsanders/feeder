@@ -140,7 +140,7 @@ begin
   e1.Global:=true;
 
   e2:=CoRegExp.Create;
-  e2.Pattern:='web-auth\?client_id=([A-Za-z0-9]{32})';
+  e2.Pattern:='\?client_id=([A-Za-z0-9]{32})';
 
   m1:=e1.Execute(r.responseText) as MatchCollection;
   ml:=m1.Count;
@@ -173,7 +173,6 @@ begin
   if (SC_ID='') or (Trunc(SC_TS*4.0)<>Trunc(Now*4.0)) then GetSoundCloudID;
   Result:=SC_ID;
 end;
-
 
 initialization
   SC_TS:=0.0;
