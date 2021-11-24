@@ -1277,6 +1277,7 @@ begin
     FFeed.URL:=Copy(FFeed.URL,1,i-1)+url;
    end;
   FFeed.Result:='Feed URL found in content, updating ('+lbl+')';
+  FFeed.LastMod:='';
 end;
 
 function TFeedEater.FindFeedURL(const data: WideString): boolean;
