@@ -352,6 +352,7 @@ var
   dy,dm,dd,th,tm,ts,tz,b:word;
   dda:boolean;
   i,j,k,l,b1:integer;
+  st:TSystemTime;
   procedure nx(var xx:word;yy:integer);
   var
     ii:integer;
@@ -418,6 +419,14 @@ begin
     inc(i);//' ';
    end;
   nx(dy,4); inc(i);//' '
+  if dy<100 then
+   begin
+    //guess century
+    GetSystemTime(st);
+    j:=st.wYear div 100;
+    if ((st.wYear mod 100)>70) and (dy<30) then dec(j);//?
+    dy:=dy+j*100;
+   end;
   if not dda then inc(i);//','
   nx(th,2); inc(i);//':'
   nx(tm,2); inc(i);//':'
