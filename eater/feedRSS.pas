@@ -103,19 +103,15 @@ begin
       if not StartsWithIWS(content,'<img ') then
        begin
         if IsProbablyHTML(content) then
-          x1:=nil //see below
+          x1:=nil
         else
          begin
-          //x1:=x.selectSingleNode('media:content/@url');
-          //if x1=nil then
           x1:=x.selectSingleNode('media:thumbnail/@url');
-          if x1=nil then
-          x1:=x.selectSingleNode('media:content[@medium="image"]/media:thumbnail/@url');
+          if x1=nil then x1:=x.selectSingleNode('media:content/media:thumbnail/@url');
          end;
-        if x1=nil then
-          x1:=x.selectSingleNode('enclosure[@type="image/jpeg"]/@url');
-        if x1=nil then
-          x1:=x.selectSingleNode('enclosure[@type="image/png"]/@url');
+        if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/jpeg"]/@url');
+        if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/jpg"]/@url');
+        if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/png"]/@url');
         if x1<>nil then //<a href="?
          begin
           if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
