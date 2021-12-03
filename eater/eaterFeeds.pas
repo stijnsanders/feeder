@@ -31,7 +31,7 @@ type
     function LoadExternal(const URL,FilePath,LastMod,Accept:string):WideString;
     function ParseExternalHeader(var content:WideString):WideString;
     function FeedSkipDisplay(d:TDateTime):string;
-    procedure PerformReplaces(var content:WideString);
+    procedure PerformReplaces(var title,content:WideString);
     procedure FeedCombineURL(const url,lbl:string);
     function FindFeedURL(const data:WideString):boolean;
     //IFeedStore
@@ -1003,7 +1003,7 @@ begin
   SanitizeStartImg(content);
 
   if FHasReplaces then
-    PerformReplaces(content);
+    PerformReplaces(title,content);
 
   //if feedtagprefix<>'' then
   if VarIsArray(FPostTags) and //varArray of varStrSomething?
@@ -1182,16 +1182,17 @@ begin
   content:=Copy(content,i,Length(content)-i+1);
 end;
 
-procedure TFeedEater.PerformReplaces(var content: WideString);
+procedure TFeedEater.PerformReplaces(var title,content: WideString);
 var
   sl:TStringList;
   j,rd:IJSONDocument;
-  r:IJSONDocArray;
+  rc,rt:IJSONDocArray;
   i:integer;
   re:RegExp;
 begin
-  r:=JSONDocArray;
-  j:=JSON(['r',r]);
+  rc:=JSONDocArray;
+  rt:=JSONDocArray;
+  j:=JSON(['r',rc,'t',rt]);
   sl:=TStringList.Create;
   try
     sl.LoadFromFile('feeds\'+Format('%.4d',[FFeed.id])+'r.json');
@@ -1201,15 +1202,40 @@ begin
   end;
 
   rd:=JSON;
-  for i:=0 to r.Count-1 do
+
+  //replaces: content
+  for i:=0 to rc.Count-1 do
    begin
-    r.LoadItem(i,rd);
+    rc.LoadItem(i,rd);
     re:=CoRegExp.Create;
     re.Pattern:=rd['x'];
     if not(VarIsNull(rd['g'])) then re.Global:=boolean(rd['g']);
     if not(VarIsNull(rd['m'])) then re.Multiline:=boolean(rd['m']);
     if not(VarIsNull(rd['i'])) then re.IgnoreCase:=boolean(rd['i']);
     content:=re.Replace(content,rd['s']);
+   end;
+
+  //replaces: title
+  for i:=0 to rt.Count-1 do
+   begin
+    rt.LoadItem(i,rd);
+    re:=CoRegExp.Create;
+    re.Pattern:=rd['x'];
+    if not(VarIsNull(rd['g'])) then re.Global:=boolean(rd['g']);
+    if not(VarIsNull(rd['m'])) then re.Multiline:=boolean(rd['m']);
+    if not(VarIsNull(rd['i'])) then re.IgnoreCase:=boolean(rd['i']);
+    title:=re.Replace(title,rd['s']);
+   end;
+
+  //prefixes
+  if VarIsArray(FPostTags) and //varArray of varStrSomething?
+    (VarArrayDimCount(FPostTags)=1) and (VarArrayHighBound(FPostTags,1)-VarArrayLowBound(FPostTags,1)>0) then
+   begin
+    rd:=JSON(j['p']);
+    if rd<>nil then
+      for i:=VarArrayLowBound(FPostTags,1) to VarArrayHighBound(FPostTags,1) do
+         if not(VarIsNull(rd.Item[FPostTags[i]])) then
+           title:=rd.Item[FPostTags[i]]+title;
    end;
 end;
 
