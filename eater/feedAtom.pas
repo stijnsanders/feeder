@@ -124,6 +124,8 @@ begin
       if not IsProbablyHTML(content) then
        begin
         x1:=x.selectSingleNode('atom:link[@rel="enclosure" and @type="image/jpeg"]/@href');
+        if x1=nil then x1:=x.selectSingleNode('media:group/media:thumbnail/@url');
+        if x1=nil then x1:=x.selectSingleNode('media:content/media:thumbnail/@url');
         if x1<>nil then
          begin
           if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
