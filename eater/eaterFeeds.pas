@@ -81,6 +81,11 @@ const
   YoutubePrefix1='https://www.youtube.com/channel/';
   YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
 
+  InstagramDelaySecs=120;
+
+var
+  InstagramDelayMS:cardinal;
+
 
 function qrDate(qr:TQueryResult;const Idx:Variant):TDateTime;
 var
@@ -475,6 +480,19 @@ begin
 
           if StartsWith(FFeed.URL,'https://www.instagram.com/') then
            begin
+
+            i:=cardinal(GetTickCount-InstagramDelayMS);
+            if i<InstagramDelaySecs*1000 then
+             begin
+              Writeln('');
+              while i<InstagramDelaySecs*1000 do
+               begin
+                Write(#13'Instagram delay '+IntToStr(InstagramDelaySecs-(i div 1000))+'s...   ');
+                Sleep(10);
+                i:=cardinal(GetTickCount-InstagramDelayMS);
+               end;
+             end;
+
             if (FFeed.URL<>'') and (FFeed.URL[Length(FFeed.URL)]<>'/') then
               FFeed.URL:=FFeed.URL+'/';
             FeedData:=LoadExternal(FFeed.URL+'channel/?__a=1',
@@ -482,6 +500,7 @@ begin
               FFeed.LastMod,
               'application/json');//UseProxy?
             FeedDataType:=ParseExternalHeader(FeedData);
+            InstagramDelayMS:=GetTickCount;
            end
           else
 
@@ -729,8 +748,7 @@ begin
           //update feed data if any changes
           if (FFeed.Result<>'') and (FFeed.Result[1]='[') then
            begin
-            Writeln(' !!!');
-            ErrLn(FFeed.Result);
+            ErrLn('!!! '+FFeed.Result);
            end
           else
            begin
@@ -1082,7 +1100,6 @@ begin
   if StartsWith(URL,'https://www.instagram.com/') then
     p1:=p1+' --max-redirect=0';
 
-
   ZeroMemory(@si,SizeOf(TStartupInfo));
   si.cb:=SizeOf(TStartupInfo);
   {
@@ -1407,6 +1424,7 @@ end;
 initialization
   PGVersion:='';
   BlackList:=TStringList.Create;
+  InstagramDelayMS:=GetTickCount-InstagramDelaySecs*1000;
 finalization
   BlackList.Free;
 end.
