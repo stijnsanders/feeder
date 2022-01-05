@@ -504,7 +504,7 @@ begin
               FFeed.LastMod,
               'application/json');//UseProxy?
             if FeedData='' then //if StartsWith(FeedData,'HTTP/1.1 301') then
-              FFeed.Result:='Instagram [Redir]'
+              FFeed.Result:='[Instagram]'
             else
               FeedDataType:=ParseExternalHeader(FeedData);
             InstagramDelayMS:=GetTickCount;
