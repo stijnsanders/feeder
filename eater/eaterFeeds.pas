@@ -32,6 +32,7 @@ type
     function ParseExternalHeader(var content:WideString):WideString;
     function FeedSkipDisplay(d:TDateTime):string;
     procedure PerformReplaces(var title,content:WideString);
+    procedure PerformGlobalReplaces(var data:WideString);
     procedure FeedCombineURL(const url,lbl:string);
     function FindFeedURL(const data:WideString):boolean;
     //IFeedStore
@@ -82,6 +83,7 @@ const
   YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
 
   InstagramDelaySecs=120;
+  InstagramURLSuffix='?__a=1';
 
 var
   InstagramDelayMS:cardinal;
@@ -131,6 +133,7 @@ begin
    end;
 
   FReport:=TStringList.Create;
+  FReport.DefaultEncoding:=TEncoding.UTF8;
   OldPostsCutOff:=UtcNow-OldPostsDays;
   ForceLoadAll:=false;//default
   SaveData:=false;//default
@@ -261,9 +264,9 @@ begin
   FReport.Clear;
   //TODO: from embedded resource
   FReport.Add('<style>');
-  FReport.Add('P{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;}');
-  FReport.Add('TH{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #333333;}');
-  FReport.Add('TD{font-family:"PT Sans",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
+  FReport.Add('P{font-family:"PT Sans","Yu Gothic",Calibri,sans-serif;font-size:0.7em;}');
+  FReport.Add('TH{font-family:"PT Sans","Yu Gothic",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #333333;}');
+  FReport.Add('TD{font-family:"PT Sans","Yu Gothic",Calibri,sans-serif;font-size:0.7em;white-space:nowrap;border:1px solid #CCCCCC;}');
   FReport.Add('TD.n{max-width:20em;overflow:hidden;text-overflow:ellipsis;}');
   FReport.Add('TD.empty{background-color:#CCCCCC;}');
   FReport.Add('DIV.flag{display:inline;padding:2pt;color:#FFCC00;border-radius:4pt;white-space:nowrap;}');
@@ -491,15 +494,19 @@ begin
                 Sleep(10);
                 i:=cardinal(GetTickCount-InstagramDelayMS);
                end;
+              Write(#13'[Instagram delay...]');
              end;
 
             if (FFeed.URL<>'') and (FFeed.URL[Length(FFeed.URL)]<>'/') then
               FFeed.URL:=FFeed.URL+'/';
-            FeedData:=LoadExternal(FFeed.URL+'channel/?__a=1',
+            FeedData:=LoadExternal(FFeed.URL+InstagramURLSuffix,
               'xmls\'+Format('%.4d',[FFeed.ID])+'.json',
               FFeed.LastMod,
               'application/json');//UseProxy?
-            FeedDataType:=ParseExternalHeader(FeedData);
+            if FeedData='' then //if StartsWith(FeedData,'HTTP/1.1 301') then
+              FFeed.Result:='Instagram [Redir]'
+            else
+              FeedDataType:=ParseExternalHeader(FeedData);
             InstagramDelayMS:=GetTickCount;
            end
           else
@@ -541,7 +548,7 @@ begin
                begin
                 if (FFeed.URL<>'') and (FFeed.URL[Length(FFeed.URL)]<>'/') then
                   FFeed.URL:=FFeed.URL+'/';
-                r.open('GET',FFeed.URL+'channel/?__a=1',false,EmptyParam,EmptyParam);
+                r.open('GET',FFeed.URL+InstagramURLSuffix,false,EmptyParam,EmptyParam);
                 r.setRequestHeader('Accept','application/json');
                end
               else
@@ -622,6 +629,10 @@ begin
               SaveUTF16('feeds\'+Format('%.4d',[FFeed.id])+'.txt','');
            end;
         end;
+
+        //global replaces
+        if FileExists('feeds\'+Format('%.4d',[FFeed.id])+'g.json') then
+          PerformGlobalReplaces(FeedData);
 
         //content type missing? (really simple) auto-detect
         if (FeedDataType='') and (Length(FeedData)>8) then
@@ -1253,6 +1264,38 @@ begin
       for i:=VarArrayLowBound(FPostTags,1) to VarArrayHighBound(FPostTags,1) do
          if not(VarIsNull(rd.Item[FPostTags[i]])) then
            title:=rd.Item[FPostTags[i]]+title;
+   end;
+end;
+
+procedure TFeedEater.PerformGlobalReplaces(var data: WideString);
+var
+  sl:TStringList;
+  j,rd:IJSONDocument;
+  r:IJSONDocArray;
+  i:integer;
+  re:RegExp;
+begin
+  r:=JSONDocArray;
+  j:=JSON(['r',r]);
+  sl:=TStringList.Create;
+  try
+    sl.LoadFromFile('feeds\'+Format('%.4d',[FFeed.id])+'g.json');
+    j.Parse(sl.Text);
+  finally
+    sl.Free;
+  end;
+
+  rd:=JSON;
+
+  for i:=0 to r.Count-1 do
+   begin
+    r.LoadItem(i,rd);
+    re:=CoRegExp.Create;
+    re.Pattern:=rd['x'];
+    if not(VarIsNull(rd['g'])) then re.Global:=boolean(rd['g']);
+    if not(VarIsNull(rd['m'])) then re.Multiline:=boolean(rd['m']);
+    if not(VarIsNull(rd['i'])) then re.IgnoreCase:=boolean(rd['i']);
+    data:=re.Replace(data,rd['s']);
    end;
 end;
 

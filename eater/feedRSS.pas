@@ -39,7 +39,8 @@ var
 begin
   doc.setProperty('SelectionNamespaces',
     'xmlns:content="http://purl.org/rss/1.0/modules/content/" '+
-    'xmlns:media="http://search.yahoo.com/mrss/"');
+    'xmlns:media="http://search.yahoo.com/mrss/" '+
+    'xmlns:snf="http://www.smartnews.be/snf"');
 
   hasFoaf:=false;
   i:=0;
