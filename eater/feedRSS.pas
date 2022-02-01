@@ -116,7 +116,7 @@ begin
         if x1<>nil then //<a href="?
          begin
           if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
-          content:='<img class="postthumb" src="'+
+          content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
             HTMLEncode(x1.text)+'" />'+h1+content;
           x1:=nil;
          end;

@@ -369,125 +369,134 @@ begin
   i:=1;
   l:=Length(x);
   while (i<=l) and (x[i]<=' ') do inc(i);
-  //day of week 'Mon,','Tue,'...
-  while (i<=l) and not(AnsiChar(x[i]) in [',',' ']) do inc(i);
-  while (i<=l) and not(AnsiChar(x[i]) in ['0'..'9','A'..'Z']) do inc(i);
-  dda:=(i<=l) and (AnsiChar(x[i]) in ['0'..'9']);
-  if dda then
-   begin
-    //day of month
-    nx(dd,2);
-    inc(i);//' '
-   end;
-  //month
-  dm:=0;//default
-  if i+3<l then
-    case x[i] of
-      'J':
-        case x[i+1] of
-          'a':dm:=1;//Jan
-          'u':
-            case x[i+2] of
-              'n':dm:=6;//Jun
-              'l':dm:=7;//Jul
-            end;
-        end;
-      'F':dm:=2;//Feb
-      'M':
-        case x[i+2] of
-         'r':dm:=3;//Mar
-         'y':dm:=5;//May
-        end;
-      'A':
-        case x[i+1] of
-          'p':dm:=4;//Apr
-          'u':dm:=8;//Aug
-        end;
-      'S':dm:=9;//Sep
-      'O':dm:=10;//Oct
-      'N':dm:=11;//Nov
-      'D':dm:=12;//Dec
-    end;
-  if dda then
-    inc(i,4)
+  //check number of digits
+  j:=i;
+  if (i<=l) and (AnsiChar(x[i]) in ['0'..'9']) then
+    while (j<=l) and (AnsiChar(x[j]) in ['0'..'9']) do inc(j);
+  if j-i=4 then //assume "yyyy-mm-dd hh:nn:ss
+    Result:=ConvDate1(x)
   else
    begin
-    while (i<=l) and not(x[i]=' ') do inc(i);
-    inc(i);//' '
-    nx(dd,2);
-    inc(i);//',';
-    inc(i);//' ';
-   end;
-  nx(dy,4); inc(i);//' '
-  if dy<100 then
-   begin
-    //guess century
-    GetSystemTime(st);
-    j:=st.wYear div 100;
-    if ((st.wYear mod 100)>70) and (dy<30) then dec(j);//?
-    dy:=dy+j*100;
-   end;
-  if not dda then inc(i);//','
-  nx(th,2); inc(i);//':'
-  nx(tm,2); inc(i);//':'
-  if dda then
-   begin
-    nx(ts,2); inc(i);//' '
-   end
-  else
-   begin
-    ts:=0;
-    //AM/PM
-    if (i<l) and (x[i]='P') and (x[i+1]='M') then
+    //day of week 'Mon,','Tue,'...
+    while (i<=l) and not(AnsiChar(x[i]) in [',',' ']) do inc(i);
+    while (i<=l) and not(AnsiChar(x[i]) in ['0'..'9','A'..'Z']) do inc(i);
+    dda:=(i<=l) and (AnsiChar(x[i]) in ['0'..'9']);
+    if dda then
      begin
-      if th<>12 then th:=th+12;
-      inc(i,3);
+      //day of month
+      nx(dd,2);
+      inc(i);//' '
+     end;
+    //month
+    dm:=0;//default
+    if i+3<l then
+      case x[i] of
+        'J':
+          case x[i+1] of
+            'a':dm:=1;//Jan
+            'u':
+              case x[i+2] of
+                'n':dm:=6;//Jun
+                'l':dm:=7;//Jul
+              end;
+          end;
+        'F':dm:=2;//Feb
+        'M':
+          case x[i+2] of
+           'r':dm:=3;//Mar
+           'y':dm:=5;//May
+          end;
+        'A':
+          case x[i+1] of
+            'p':dm:=4;//Apr
+            'u':dm:=8;//Aug
+          end;
+        'S':dm:=9;//Sep
+        'O':dm:=10;//Oct
+        'N':dm:=11;//Nov
+        'D':dm:=12;//Dec
+      end;
+    if dda then
+      inc(i,4)
+    else
+     begin
+      while (i<=l) and not(x[i]=' ') do inc(i);
+      inc(i);//' '
+      nx(dd,2);
+      inc(i);//',';
+      inc(i);//' ';
+     end;
+    nx(dy,4); inc(i);//' '
+    if dy<100 then
+     begin
+      //guess century
+      GetSystemTime(st);
+      j:=st.wYear div 100;
+      if ((st.wYear mod 100)>70) and (dy<30) then dec(j);//?
+      dy:=dy+j*100;
+     end;
+    if not dda then inc(i);//','
+    nx(th,2); inc(i);//':'
+    nx(tm,2); inc(i);//':'
+    if dda then
+     begin
+      nx(ts,2); inc(i);//' '
      end
     else
-    if (i<l) and (x[i]='A') and (x[i+1]='M') then
-      inc(i,3);
-   end;
-  tz:=0;
-  //timezone
-  b:=0;//default
-  b1:=0;//default
-  if i+2<=l then
-    case x[i] of
-      '+':
+     begin
+      ts:=0;
+      //AM/PM
+      if (i<l) and (x[i]='P') and (x[i+1]='M') then
        begin
-        b1:=-1;
-        inc(i);
-        nx(b,4);
-       end;
-      '-':
-       begin
-        b1:=+1;
-        inc(i);
-        nx(b,4);
-       end;
-      'A'..'Z':
-       begin
-        j:=0;
-        while j<>TimeZoneCodeCount do
+        if th<>12 then th:=th+12;
+        inc(i,3);
+       end
+      else
+      if (i<l) and (x[i]='A') and (x[i+1]='M') then
+        inc(i,3);
+     end;
+    tz:=0;
+    //timezone
+    b:=0;//default
+    b1:=0;//default
+    if i+2<=l then
+      case x[i] of
+        '+':
          begin
-          k:=0;
-          while (byte(TimeZoneCode[j][1+k])>64) and
-            (x[i+k]=TimeZoneCode[j][1+k]) do inc(k);
-          if byte(TimeZoneCode[j][1+k])<64 then
-           begin
-            if TimeZoneCode[j][1+k]='-' then b1:=+1 else b1:=-1;
-            b:=StrToInt(Copy(TimeZoneCode[j],2+k,4));
-            j:=TimeZoneCodeCount;
-           end
-          else
-            inc(j);
+          b1:=-1;
+          inc(i);
+          nx(b,4);
          end;
-       end;
-    end;
-  Result:=
-    EncodeDate(dy,dm,dd)+
-    EncodeTime(th,tm,ts,tz)+
-    b1*((b div 100)/24.0+(b mod 100)/1440.0);
+        '-':
+         begin
+          b1:=+1;
+          inc(i);
+          nx(b,4);
+         end;
+        'A'..'Z':
+         begin
+          j:=0;
+          while j<>TimeZoneCodeCount do
+           begin
+            k:=0;
+            while (byte(TimeZoneCode[j][1+k])>64) and
+              (x[i+k]=TimeZoneCode[j][1+k]) do inc(k);
+            if byte(TimeZoneCode[j][1+k])<64 then
+             begin
+              if TimeZoneCode[j][1+k]='-' then b1:=+1 else b1:=-1;
+              b:=StrToInt(Copy(TimeZoneCode[j],2+k,4));
+              j:=TimeZoneCodeCount;
+             end
+            else
+              inc(j);
+           end;
+         end;
+      end;
+    Result:=
+      EncodeDate(dy,dm,dd)+
+      EncodeTime(th,tm,ts,tz)+
+      b1*((b div 100)/24.0+(b mod 100)/1440.0);
+   end;
 end;
 
 function UtcNow:TDateTime;

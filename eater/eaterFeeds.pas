@@ -1410,6 +1410,12 @@ begin
       s2:=6;
      end
     else
+    if (sm[0]='rel') and (sm[1]='alternate') and (sm[2]='href') and (sm[5]='type') then
+     begin
+      s1:=6;
+      s2:=3;
+     end
+    else
     if (sm[2]='rel') and (sm[4]='alternate') and (sm[0]='type') and (sm[5]='href') then
      begin
       s1:=1;

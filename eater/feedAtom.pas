@@ -124,7 +124,9 @@ begin
       if not IsProbablyHTML(content) then
        begin
         x1:=x.selectSingleNode('atom:link[@rel="enclosure" and @type="image/jpeg"]/@href');
+        if x1=nil then x1:=x.selectSingleNode('atom:link[@rel="enclosure" and @type="image/png"]/@href');
         if x1=nil then x1:=x.selectSingleNode('media:group/media:thumbnail/@url');
+        if x1=nil then x1:=x.selectSingleNode('media:group/media:content[@medium="image" and @type="image/jpeg"]/@url');
         if x1=nil then x1:=x.selectSingleNode('media:content/media:thumbnail/@url');
         if x1<>nil then
          begin
