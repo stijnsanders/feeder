@@ -4,10 +4,23 @@ xx:array of Variant;
 s,sql,cat:string;
 d,d0,f,l,id,id0,lx:integer;
 d1:TDateTime;
-loadMore,sqlWhere:boolean;
+loadMore,sqlWhere,cList:boolean;
 const
 descasc:array[boolean] of string=('desc','asc');
 lessthan:array[boolean] of string=('<','>');
+
+procedure CheckCList;
+begin
+  if not cList then
+   begin
+    Context.SendHTML('<div style="padding-bottom:2pt;">');
+    Context.SendHTML('<div class="date">');
+    Context.Send(FormatDateTime('ddd yyyy-mm-dd hh:nn',UtcNow+Session.TimeBias));
+    Context.SendHTML('</div>'#13#10);
+    cList:=true;
+   end;
+end;
+
 ]][[
 if Session.UserID=0 then
  begin
@@ -92,6 +105,11 @@ else
 
   if loadMore then lx:=2 else lx:=0;
 
+  if Context['hl'].Value<>'' then
+    sql:=sql
+      +' inner join "HotListSubscription" HLS on HLS.hotlist_id='+IntToStr(Context['hl'].AsInteger)+' and HLS.subscription_id=S.id'
+      ;
+
   if cat='' then
     if f=0 then
       if (Context['search'].Value='') and (Context['title'].Value='') then
@@ -101,25 +119,39 @@ else
           //show category links
           if not loadMore then
            begin
+            cList:=false;
             qr:=TQueryResult.Create(Session.Connection,
               'select distinct S.Category from "Subscription" S where S.user_id=$1 and S.Category<>'''' order by 1',[Session.UserID]);
             try
               if not qr.EOF then
                begin
-                <<div style="padding-bottom:2pt;">
-                <div class="date">>=FormatDateTime('ddd yyyy-mm-dd hh:nn',UtcNow+Session.TimeBias)<</div>
-                [[
+                CheckCList;
                 while qr.Read do
                  begin
                   s:=qr.GetStr(0);
                   <<div class="catlink"><a href="?c=[[=s]]">>=s<</a></div>
                   [[
                  end;
-                <</div>>
                end;
             finally
               qr.Free;
             end;
+            qr:=TQueryResult.Create(Session.Connection,
+              'select H.* from "HotList" H where H.user_id=$1 order by lower(H.label)',[Session.UserID]);
+            try
+              if not qr.EOF then
+               begin
+                CheckCList;
+                while qr.Read do
+                 begin
+                  <<a href="?hl=[[.id]]" style="text-decoration:none;color:black;">>#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')<</a>
+                  [[
+                 end;
+               end;
+            finally
+              qr.Free;
+            end;
+            if cList then Context.SendHTML('</div>'#13#10);
            end;
 
           //query: no extra criteria
@@ -149,11 +181,7 @@ else
          end
       else
        begin
-        sql:=
-          'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
-          +' from "Post" P'
-          +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
-          +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1';
+        sql:=StringReplace(sql,'inner join "UserPost"','left outer join "UserPost"',[]);
         sqlWhere:=true;
         SetLength(xx,2+lx);
         xx[0]:=Session.UserID;
@@ -172,11 +200,7 @@ else
        end
     else
      begin
-      sql:=
-        'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
-        +' from "Post" P'
-        +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
-        +' left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1'
+      sql:=StringReplace(sql,'inner join "UserPost"','left outer join "UserPost"',[])
         +' where P.feed_id=$2';
       sqlWhere:=true;
       SetLength(xx,2+lx);

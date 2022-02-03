@@ -125,6 +125,26 @@ constraint FK_Opinion_Post foreign key (post_id) references "Post" (id)
 create unique index IX_Opinion on "Opinion" (user_id,post_id);
 
 
+create table "HotList" (
+id serial primary key,
+user_id integer not null,
+label varchar(50) not null,
+color varchar(20) not null,
+created float not null,
+constraint FK_HotList_User foreign key (user_id) references "User" (id)
+);
+
+create table "HotListSubscription" (
+id serial primary key,
+hotlist_id integer not null,
+subscription_id integer not null,
+constraint FK_HotListSubscription_HotList foreign key (hotlist_id) references "HotList" (id),
+constraint FK_HotListSubscription_Subscription foreign key (subscription_id) references "Subscription" (id)
+);
+
+create unique index IX_HotListSubscription on "HotListSubscription" (hotlist_id,subscription_id);
+
+
 --PostgreSQL:
 alter default privileges grant select,insert,delete,update on tables to feeder;
 alter default privileges grant usage,select,update on sequences to feeder;

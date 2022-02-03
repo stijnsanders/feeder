@@ -1,0 +1,71 @@
+[[@xxmSession,DataLank,fCommon,Variants]][[!var
+qr:TQueryResult;
+]][[
+if Session.UserID=0 then Context.Redirect('.',true);
+Context.Include('dHead.xxmi');
+
+<<div style="position:fixed;top:0;left:0em;background-color:gold;padding:4pt;user-select:none;">
+<a href="."><img src="img_l.png" width="16" height="16" border="0" alt="Back" /></a>
+<a href="Feeds.xxm"><img src="img_l.png" width="16" height="16" border="0" alt="Back" /></a>
+&nbsp;
+<b>HotLists</b>:
+&nbsp;<a href="HotList.xxm">Add</a>
+</div>
+
+<div style="height:1.5em;padding-bottom:2pt;">&nbsp;</div>>
+
+qr:=TQueryResult.Create(Session.Connection,
+  'select H.*,'+
+  ' (select count(*) from "HotListSubscription" HLS where HLS.hotlist_id=H.id) as HLS'+
+  ' from "HotList" H where H.user_id=$1'+
+  ' order by lower(H.label)',[Session.UserID]);
+try
+  while qr.Read do
+   begin
+    <<div class="post">
+    <div class="date">>=FormatDateTime('yyyy-mm-dd',double(qr['created'])+Session.TimeBias)<</div>
+    <a href="HotList.xxm?id=[[.id]]" style="text-decoration:none;color:black;">>#
+      ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')<</a>
+    <span style="color:#CCCCCC;">([[.HLS]])</span>
+    <a href=".?hl=[[.id]]" id="pc[[.id]]" style="color:#0000CC;">...</a>
+    </div>>
+   end;
+
+  <<div id="trailer" style="height:100vh;border-bottom:4px solid gold;"></div>>
+
+finally
+  qr.Free;
+end;
+
+Context.Flush;
+Session.Connection.Execute('set statement_timeout=10000',[]);
+qr:=TQueryResult.Create(Session.Connection,
+  'select H.id, sum(S.postsopened) as postsopened, sum(F.totalcount) as PostCount, sum(X.UnreadCount) as UnreadCount'+
+  ' from "HotList" H'+
+  ' inner join "HotListSubscription" HS on HS.hotlist_id=H.id'+
+  ' inner join "Subscription" S on S.id=HS.subscription_id '+
+  ' left outer join ('+
+  '   select P.feed_id, count(*) as UnreadCount from "Post" P inner join "UserPost" X on X.post_id=P.id where X.user_id=$1 group by P.feed_id'+
+  ' ) X on X.feed_id=S.feed_id'+
+  ' inner join "Feed" F on F.id=S.feed_id'+
+  ' where H.user_id=$1'+
+  'group by H.id'
+  //+' order by S.category, S.label, F.name, S.id'
+  ,[Session.UserID]);
+try
+
+  <<script>
+  function f(id,x1,x2,x3){
+    var x=document.getElementById("pc"+id);
+    x.textContent=x1+"/"+x2;
+    x.title="posts="+x2+" unread="+x1+" opened="+x3;
+  }
+  [[
+  while qr.Read do
+    Context.SendHTML(Format('f(%d,%d,%d,%d);'#13#10,[qr.GetInt('id'),qr.GetInt('UnreadCount'),qr.GetInt('PostCount'),qr.GetInt('postsopened')]));
+  <</script>>
+  
+finally
+  qr.Free;
+end;
+

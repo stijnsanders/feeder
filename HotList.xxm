@@ -1,0 +1,113 @@
+[[@xxmSession,DataLank,fCommon,Variants,Windows]][[!var
+id,sid:integer;
+qr:TQueryResult;
+c,c1:string;
+p:IxxmParameter;
+i,sc:integer;
+const
+csel:array[boolean] of string=('',' checked="1"');
+]][[
+
+Context.Include('dHead.xxmi');
+
+case Context['x'].AsInteger of
+  0://form
+   begin
+    id:=Context['id'].AsInteger;
+    <<form method="post" action="?">
+    <input type="hidden" name="x" value="1" />
+    <input type="hidden" name="id" value="[[=id]]" />
+    <dl>>
+    if id=0 then
+      qr:=TQueryResult.Create(Session.Connection,'select null as label,null as color',[])//defaults
+    else
+      qr:=TQueryResult.Create(Session.Connection,'select label,color from "HotList" where id=$1',[id]);
+    try
+      <<dt>label text</dt>
+      <dd><input type="text" name="label" value="[[.label]]" autocomplete="off" /></dd>
+      <dt>label color</dt>
+      <dd>>#ColorPicker(qr.GetStr('color'))<</dd>>
+    finally
+      qr.Free;
+    end;
+    <<dt>subscriptions</dt>
+    <dd>>
+    qr:=TQueryResult.Create(Session.Connection,
+      'select S.*, F.name, F.url, H.id as HLS'+
+      ' from "Subscription" S'+
+      ' inner join "Feed" F on F.id=S.feed_id'+
+      ' left outer join "HotListSubscription" H on H.hotlist_id=$2 and H.subscription_id=S.id'+
+      ' where S.user_id=$1'+
+      ' order by lower(S.category), lower(S.label), lower(F.name), S.id',[Session.UserID,id]);
+    try
+      c:='';
+      while qr.Read do
+       begin
+        c1:=qr.GetStr('category');
+        if c<>c1 then
+         begin
+          <<br /><div class="catlink">>=c1<</div>>
+          c:=c1;
+         end;
+        ]]
+        <label style="white-space:nowrap;"><input type="checkbox" name="s[[.id]]" value="1"[[#csel[not qr.IsNull('HLS')]]] />&nbsp;[[#StringReplace(
+          ShowLabel(qr.GetStr('label'),qr.GetStr('color'),''),
+          '<div ','<div title="'+HTMLEncode(qr.GetStr('name'))+'" ',[])<</label>>
+       end;
+
+    finally
+      qr.Free;
+    end;
+    <</dd>
+    </dl>
+    <p><input type="submit" value="[[if id=0 then Context.SendHTML('Add HotList') else Context.SendHTML('Update HotList');]]" /></p>
+    </form>
+    <script>document.getElementById("f1").focus();</script>
+    <p><a href="HotLists.xxm">back</a></p>>
+   end;
+  1://add/update
+   begin
+    id:=Context['id'].AsInteger;
+
+    if Trim(Context['label'].Value)='' then raise Exception.Create('HotList "label" empty value not allowed');
+
+    //TODO: transaction?
+    if id=0 then
+     begin
+      id:=Session.Connection.Insert('HotList',['user_id',Session.UserID,'label',Context['label'].Value,'color',CheckColor(Context['color'].Value),'created',double(UtcNow)],'id');
+      <<p>HotList added</p>>
+     end
+    else
+     begin
+      Session.Connection.Execute('update "HotList" set label=$1,color=$2 where id=$3',[Context['label'].Value,CheckColor(Context['color'].Value),id]);
+      <<p>HotList updated</p>>
+     end;
+
+    //subscriptions
+    sc:=0;
+    Session.Connection.Execute('delete from "HotListSubscription" where hotlist_id=$1',[id]);
+    for i:=0 to Context.ParameterCount-1 do
+     begin
+      p:=Context.Parameter[i];
+      if (Copy(p.Name,1,1)='s') and (p.Value='1') then
+       begin
+        sid:=StrToInt(Copy(p.Name,2,9));
+        Session.Connection.Execute('insert into "HotListSubscription" (hotlist_id,subscription_id) values ($1,$2)',[id,sid]);//created?
+        inc(sc);
+       end;
+     end;
+    <<p>[[=sc]] subscriptions listed</p>>
+
+    <<p>
+    <a href="HotList.xxm">add another...</a><br />
+    <a href="HotLists.xxm">back to hotlists...</a><br />
+    <a href="Feeds.xxm">back to feeds...</a><br />
+    <a href=".">back to posts...</a><br />
+    </p>>
+
+   end;
+  else
+    raise Exception.Create('Unknown action');
+end;
+
+Context.Include('dFoot.xxmi');
