@@ -2,7 +2,7 @@
 qr:TQueryResult;
 xx:array of Variant;
 s,sql,cat:string;
-d,d0,f,l,id,id0,lx:integer;
+d,d0,f,l,id,id0,lx,qrTimeout:integer;
 d1:TDateTime;
 loadMore,sqlWhere,cList:boolean;
 const
@@ -37,6 +37,7 @@ if Session.UserID=0 then
 else
  begin
   loadMore:=Context['x'].Value<>'';
+  qrTimeout:=30;//default, see below
 
   cat:=Context['c'].Value;
   f:=Context['f'].AsInteger;
@@ -212,6 +213,7 @@ else
           +' and P.title||'' ''||P.content ilike $3';
         SetLength(xx,3+lx);
         xx[2]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
+        qrTimeout:=300;
        end
       else
       if Context['title'].Value<>'' then
@@ -237,7 +239,7 @@ else
   if loadMore then
    begin
     id0:=Context['x'].AsInteger;
-    Session.Connection.Execute('set statement_timeout=90000',[]);    
+    Session.Connection.Execute('set statement_timeout=90000',[]);
     qr:=TQueryResult.Create(Session.Connection,'select pubdate from "Post" where id=$1',[id0]);
     try
       d1:=double(qr[0]);
@@ -255,7 +257,7 @@ else
    begin
     d:=Trunc(UtcNow+Session.TimeBias);
     Context.Flush;
-    Session.Connection.Execute('set statement_timeout=30000',[]);
+    Session.Connection.Execute('set statement_timeout='+IntToStr(qrTimeout)+'000',[]);
    end;
 
   qr:=TQueryResult.Create(Session.Connection,

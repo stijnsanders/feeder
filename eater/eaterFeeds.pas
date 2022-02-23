@@ -82,12 +82,12 @@ const
   YoutubePrefix1='https://www.youtube.com/channel/';
   YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
 
-  InstagramDelaySecs=120;
-  InstagramURLSuffix='?__a=1';
+  InstagramDelaySecs:array[boolean] of integer=(120,5);
+  InstagramURLSuffix='channel/?__a=1';
 
 var
+  InstagramHot:boolean;
   InstagramDelayMS:cardinal;
-
 
 function qrDate(qr:TQueryResult;const Idx:Variant):TDateTime;
 var
@@ -254,7 +254,7 @@ var
   postlast,postavg,f:double;
   newfeed,dofeed,doreq,loadext,xres:boolean;
   r:ServerXMLHTTP60;
-  redirCount,i:integer;
+  redirCount,i,j:integer;
   handler_i:cardinal;
   doc:DOMDocument60;
 
@@ -366,9 +366,6 @@ begin
         //feedglobal:=(i and 1)<>0;
         //TODO: more?
 
-        if (FFeed.Result0<>'') and (FFeed.Result0[1]='[') then
-          FFeed.Result0:='';
-
         FReport.Add('<tr>');
         FReport.Add('<th>'+IntToStr(FFeed.id)+'</th>');
         FReport.Add('<td class="n" title="'+FormatDateTime('yyyy-mm-dd hh:nn:ss',FFeed.LoadStart)+'">');
@@ -478,6 +475,9 @@ begin
 
           //TODO: move these into specific feed handlers
 
+          if (FFeed.Result0<>'') and (FFeed.Result0[1]='[') then
+            FFeed.Result0:='';
+
           if (FFeed.Result0='') and StartsWithX(FFeed.URL,YoutubePrefix1,ss) then
             FFeed.URL:=YoutubePrefix2+ss;
 
@@ -485,12 +485,13 @@ begin
            begin
 
             i:=cardinal(GetTickCount-InstagramDelayMS);
-            if i<InstagramDelaySecs*1000 then
+            j:=InstagramDelaySecs[InstagramHot];
+            if i<j*1000 then
              begin
               Writeln('');
-              while i<InstagramDelaySecs*1000 do
+              while i<j*1000 do
                begin
-                Write(#13'Instagram delay '+IntToStr(InstagramDelaySecs-(i div 1000))+'s...   ');
+                Write(#13'Instagram delay '+IntToStr(j-(i div 1000))+'s...   ');
                 Sleep(10);
                 i:=cardinal(GetTickCount-InstagramDelayMS);
                end;
@@ -503,11 +504,12 @@ begin
               'xmls\'+Format('%.4d',[FFeed.ID])+'.json',
               FFeed.LastMod,
               'application/json');//UseProxy?
+            InstagramHot:=FeedData<>'';
+            InstagramDelayMS:=GetTickCount;
             if FeedData='' then //if StartsWith(FeedData,'HTTP/1.1 301') then
               FFeed.Result:='[Instagram]'
             else
               FeedDataType:=ParseExternalHeader(FeedData);
-            InstagramDelayMS:=GetTickCount;
            end
           else
 
@@ -1473,7 +1475,8 @@ end;
 initialization
   PGVersion:='';
   BlackList:=TStringList.Create;
-  InstagramDelayMS:=GetTickCount-InstagramDelaySecs*1000;
+  InstagramHot:=true;//default
+  InstagramDelayMS:=GetTickCount-InstagramDelaySecs[false]*1000;
 finalization
   BlackList.Free;
 end.
