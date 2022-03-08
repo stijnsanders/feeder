@@ -121,6 +121,7 @@ else
           if not loadMore then
            begin
             cList:=false;
+            Context.Flush;
             qr:=TQueryResult.Create(Session.Connection,
               'select distinct S.Category from "Subscription" S where S.user_id=$1 and S.Category<>'''' order by 1',[Session.UserID]);
             try
@@ -152,7 +153,11 @@ else
             finally
               qr.Free;
             end;
-            if cList then Context.SendHTML('</div>'#13#10);
+            if cList then 
+             begin
+              Context.SendHTML('</div>'#13#10);
+              Context.Flush;
+             end;
            end;
 
           //query: no extra criteria

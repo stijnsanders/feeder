@@ -306,6 +306,7 @@ begin
           ' and F.created>$1 order by F.id',[UtcNow-1.0])
       else
         qr:=TQueryResult.Create(FDB,'select F.id from "Feed" F where F.id>0'+
+          //' and url like ''%instagram%'''+
           ' order by F.id',[]);
       try
         ids_l:=0;
@@ -1013,6 +1014,7 @@ begin
   //assert varArray of varString
   FPostTags:=Tags;
   FPostTagPrefix:=TagPrefix;
+  //see also RegisterPost
 end;
 
 procedure TFeedEater.RegisterPost(const PostTitle, PostContent: WideString);
@@ -1037,16 +1039,11 @@ begin
     PerformReplaces(title,content);
 
   //if feedtagprefix<>'' then
-  if VarIsArray(FPostTags) and //varArray of varStrSomething?
-    (VarArrayDimCount(FPostTags)=1) and (VarArrayHighBound(FPostTags,1)-VarArrayLowBound(FPostTags,1)>0) then
-   begin
-    tsql:='';
+  tsql:='';
+  if VarIsArray(FPostTags) then //varArray of varStrSomething?
     for ti:=VarArrayLowBound(FPostTags,1) to VarArrayHighBound(FPostTags,1) do
       tsql:=tsql+' or B.url='''+StringReplace(FPostTagPrefix+':'+
         VarToStr(FPostTags[ti]),'''','''''',[rfReplaceAll])+'''';
-   end
-  else
-    tsql:='';
 
   //list the post
   FDB.BeginTrans;
