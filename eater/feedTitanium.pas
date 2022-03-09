@@ -30,7 +30,7 @@ procedure TTitaniumFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jnodes,jcaption,jThumbs:IJSONDocArray;
-  jdoc,jn0,jn1,jd1:IJSONDocument;
+  jdoc,jn0,jn1,jd0,jd1:IJSONDocument;
   p1,p2,itemid,itemurl:string;
   pubDate:TDateTime;
   title,content,h1:WideString;
@@ -38,16 +38,25 @@ var
   v:Variant;
 begin
   jnodes:=JSONDocArray;
+  jd0:=JSON(['cards',jnodes]);
   jdoc:=JSON(['hub',JSON(['data',JSON([
     FindMatch(FeedData,'"data":{"([^"]*?)":{"[^"]+?":\['),
-    JSON(['cards',jnodes])])])]);
+    jd0])])]);
   try
     jdoc.Parse(FeedData);
   except
     on EJSONDecodeException do
       ;//ignore "data past end"
   end;
-  //feedname:=VarToStr(jdoc[????]);
+
+  v:=jd0['tagObjs'];
+  if VarIsArray(v) then
+    try
+      Handler.UpdateFeedName(JSON(v[0])['seoTitle']);
+    except
+      //ignore
+    end;
+
   jcaption:=JSONDocArray;
   jThumbs:=JSONDocArray;
   jn0:=JSON(['contents',jcaption,'feeds',jThumbs]);
