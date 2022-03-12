@@ -73,7 +73,7 @@ const
   FeederIniPath='..\..\feeder.ini';
   //TODO: from ini?
   FeedLoadReport='..\Load.html';
-  AvgPostsDays=100;
+  AvgPostsDays=500;
   OldPostsDays=3660;
 
   regimesteps=8;
