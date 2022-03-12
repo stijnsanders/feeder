@@ -41,7 +41,11 @@ var
 begin
   jnodes:=JSONDocArray;
   jd1:=JSON;
-  jdoc:=JSON(['result',JSON(['articles',jnodes,'section',jd1])]);
+  jdoc:=JSON(
+    ['result',JSON(['articles',jnodes,'section',jd1])
+    ,'arcResult',JSON(['articles',jnodes])
+    ,'sophiResult',JSON(['articles',jnodes])
+    ]);
   try
     jdoc.Parse(FeedData);
   except
