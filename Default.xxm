@@ -1,10 +1,10 @@
 [[@DataLank,xxmSession,fCommon,Variants]][[!var
 qr:TQueryResult;
 xx:array of Variant;
-s,sql,cat:string;
+s,sql0,sql1,sql2,sql3,cat:string;
 d,d0,f,l,id,id0,lx,qrTimeout:integer;
 d1:TDateTime;
-loadMore,sqlWhere,cList:boolean;
+loadMore,cList:boolean;
 const
 descasc:array[boolean] of string=('desc','asc');
 lessthan:array[boolean] of string=('<','>');
@@ -96,18 +96,15 @@ else
 
    end;
 
-  sql:=
-    'select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID'
-    +' from "Post" P'
-    +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
-    +' inner join "UserPost" X on X.post_id=P.id and X.user_id=$1'
-    ;
-  sqlWhere:=false;
-
+  sql0:='select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID';
+  sql1:=' from "UserPost" X left outer join "Post" P on P.id=X.post_id';
+  sql2:=' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1';
+  sql3:=' where X.user_id=$1';
   if loadMore then lx:=2 else lx:=0;
+  SetLength(xx,1+lx);
 
   if Context['hl'].Value<>'' then
-    sql:=sql
+    sql2:=sql2
       +' inner join "HotListSubscription" HLS on HLS.hotlist_id='+IntToStr(Context['hl'].AsInteger)+' and HLS.subscription_id=S.id'
       ;
 
@@ -162,59 +159,48 @@ else
 
           //query: no extra criteria
           SetLength(xx,2+lx);
-          xx[0]:=Session.UserID;
           xx[1]:=Session.UserID;
          end
         else
         if Context['d'].Value='' then
          begin
-          sql:=sql+' where floor((P.pubdate+$2)*24)::int%24=$3';
-          sqlWhere:=true;
+          sql3:=sql3+' and floor((P.pubdate+$2)*24)::int%24=$3';
           SetLength(xx,3+lx);
-          xx[0]:=Session.UserID;
           xx[1]:=double(Session.TimeBias);
           xx[2]:=Context['h'].AsInteger;
          end
         else
          begin
-          sql:=sql+' where P.pubdate>$2 and P.pubdate<$3';
-          sqlWhere:=true;
+          sql3:=sql3+' and P.pubdate>$2 and P.pubdate<$3';
           SetLength(xx,3+lx);
-          xx[0]:=Session.UserID;
           d1:=UtcNow-Context['d'].AsInteger;
           xx[1]:=double(VarFromDateTime(d1-4.0/24.0));
           xx[2]:=double(VarFromDateTime(d1+4.0/24.0));
          end
       else
        begin
-        sql:=StringReplace(sql,'inner join "UserPost"','left outer join "UserPost"',[]);
-        sqlWhere:=true;
+        sql1:=' from "Post" P left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1';
         SetLength(xx,2+lx);
-        xx[0]:=Session.UserID;
         if Context['title'].Value='' then
          begin
-          sql:=sql
-            +' where P.title||'' ''||P.content ilike $2';
+          sql3:=' where P.title||'' ''||P.content ilike $2';
           xx[1]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
          end
         else
          begin
-          sql:=sql
-            +' where P.title ilike $2';
+          sql3:=' where P.title ilike $2';
           xx[1]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
          end;
        end
     else
      begin
-      sql:=StringReplace(sql,'inner join "UserPost"','left outer join "UserPost"',[])
-        +' where P.feed_id=$2';
-      sqlWhere:=true;
+      sql1:=' from "Post" P left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1';
+      sql3:=' where P.feed_id=$2';
       SetLength(xx,2+lx);
-      xx[0]:=Session.UserID;
       xx[1]:=f;
       if Context['search'].Value<>'' then
        begin
-        sql:=sql
+        sql3:=sql3
           +' and P.title||'' ''||P.content ilike $3';
         SetLength(xx,3+lx);
         xx[2]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
@@ -223,7 +209,7 @@ else
       else
       if Context['title'].Value<>'' then
        begin
-        sql:=sql
+        sql3:=sql3
           +' and P.title ilike $3';
         SetLength(xx,3+lx);
         xx[2]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
@@ -231,16 +217,15 @@ else
      end
   else 
    begin
-    sql:=sql+' where S.category=$2';
-    sqlWhere:=true;
+    sql3:=sql3+' and S.category=$2';
     SetLength(xx,2+lx);
-    xx[0]:=Session.UserID;
     xx[1]:=cat;
    end;
 
   if Context['q'].Value='' then l:=0 else l:=Context['q'].AsInteger;
   if l=0 then l:=Session.DefaultBatchSize;//default
 
+  xx[0]:=Session.UserID;
   if loadMore then
    begin
     id0:=Context['x'].AsInteger;
@@ -252,8 +237,7 @@ else
       qr.Free;
     end;
     d:=Trunc(d1+Session.TimeBias);
-    if sqlWhere then sql:=sql+' and' else sql:=sql+' where';
-    sql:=sql+' ((P.pubdate=$'+IntToStr(Length(xx)-1)+' and P.id>$'+IntToStr(Length(xx))+
+    sql3:=sql3+' and ((P.pubdate=$'+IntToStr(Length(xx)-1)+' and P.id>$'+IntToStr(Length(xx))+
       ') or (P.pubdate'+lessthan[Context['a'].AsInteger<>0]+'$'+IntToStr(Length(xx)-1)+'))';
     xx[Length(xx)-2]:=double(d1);
     xx[Length(xx)-1]:=id0;
@@ -265,8 +249,13 @@ else
     Session.Connection.Execute('set statement_timeout='+IntToStr(qrTimeout)+'000',[]);
    end;
 
+
+  if false then begin
+  <<p style="border:2px solid red;">>=sql0+sql1+sql2+sql3+' order by P.pubdate '+descasc[Context['a'].AsInteger<>0]+', P.id limit '+IntToStr(l)<</p>>
+  end;
+
   qr:=TQueryResult.Create(Session.Connection,
-    sql+' order by P.pubdate '+descasc[Context['a'].AsInteger<>0]+', P.id limit '+IntToStr(l),xx);
+    sql0+sql1+sql2+sql3+' order by P.pubdate '+descasc[Context['a'].AsInteger<>0]+', P.id limit '+IntToStr(l),xx);
   try
     if qr.EOF then
      begin
