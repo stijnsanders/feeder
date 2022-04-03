@@ -1,8 +1,13 @@
 [[@xxmSession,DataLank,fCommon,Variants]][[!var
-id,rw:integer;
+id,rw,i:integer;
 c,cat,lbl:string;
 ur:Variant;
 db:TDataConnection;
+qr:TQueryResult;
+hl:array of record
+  id:integer;
+  hl:boolean;
+end;
 ]][[
 
 id:=Context['id'].AsInteger;
@@ -28,6 +33,37 @@ case Context['x'].AsInteger of
       db.Execute('update "Subscription" set'+
         ' category=$1,label=$2,color=$3,readwidth=$4,autounread=$5'+
         ' where id=$6 and user_id=$7',[cat,lbl,c,rw,ur,id,Session.UserID]);
+
+      qr:=TQueryResult.Create(Session.Connection,
+        'select H.*, HLS.id as hlsid'+
+        ' from "HotList" H'+
+        ' left outer join "HotListSubscription" HLS on HLS.hotlist_id=H.id and HLS.subscription_id=$2'+
+        ' where H.user_id=$1'+
+        ' order by lower(H.label)',[Session.UserID,id]);
+      try
+        i:=0;
+        SetLength(hl,qr.Count);
+        while qr.Read do
+         begin
+          hl[i].id:=qr.GetInt('id');
+          hl[i].hl:=not qr.IsNull('hlsid');
+          inc(i);
+         end;
+      finally
+        qr.Free;
+      end;
+      for i:=0 to Length(hl)-1 do
+        if hl[i].hl then
+         begin
+          if Context['hl'+IntToStr(hl[i].id)].AsInteger=0 then
+            db.Execute('delete from "HotListSubscription" where hotlist_id=$1 and subscription_id=$2',[hl[i].id,id]);
+         end
+        else
+         begin
+          if Context['hl'+IntToStr(hl[i].id)].AsInteger=1 then
+            db.Execute('insert into "HotListSubscription" (hotlist_id,subscription_id) values ($1,$2)',[hl[i].id,id]);
+         end;
+
       db.CommitTrans;
     except
       db.RollbackTrans;
@@ -44,7 +80,9 @@ case Context['x'].AsInteger of
         ' (select X.id from "UserPost" X'+
         ' inner join "Post" P on P.id=X.post_id'+
         ' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'+
-        ' where X.user_id=$1 and P.feed_id=$2)',[Session.UserID,id]);
+        ' where X.user_id=$1 and S.id=$2)',[Session.UserID,id]);
+      db.Execute('delete from "HotListSubscription" where subscription_id in '+
+        '(select id from "Subscription" where id=$1 and user_id=$2)',[id,Session.UserID]);
       db.Execute('delete from "SubCount" where subscription_id in '+
         '(select id from "Subscription" where id=$1 and user_id=$2)',[id,Session.UserID]);
       db.Execute('delete from "Subscription" where id=$1 and user_id=$2',[id,Session.UserID]);

@@ -5,6 +5,7 @@ autounread:Variant;
 id,feedid,ur0,ur1:integer;
 const
 osel:array[boolean] of string=('',' selected="1"');
+csel:array[boolean] of string=('',' checked="1"');
 ]][[
 if Session.UserID=0 then Context.Redirect('.',true);
 Context.Include('dHead.xxmi');
@@ -229,8 +230,32 @@ else
   <option value="1"[[#osel[ur1=1]]]>days</option>
   <option value="2"[[#osel[ur1=2]]]>weeks</option>
   </select>
-  </dd>
-  </dl>
+  </dd>>
+  qr:=TQueryResult.Create(Session.Connection,
+    'select H.*, HLS.id as hlsid'+
+    ',(select count(*) from "HotListSubscription" HLS where HLS.hotlist_id=H.id) as HLS'+
+    ' from "HotList" H'+
+    ' left outer join "HotListSubscription" HLS on HLS.hotlist_id=H.id and HLS.subscription_id=$2'+
+    ' where H.user_id=$1'+
+    ' order by lower(H.label)',[Session.UserID,id]);
+  try
+    if not qr.EOF then
+     begin
+      <<dt>hot lists</dt><dd>>
+      while qr.Read do
+      begin
+        <<label>
+        <input type="checkbox" name="hl[[.id]]" value="1"[[#csel[not qr.IsNull('hlsid')]]] />
+        [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')]]
+        <span style="color:#CCCCCC;">([[.HLS]])</span>
+        </label>>
+      end;
+      <</dd>>
+     end;
+  finally
+    qr.Free;
+  end;
+  <</dl>
   <p><input type="submit" value="Update" /></p>
   </form>
   <p><a href=".?f=[[=feedid]]">view posts from this feed...</a></p>
