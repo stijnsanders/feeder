@@ -82,7 +82,7 @@ const
   YoutubePrefix1='https://www.youtube.com/channel/';
   YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
 
-  InstagramDelaySecs:array[boolean] of integer=(120,5);
+  InstagramDelaySecs:array[boolean] of cardinal=(120,5);
   InstagramURLSuffix='channel/?__a=1';
 
 var

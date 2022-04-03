@@ -9,7 +9,7 @@ procedure SaveUTF16(const fn:string;const Data:WideString);
 
 function StartsWith(const Value,Prefix:string):boolean;
 function StartsWithX(const Value,Prefix:string;var Suffix:string):boolean;
-function StartsWithIWS(const Value:string;const Prefix:array of string):boolean;
+function HTMLStartsWithImg(const Value:string):boolean;
 
 function ConvDate1(const x:string):TDateTime;
 function ConvDate2(const x:string):TDateTime;
@@ -76,22 +76,22 @@ begin
     Result:=false;
 end;
 
-function StartsWithIWS(const Value:string;const Prefix:array of string):boolean;
+function HTMLStartsWithImg(const Value:string):boolean;
 var
-  i,j,k,l:integer;
+  i,l:integer;
 begin
   i:=1;
-  j:=0;
-  k:=Length(Prefix);
   l:=Length(Value);
   //ignore white space
   while (i<=l) and (Value[i]<=' ') do inc(i);
-  Result:=false;
-  while not(Result) and (j<k) do
+  if (i+3<=l) and (Value[i]='<') and (Value[i+1]='p') and ((Value[i+2]='>') or (Value[i+2]=' ')) then
    begin
-    Result:=Copy(Value,i,Length(Prefix[j]))=Prefix[j];
-    inc(j);
+    while (i<=l) and (Value[i]<>'>') do inc(i);
+    if (i<=l) then inc(i);//'>'
    end;
+  Result:=(Copy(Value,i,5)='<img ')
+    or (Copy(Value,i,8)='<figure ')
+    or (Copy(Value,i,8)='<figure>');
 end;
 
 function ConvDate1(const x:string):TDateTime;
