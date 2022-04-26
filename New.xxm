@@ -1,10 +1,11 @@
 [[@xxmSession,DataLank,fCommon,Variants,Windows]][[!var
 s,t,lbl,cat,c:string;
-id,id1,rw:integer;
+id,id1,rw,i:integer;
 ur:Variant;
 qr:TQueryResult;
 d:TDateTime;
 h:THandle;
+hl:array of integer;
 const
 DefaultReadWidth=32;
 ]][[
@@ -54,8 +55,31 @@ case Context['x'].AsInteger of
     <option value="1" selected="1">days</option>
     <option vaule="2">weeks</option>
     </select>
-    </dd>
-    </dl>
+    </dd>>
+    qr:=TQueryResult.Create(Session.Connection,
+      'select H.*'+
+      ',(select count(*) from "HotListSubscription" HLS where HLS.hotlist_id=H.id) as HLS'+
+      ' from "HotList" H'+
+      ' where H.user_id=$1'+
+      ' order by lower(H.label)',[Session.UserID]);
+    try
+      if not qr.EOF then
+       begin
+        <<dt>hot lists</dt><dd>>
+        while qr.Read do
+        begin
+          <<label>
+          <input type="checkbox" name="hl[[.id]]" value="1" />
+          [[#ShowLabel(qr.GetStr('label'),qr.GetStr('color'),'')]]
+          <span style="color:#CCCCCC;">([[.HLS]])</span>
+          </label>>
+        end;
+        <</dd>>
+       end;
+    finally
+      qr.Free;
+    end;
+    <</dl>
     <p><input type="submit" value="Add Feed" /></p>
     </form>
     <script>document.getElementById("f1").focus();</script>
@@ -135,6 +159,27 @@ case Context['x'].AsInteger of
         ,'autounread',ur
         ,'created',double(d)
         ],'id');
+
+      qr:=TQueryResult.Create(Session.Connection,
+        'select H.*, HLS.id as hlsid'+
+        ' from "HotList" H'+
+        ' where H.user_id=$1'+
+        ' order by lower(H.label)',[Session.UserID,id]);
+      try
+        i:=0;
+        SetLength(hl,qr.Count);
+        while qr.Read do
+         begin
+          hl[i]:=qr.GetInt('id');
+          inc(i);
+         end;
+      finally
+        qr.Free;
+      end;
+      for i:=0 to Length(hl)-1 do
+        if Context['hl'+IntToStr(hl[i].id)].AsInteger=1 then
+          db.Execute('insert into "HotListSubscription" (hotlist_id,subscription_id) values ($1,$2)',[hl[i].id,id]);
+
       <<p>Subscription added</p>>
 
       <<div class="post">

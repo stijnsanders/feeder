@@ -519,7 +519,7 @@ begin
             FeedData:=LoadExternal(FFeed.URL,
               'xmls\'+Format('%.4d',[FFeed.id])+'.xml',
               FFeed.LastMod,
-              'application/rss+xml, application/atom+xml, application/xml, text/xml');
+              'application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
             FeedDataType:=ParseExternalHeader(FeedData);
 
            end
