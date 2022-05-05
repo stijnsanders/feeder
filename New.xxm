@@ -121,7 +121,10 @@ case Context['x'].AsInteger of
      end
     else
      begin
-      Session.Connection.Execute('insert into "UserPost" (user_id,post_id) select $1,id from "Post" where feed_id=$2 and pubDate>$3',
+      Session.Connection.Execute('insert into "UserPost" (user_id,post_id,suscription_id) select $1,P.id,S.id'
+        +' from "Post"'
+        +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
+        +' where P.feed_id=$2 and P.pubDate>$3',
         [Session.UserID,id,double(UtcNow-366.0)]);
       <<p>Feed found, listing posts up to one year old as unread.</p>>
      end;
@@ -177,8 +180,8 @@ case Context['x'].AsInteger of
         qr.Free;
       end;
       for i:=0 to Length(hl)-1 do
-        if Context['hl'+IntToStr(hl[i].id)].AsInteger=1 then
-          db.Execute('insert into "HotListSubscription" (hotlist_id,subscription_id) values ($1,$2)',[hl[i].id,id]);
+        if Context['hl'+IntToStr(hl[i])].AsInteger=1 then
+          Session.Connection.Execute('insert into "HotListSubscription" (hotlist_id,subscription_id) values ($1,$2)',[hl[i],id]);
 
       <<p>Subscription added</p>>
 

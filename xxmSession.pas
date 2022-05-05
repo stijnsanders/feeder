@@ -85,10 +85,13 @@ var
   db:TDataConnection;
   qr:TQueryResult;
   s:TXxmSession;
-  fn,n1,n2:string;
+  n1,n2:string;
+{
+  fn:string;
   f:TFileStream;
   fd:AnsiString;
   fl:integer;
+}
 begin
   if SessionStore=nil then
     raise Exception.Create('No sessions to authenticate');
@@ -109,6 +112,8 @@ begin
           ,'email',Email
           ,'created',double(UtcNow)
           ],'id');
+
+{
         //welcome message
         SetLength(fn,MAX_PATH);
         SetLength(fn,GetModuleFileName(HInstance,PChar(fn),MAX_PATH));
@@ -135,8 +140,10 @@ begin
               ,'pubdate',double(UtcNow)
               ,'created',double(UtcNow)
               ],'id')
+            //,'subscription_id',???
             ],'id');
          end;
+}
        end
       else
        begin

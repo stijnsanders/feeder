@@ -1,7 +1,7 @@
 [[@DataLank,xxmSession,fCommon,Variants]][[!var
 qr:TQueryResult;
 xx:array of Variant;
-s,sql0,sql1,sql2,sql3,cat:string;
+s,sql0,sql1,sql2,sql2b,sql3,cat:string;
 d,d0,f,l,id,id0,lx,qrTimeout:integer;
 d1:TDateTime;
 loadMore,cList:boolean;
@@ -98,15 +98,14 @@ else
 
   sql0:='select S.label, S.color, S.readwidth, P.id, P.title, P.pubdate, P.url, X.id as ReadID';
   sql1:=' from "UserPost" X left outer join "Post" P on P.id=X.post_id';
-  sql2:=' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1';
+  sql2:=' left outer join "Subscription" S on S.id=X.subscription_id';
+  sql2b:='';
   sql3:=' where X.user_id=$1';
   if loadMore then lx:=2 else lx:=0;
   SetLength(xx,1+lx);
 
   if Context['hl'].Value<>'' then
-    sql2:=sql2
-      +' inner join "HotListSubscription" HLS on HLS.hotlist_id='+IntToStr(Context['hl'].AsInteger)+' and HLS.subscription_id=S.id'
-      ;
+    sql2b:=' inner join "HotListSubscription" HLS on HLS.hotlist_id='+IntToStr(Context['hl'].AsInteger)+' and HLS.subscription_id=S.id';
 
   if cat='' then
     if f=0 then
@@ -180,6 +179,7 @@ else
       else
        begin
         sql1:=' from "Post" P left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1';
+        sql2:=' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1';
         SetLength(xx,2+lx);
         if Context['title'].Value='' then
          begin
@@ -195,6 +195,7 @@ else
     else
      begin
       sql1:=' from "Post" P left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1';
+      sql2:=' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1';
       sql3:=' where P.feed_id=$2';
       SetLength(xx,2+lx);
       xx[1]:=f;
@@ -255,7 +256,7 @@ else
   end;
 
   qr:=TQueryResult.Create(Session.Connection,
-    sql0+sql1+sql2+sql3+' order by P.pubdate '+descasc[Context['a'].AsInteger<>0]+', P.id limit '+IntToStr(l),xx);
+    sql0+sql1+sql2+sql2b+sql3+' order by P.pubdate '+descasc[Context['a'].AsInteger<>0]+', P.id limit '+IntToStr(l),xx);
   try
     if qr.EOF then
      begin

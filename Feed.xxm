@@ -76,11 +76,8 @@ case Context['x'].AsInteger of
     db:=Session.Connection;
     db.BeginTrans;
     try
-      db.Execute('delete from "UserPost" where id in'+
-        ' (select X.id from "UserPost" X'+
-        ' inner join "Post" P on P.id=X.post_id'+
-        ' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'+
-        ' where X.user_id=$1 and S.id=$2)',[Session.UserID,id]);
+      db.Execute('delete from "UserPost" where subscription_id in '+
+        '(select id from "Subscription" where id=$1 and user_id=$2)',[id,Session.UserID]);
       db.Execute('delete from "HotListSubscription" where subscription_id in '+
         '(select id from "Subscription" where id=$1 and user_id=$2)',[id,Session.UserID]);
       db.Execute('delete from "SubCount" where subscription_id in '+

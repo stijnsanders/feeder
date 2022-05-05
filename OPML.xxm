@@ -55,8 +55,11 @@ begin
         end;
         //if not, mark recent posts as unread
         if id1=0 then
-          db.Execute('insert into "UserPost" (user_id,post_id) select $1,id from "Post" where feed_id=$2 and pubDate>$3',
-            [Session.UserID,id,UtcNow-366.0]);
+          db.Execute('insert into "UserPost" (user_id,post_id,suscription_id) select $1,P.id,S.id'
+            +' from "Post"'
+            +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
+            +' where P.feed_id=$2 and P.pubDate>$3',
+            [Session.UserID,id,double(UtcNow-366.0)]);
        end;
     
       feedcolor:=VarToStr(x.getAttribute('f:color'));

@@ -83,7 +83,8 @@ const
   YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
 
   InstagramDelaySecs:array[boolean] of cardinal=(120,5);
-  InstagramURLSuffix='channel/?__a=1';
+  //InstagramURLSuffix='channel/?__a=1';
+  InstagramURLSuffix='?__a=1';
 
 var
   InstagramHot:boolean;
@@ -215,7 +216,7 @@ begin
   Out0('Auto-unread after...');
   qr:=TQueryResult.Create(FDBStats,'select X.id from "UserPost" X'
     +' inner join "Post" P on P.id=X.post_id'
-    +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'
+    +' inner join "Subscription" S on S.id=X.subscription_id'
     +' where P.pubdate<$1-S.autounread/24.0 limit 1',[double(UtcNow)]);
   try
     if qr.EOF then i:=0 else i:=1;
@@ -231,7 +232,7 @@ begin
       i:=FDB.Execute('delete from "UserPost" where id in (select X.id'
         +' from "UserPost" X'
         +' inner join "Post" P on P.id=X.post_id'
-        +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=X.user_id'
+        +' inner join "Subscription" S on S.id=X.subscription_id'
         +' where P.pubdate<$1-S.autounread/24.0)',[double(UtcNow)]);
       FDB.CommitTrans;
     except
@@ -1057,8 +1058,8 @@ begin
       ,'pubdate',double(FPostPubDate)
       ,'created',double(UtcNow)
       ],'id');
-    FDB.Execute('insert into "UserPost" (user_id,post_id)'+
-      ' select S.user_id,$1 from "Subscription" S'+
+    FDB.Execute('insert into "UserPost" (user_id,post_id,subscription_id)'+
+      ' select S.user_id,$1,S.id from "Subscription" S'+
       ' left outer join "UserBlock" B on B.user_id=S.user_id'+
       ' and (B.url=left($2,length(B.url))'+tsql+')'+
       ' where S.feed_id=$3 and B.id is null',[postid,FPostURL,FFeed.id]);
