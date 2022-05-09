@@ -55,7 +55,12 @@ begin
     //TODO: playlists?
 
     r:=CoServerXMLHTTP60.Create;
-    r.open('GET','https://api-v2.soundcloud.com/users/'+IntToStr(id)+'/tracks?client_id='+SoundCloudClientID,
+    r.open('GET','https://api-v2.soundcloud.com/users/'+IntToStr(id)+
+      '/tracks'
+      +'?representation=&client_id='+SoundCloudClientID
+      //+'&limit=20&offset=0&linked_partitioning=1'
+      //+'&app_version=1652085324&app_locale=en'
+      ,
       false,EmptyParam,EmptyParam);
     r.setRequestHeader('Accept','application/json');
     r.send(EmptyParam);
