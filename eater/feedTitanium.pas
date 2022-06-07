@@ -34,7 +34,7 @@ var
   p1,p2,itemid,itemurl:string;
   pubDate:TDateTime;
   title,content,h1:WideString;
-  i,j,k:integer;
+  i,j,k,n:integer;
   v:Variant;
 begin
   jnodes:=JSONDocArray;
@@ -113,25 +113,34 @@ begin
        end
       else
        begin
-        jthumbs.LoadItem(0,jd1);
-        if content='' then content:=VarToStr(jd1['caption']);
-        if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
-        content:='<img class="postthumb" src="'+
-          VarToStr(jd1['gcsBaseUrl'])+
-          VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
-          VarToStr(jd1['imageFileExtension'])+
-          '" />'+h1+content;
-        if p1='' then //see 'mediumIDs' above
+        n:=0;
+        while n<jthumbs.Count do
          begin
-          p1:=VarToStr(jd1['gcsBaseUrl']);
-          k:=Length(p1)-1;
-          while (k<>0) and (p1[k]<>'/') do dec(k);
-          SetLength(p1,k);
-          p2:='/'+//?
-            VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
-            VarToStr(jd1['imageFileExtension']);
+          jthumbs.LoadItem(n,jd1);
+          if StartsWith(VarToStr(jd1['imageMimeType']),'image/') then
+           begin
+            if content='' then content:=VarToStr(jd1['caption']);
+            if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
+            content:='<img class="postthumb" src="'+
+              VarToStr(jd1['gcsBaseUrl'])+
+              VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
+              VarToStr(jd1['imageFileExtension'])+
+              '" />'+h1+content;
+            if p1='' then //see 'mediumIDs' above
+             begin
+              p1:=VarToStr(jd1['gcsBaseUrl']);
+              k:=Length(p1)-1;
+              while (k<>0) and (p1[k]<>'/') do dec(k);
+              SetLength(p1,k);
+              p2:='/'+//?
+                VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
+                VarToStr(jd1['imageFileExtension']);
+             end;
+            n:=jthumbs.Count;
+           end
+          else
+            inc(n);
          end;
-
        end;
 
       if not((itemurl='') and (content='')) and

@@ -723,7 +723,7 @@ end;
 
 function VarArrLast(const v:Variant):Variant;
 begin
-  if VarIsArray(v) then
+  if VarIsArray(v) and (VarArrayHighBound(v,1)>=VarArrayLowBound(v,1)) then
     Result:=v[VarArrayHighBound(v,1)]
   else
     Result:=Null;
