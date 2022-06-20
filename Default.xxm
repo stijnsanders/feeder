@@ -262,7 +262,21 @@ else
      begin
       if loadMore then Context.SendHTML('-') else
        begin
-        <<div class="date">no posts found</div>>
+        qr.Free;
+        qr:=TQueryResult.Create(Session.Connection,'select id from "Subscriptions" S where S.user_id=$1 limit 1',[Session.UserID]);
+        if qr.EOF then
+         begin
+          d1:=Now;//UtcNow?
+          <<div class="post" id="p0">
+          <div class="date" title="[[=FormatDateTime('ddd yyyy-mm-dd hh:nn:ss',d1)]]">>=FormatDateTime('hh:nn',d1)<</div>
+          <div class="label" title="feeder: system message" style="background-color:#FFCC00;color:#000000;border:1px solid #000000;border-radius:0;">feeder</div>
+          <a href="welcome.html" postqs="?id=0" onclick="return doPost(this,event);">Welcome! (click here)</a>
+          </div>>
+         end
+        else
+         begin
+          <<div class="date">no posts found</div>>
+         end;
        end;
      end
     else

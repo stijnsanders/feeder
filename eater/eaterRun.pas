@@ -12,6 +12,7 @@ type
     //configuration
     SaveData,FeedAll,FeedNew:boolean;
     RunContinuous,SpecificFeedID:integer;
+    FeedLike:string;
 
     procedure FlagNewFeed(Sender:TObject);
     function CheckRunDone:boolean;
@@ -39,6 +40,7 @@ begin
   SpecificFeedID:=0;
   FeedAll:=false;
   FeedNew:=false;
+  FeedLike:='';
   NewFeedEvent:=0;
 
   StartRun:=UtcNow;//?
@@ -58,6 +60,8 @@ begin
     if StartsWithX(s,'/c',t) then RunContinuous:=StrToInt(t)
     else
     if StartsWithX(s,'/f',t) then SpecificFeedID:=StrToInt(t)
+    else
+    if StartsWithX(s,'/g',t) then FeedLike:=t
     else
     if s='/x' then FeedAll:=true
     else
@@ -104,7 +108,7 @@ begin
       f.SaveData:=SaveData;
       f.ForceLoadAll:=FeedAll;
       f.OnFeedURLUpdate:=FlagNewFeed;
-      r:=f.DoUpdateFeeds(SpecificFeedID,(RunContinuous+5)/1440.0);
+      r:=f.DoUpdateFeeds(SpecificFeedID,FeedLike,(RunContinuous+5)/1440.0);
 
       LastDone:=UtcNow;
       LastFeedCount:=r.FeedCount;

@@ -26,6 +26,7 @@ uses xxmFReg, xxmSession, SysUtils;
 function XxmProjectLoad(const AProjectName:WideString): IXxmProject;
 begin
   Result:=TXxmfeeder.Create(AProjectName);
+  //xxmPreloadAgent:=TxxmPreloadAgent.Create;
 end;
 
 type
@@ -89,6 +90,7 @@ end;
 procedure TXxmfeeder.ReleasingProject;
 begin
   //
+  //FreeAndNil(xxmPreloadAgent);
 end;
 
 

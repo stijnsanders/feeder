@@ -16,7 +16,8 @@ type
 
 implementation
 
-uses SysUtils, ComObj, ActiveX, eaterUtils, Variants, jsonDoc, MSXML2_TLB;
+uses SysUtils, ComObj, ActiveX, eaterUtils, Variants, jsonDoc, MSXML2_TLB,
+  eaterSanitize;
 
 const
   Base64Codes:array[0..63] of AnsiChar=
@@ -121,7 +122,8 @@ function TInstagramFeedProcessor.Determine(Store:IFeedStore;const FeedURL:WideSt
 begin
   rt:=FeedDataType;
   Result:=StartsWith(FeedURL,'https://www.instagram.com/')
-    ;//and FindPrefixAndCrop(FeedData,'window._sharedData = ');
+    //and FindPrefixAndCrop(FeedData,'window._sharedData = ');
+    //and FindPrefixAndCrop(FeedData,'"entry_data":{"ProfilePage":[');
 end;
 
 procedure TInstagramFeedProcessor.ProcessFeed(Handler: IFeedHandler;

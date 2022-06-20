@@ -52,7 +52,7 @@ type
     destructor Destroy; override;
     procedure DoCleanup;
     procedure DoAutoUnread;
-    function DoUpdateFeeds(SpecificFeedID:integer;
+    function DoUpdateFeeds(SpecificFeedID:integer;const FeedLike:string;
       PubDateMargin:double):TFeedEatResult;
     procedure RenderGraphs;
   end;
@@ -71,6 +71,7 @@ uses Windows, SysUtils, Variants, ComObj, eaterUtils, eaterSanitize, MSXML2_TLB,
 
 const
   FeederIniPath='..\..\feeder.ini';
+  EaterIniPath='..\..\feeder_eater.ini';
   //TODO: from ini?
   FeedLoadReport='..\Load.html';
   AvgPostsDays=500;
@@ -82,13 +83,14 @@ const
   YoutubePrefix1='https://www.youtube.com/channel/';
   YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
 
-  InstagramDelaySecs:array[boolean] of cardinal=(120,5);
-  //InstagramURLSuffix='channel/?__a=1';
-  InstagramURLSuffix='?__a=1';
+  InstagramDelaySecs:array[boolean] of cardinal=(20,2);
+  InstagramSuffixCount=4;
+  InstagramSuffix:array[0..InstagramSuffixCount-1] of string=(
+    '?__a=1','channel/?__a=1','?__a=1&__b=1','channel/?__a=1&__b=1');
 
 var
   InstagramHot:boolean;
-  InstagramDelayMS:cardinal;
+  InstagramDelayMS,InstagramSuffixIndex:cardinal;
 
 function qrDate(qr:TQueryResult;const Idx:Variant):TDateTime;
 var
@@ -243,7 +245,7 @@ begin
    end;
 end;
 
-function TFeedEater.DoUpdateFeeds(SpecificFeedID:integer;
+function TFeedEater.DoUpdateFeeds(SpecificFeedID:integer;const FeedLike:string;
   PubDateMargin:double):TFeedEatResult;
 var
   qr:TQueryResult;
@@ -305,6 +307,10 @@ begin
       if SpecificFeedID=Specific_NewFeeds then
         qr:=TQueryResult.Create(FDB,'select F.id from "Feed" F where F.id>0'+
           ' and F.created>$1 order by F.id',[UtcNow-1.0])
+      else if FeedLike<>'' then
+        qr:=TQueryResult.Create(FDB,'select F.id from "Feed" F where F.id>0'+
+          ' and F.url like $1'+
+          ' order by F.id',['%'+FeedLike+'%'])
       else
         qr:=TQueryResult.Create(FDB,'select F.id from "Feed" F where F.id>0'+
           //' and url like ''%instagram%'''+
@@ -502,14 +508,21 @@ begin
 
             if (FFeed.URL<>'') and (FFeed.URL[Length(FFeed.URL)]<>'/') then
               FFeed.URL:=FFeed.URL+'/';
-            FeedData:=LoadExternal(FFeed.URL+InstagramURLSuffix,
+            FeedData:=LoadExternal(FFeed.URL+
+              InstagramSuffix[InstagramSuffixIndex]+'&redirect=false&ts='+IntToStr(GetTickCount),
               'xmls\'+Format('%.4d',[FFeed.ID])+'.json',
               FFeed.LastMod,
-              'application/json');//UseProxy?
+              'application/json');
+
+            if (FeedData='') then
+              InstagramSuffixIndex:=(InstagramSuffixIndex+1) mod InstagramSuffixCount;
             InstagramHot:=FeedData<>'';
             InstagramDelayMS:=GetTickCount;
             if FeedData='' then //if StartsWith(FeedData,'HTTP/1.1 301') then
-              FFeed.Result:='[Instagram]'
+             begin
+              FFeed.Result:='[Instagram]';
+              FFeed.LoadStart:=FFeed.LoadLast;//retail last LoadLast
+             end
             else
               FeedDataType:=ParseExternalHeader(FeedData);
            end
@@ -552,7 +565,8 @@ begin
                begin
                 if (FFeed.URL<>'') and (FFeed.URL[Length(FFeed.URL)]<>'/') then
                   FFeed.URL:=FFeed.URL+'/';
-                r.open('GET',FFeed.URL+InstagramURLSuffix,false,EmptyParam,EmptyParam);
+                r.open('GET',FFeed.URL+InstagramSuffix[InstagramSuffixIndex],false,EmptyParam,EmptyParam);
+                r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36');
                 r.setRequestHeader('Accept','application/json');
                end
               else
@@ -1090,43 +1104,31 @@ var
   s:UTF8String;
   i:integer;
   w:word;
-  r:cardinal;
-  p1:string;
+  r,mr:cardinal;
+  p1,ua:string;
 begin
   WriteLn(' ->');
   DeleteFile(PChar(FilePath));//remove any previous file
+  ua:='FeedEater/1.0';
+  mr:=8;
 
   if not(ForceLoadAll) and (LastMod<>'') then
     p1:=' --header="If-Modified-Since: '+LastMod+'"'
   else
     p1:='';
 
-  {
-  if useProxy and (proxiesIndex<proxies.Count) then
-    p1:=p1+' -e http_proxy='+proxies[proxiesIndex];
-
-  if useProxy then //if 'instagram'
-    p1:=p1+' --max-redirect=0';
-  }
   if StartsWith(URL,'https://www.instagram.com/') then
-    p1:=p1+' --max-redirect=0';
+   begin
+    mr:=0;
+    ua:='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36';
+   end;
 
   ZeroMemory(@si,SizeOf(TStartupInfo));
   si.cb:=SizeOf(TStartupInfo);
-  {
-  si.dwFlags:=STARTF_USESTDHANDLES;
-  si.hStdInput:=GetStdHandle(STD_INPUT_HANDLE);
-  si.hStdOutput:=GetStdHandle(STD_OUTPUT_HANDLE);
-  si.hStdError:=GetStdHandle(STD_ERROR_HANDLE);
-  }
-  {
-  if not CreateProcess(nil,PChar('curl.exe -Lk --max-redirs 8 -H "Accept:application/rss+xml, application/atom+xml, application/xml, text/xml" -o "'+
-    FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
-  }
   if not CreateProcess(nil,PChar(
-    'wget.exe -nv --no-cache --max-redirect 8 --no-http-keep-alive --no-check-certificate'+
+    'wget.exe -nv --no-cache --max-redirect='+IntToStr(mr)+' --no-http-keep-alive --no-check-certificate'+
     p1+' --save-headers --content-on-error --header="Accept: '+Accept+'"'+
-    ' --user-agent="FeedEater/1.0" --compression=auto'+
+    ' --user-agent="'+ua+'" --compression=auto'+
     ' -O "'+FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
   r:=WaitForSingleObject(pi.hProcess,30000);
@@ -1474,6 +1476,7 @@ initialization
   PGVersion:='';
   BlackList:=TStringList.Create;
   InstagramHot:=true;//default
+  InstagramSuffixIndex:=0;//default
   InstagramDelayMS:=GetTickCount-InstagramDelaySecs[false]*1000;
 finalization
   BlackList.Free;
