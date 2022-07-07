@@ -16,15 +16,12 @@ type
 
 implementation
 
-uses SysUtils, ComObj, ActiveX, eaterUtils, Variants, jsonDoc, MSXML2_TLB,
-  eaterSanitize;
+uses Windows, SysUtils, ComObj, ActiveX, Variants, jsonDoc, MSXML2_TLB,
+  eaterUtils, eaterSanitize;
 
 const
   Base64Codes:array[0..63] of AnsiChar=
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-  YoutubePrefix1='https://www.youtube.com/channel/';
-  YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
 
 function Base64Encode(const x:UTF8String):UTF8String;
 var

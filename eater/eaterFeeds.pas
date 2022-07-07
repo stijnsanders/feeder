@@ -67,7 +67,7 @@ var
 implementation
 
 uses Windows, SysUtils, Variants, ComObj, eaterUtils, eaterSanitize, MSXML2_TLB,
-  jsonDoc, VBScript_RegExp_55_TLB, eaterGraphs, feedSoundCloud;
+  jsonDoc, VBScript_RegExp_55_TLB, eaterGraphs, feedSoundCloud, eatGram_TLB;
 
 const
   FeederIniPath='..\..\feeder.ini';
@@ -83,14 +83,8 @@ const
   YoutubePrefix1='https://www.youtube.com/channel/';
   YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
 
-  InstagramDelaySecs:array[boolean] of cardinal=(20,2);
-  InstagramSuffixCount=4;
-  InstagramSuffix:array[0..InstagramSuffixCount-1] of string=(
-    '?__a=1','channel/?__a=1','?__a=1&__b=1','channel/?__a=1&__b=1');
-
 var
-  InstagramHot:boolean;
-  InstagramDelayMS,InstagramSuffixIndex:cardinal;
+  EaterGram:IEaterGram;
 
 function qrDate(qr:TQueryResult;const Idx:Variant):TDateTime;
 var
@@ -492,6 +486,7 @@ begin
           if StartsWith(FFeed.URL,'https://www.instagram.com/') then
            begin
 
+            {
             i:=cardinal(GetTickCount-InstagramDelayMS);
             j:=InstagramDelaySecs[InstagramHot];
             if i<j*1000 then
@@ -505,26 +500,19 @@ begin
                end;
               Write(#13'[Instagram delay...]');
              end;
+            }
 
             if (FFeed.URL<>'') and (FFeed.URL[Length(FFeed.URL)]<>'/') then
               FFeed.URL:=FFeed.URL+'/';
-            FeedData:=LoadExternal(FFeed.URL+
-              InstagramSuffix[InstagramSuffixIndex]+'&redirect=false&ts='+IntToStr(GetTickCount),
-              'xmls\'+Format('%.4d',[FFeed.ID])+'.json',
-              FFeed.LastMod,
-              'application/json');
 
-            if (FeedData='') then
-              InstagramSuffixIndex:=(InstagramSuffixIndex+1) mod InstagramSuffixCount;
-            InstagramHot:=FeedData<>'';
-            InstagramDelayMS:=GetTickCount;
-            if FeedData='' then //if StartsWith(FeedData,'HTTP/1.1 301') then
-             begin
-              FFeed.Result:='[Instagram]';
-              FFeed.LoadStart:=FFeed.LoadLast;//retail last LoadLast
-             end
-            else
-              FeedDataType:=ParseExternalHeader(FeedData);
+            if EaterGram=nil then
+              EaterGram:=CoEaterGram.Create;
+            FeedData:=EaterGram.LoadData(FFeed.URL);
+            FeedDataType:='applicaton/json';
+
+            if SaveData then
+              SaveUTF16('xmls\'+Format('%.4d',[FFeed.ID])+'.json',FeedData);
+
            end
           else
 
@@ -559,15 +547,6 @@ begin
                   '%7D+ORDER+BY+DESC%28%3FpubDate%29+LIMIT+20'
                   ,false,EmptyParam,EmptyParam);
                 r.setRequestHeader('Accept','application/sparql-results+xml, application/xml, text/xml')
-               end
-              else
-              if StartsWith(FFeed.URL,'https://www.instagram.com/') then
-               begin
-                if (FFeed.URL<>'') and (FFeed.URL[Length(FFeed.URL)]<>'/') then
-                  FFeed.URL:=FFeed.URL+'/';
-                r.open('GET',FFeed.URL+InstagramSuffix[InstagramSuffixIndex],false,EmptyParam,EmptyParam);
-                r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36');
-                r.setRequestHeader('Accept','application/json');
                end
               else
               if StartsWith(FFeed.URL,'https://soundcloud.com/') then
@@ -1120,7 +1099,7 @@ begin
   if StartsWith(URL,'https://www.instagram.com/') then
    begin
     mr:=0;
-    ua:='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36';
+    //ua:=
    end;
 
   ZeroMemory(@si,SizeOf(TStartupInfo));
@@ -1475,9 +1454,8 @@ end;
 initialization
   PGVersion:='';
   BlackList:=TStringList.Create;
-  InstagramHot:=true;//default
-  InstagramSuffixIndex:=0;//default
-  InstagramDelayMS:=GetTickCount-InstagramDelaySecs[false]*1000;
+  EaterGram:=nil;
 finalization
   BlackList.Free;
+  EaterGram:=nil;
 end.

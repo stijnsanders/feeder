@@ -27,7 +27,8 @@ uses
   feedTitanium in 'feedTitanium.pas',
   feedFusion in 'feedFusion.pas',
   feedNextData in 'feedNextData.pas',
-  eaterRun in 'eaterRun.pas';
+  eaterRun in 'eaterRun.pas',
+  eatgram_TLB in '..\eatgram\eatgram_TLB.pas';
 
 {$R *.res}
 {$APPTYPE CONSOLE}
