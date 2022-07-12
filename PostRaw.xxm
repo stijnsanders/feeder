@@ -107,7 +107,7 @@ try
                begin
                 //attributes
                 j:=i;
-                while (j<=l) and (s[j]<>'=') and (s[j]>' ') do inc(j);
+                while (j<=l) and (s[j]<>'=') and (s[j]<>'>') and (s[j]>' ') do inc(j);
                 <<span class="a">>=u(i,j-i)<</span>>
                 if (j+1<=l) and (s[j]='=') and ((s[j+1]='"') or (s[j+1]='''')) then
                  begin

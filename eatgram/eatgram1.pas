@@ -16,6 +16,7 @@ type
     EdgeBrowser1: TEdgeBrowser;
     lblURL: TLabel;
     btnSkip: TButton;
+    lblCount: TLabel;
     procedure EdgeBrowser1ExecuteScript(Sender: TCustomEdgeBrowser;
       AResult: HRESULT; const AResultObjectAsJson: string);
     procedure EdgeBrowser1NavigationCompleted(Sender: TCustomEdgeBrowser;
@@ -24,12 +25,15 @@ type
     procedure btnLoginDoneClick(Sender: TObject);
   private
     FState:TWebInstagramState;
-    FURL,FData:string;
+    FURL,FData,FCountL:string;
+    FCountD,FCountI:integer;
+    procedure ComLastRelease(var Shutdown:boolean);
   protected
     procedure DoShow; override;
     procedure DoClose(var Action: TCloseAction); override;
   public
     function LoadData(const URL:string):string;
+    procedure WMQueryEndSession(var Message: TWMQueryEndSession); message WM_QUERYENDSESSION;
   end;
 
 var
@@ -52,9 +56,15 @@ begin
   if Copy(LowerCase(ParamStr(1)),1,4)='/unr' then
     ComServer.UpdateRegistry(false);
 
+  ComServer.OnLastRelease:=ComLastRelease;
+  ComServer.UIInteractive:=false;
+
   FState:=wisUnknown;
   FURL:='';
   FData:='';
+  FCountD:=Trunc(Date);
+  FCountI:=0;
+  FCountL:='';
   EdgeBrowser1.UserDataFolder:=ExtractFileDir(ParamStr(0))+'\EdgeData';
   EdgeBrowser1.Navigate('https://www.instagram.com/');
 end;
@@ -111,6 +121,11 @@ begin
   FState:=wisError;
 end;
 
+procedure TwebInstagram.ComLastRelease(var Shutdown: boolean);
+begin
+  Shutdown:=true;
+end;
+
 function wcHex(c:WideChar):word; inline;
 begin
   if (word(c) and $00F0)=$0030 then
@@ -130,6 +145,19 @@ begin
   FURL:=URL+'?__a=1&__d=1';
   FData:='';
   lblURL.Caption:=URL;
+  i:=Trunc(Date);
+  if FCountD<>i then
+   begin
+    FCountL:=','+IntToStr(FCountI)+Copy(FCountL,1,80);
+    FCountD:=i;
+    FCountI:=0;
+   end
+  else
+   begin
+    inc(FCountI);
+   end;
+  lblCount.Caption:=IntToStr(FCountI)+FCountL;
+
   if FState=wisReady then
     EdgeBrowser1.Navigate(FURL);
   tc:=GetTickCount;
@@ -188,6 +216,13 @@ begin
     FData:='';
    end;
   //else raise?
+end;
+
+procedure TwebInstagram.WMQueryEndSession(var Message: TWMQueryEndSession);
+begin
+  Message.Result:=1;
+  PostQuitMessage(0);
+  Application.Terminate;
 end;
 
 end.

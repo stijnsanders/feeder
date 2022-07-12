@@ -76,13 +76,13 @@ begin
     Result:='<div class="'+ClassPrefix+'label" title="feeder: system message" style="background-color:#FFCC00;color:#000000;border:1px solid #000000;border-radius:0;">feeder</div>'
   else
    begin
-    c:=LblColor;
+    c:=CheckColor(LblColor);
     if LowerCase(c)='ffffff' then c:='-666666';
     if (c<>'') and (c[1]='-') then
-     begin
-      while Length(c)<7 do c:='-0'+Copy(c,2,6);
       c:='FFFFFF;color:#'+Copy(c,2,6)+';border:1px solid #'+Copy(c,2,6)
-     end
+    else
+    if (c<>'') and (c[1]='+') then
+      c:='EEEEEE;color:#'+Copy(c,2,6)
     else
      begin
       while Length(c)<6 do c:='0'+c;
@@ -181,30 +181,33 @@ begin
   c:=ValColor;
   try
     if (c<>'') and (c[1]='#') then c:=Copy(c,2,Length(c)-1);
-    if (c<>'') and (c[1]='-') then
-      begin
+    if (c<>'') and ((c[1]='-') or (c[1]='+')) then
+     begin
       i:=StrToInt('$0'+Copy(c,2,999));
       if i<$1000000 then
         if Length(c)=4 then
-          c:='-'+c[2]+c[2]+c[3]+c[3]+c[4]+c[4]
+          c:=c[1]+c[2]+c[2]+c[3]+c[3]+c[4]+c[4]
         else
-          while Length(c)<7 do c:='-0'+Copy(c,2,999)
+          while Length(c)<7 do c:=c[1]+'0'+Copy(c,2,999)
       else
         c:='0';
-      end
+     end
     else
-      begin
+     begin
       i:=StrToInt('$0'+c);
+      if i=0 then
+        c:='EEEEEE'
+      else
       if i<$1000000 then
         if Length(c)=3 then
           c:=c[1]+c[1]+c[2]+c[2]+c[3]+c[3]
         else
           while Length(c)<6 do c:='0'+c
       else
-        c:='0';
-      end;
+        c:='EEEEEE';
+     end;
   except
-    c:='';
+    c:='EEEEEE';
   end;
   Result:=c;
 end;

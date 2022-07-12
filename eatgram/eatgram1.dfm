@@ -28,6 +28,13 @@ object webInstagram: TwebInstagram
       Height = 13
       Caption = '...'
     end
+    object lblCount: TLabel
+      Left = 8
+      Top = 6
+      Width = 12
+      Height = 13
+      Caption = '...'
+    end
     object btnLoginDone: TButton
       Left = 0
       Top = 0

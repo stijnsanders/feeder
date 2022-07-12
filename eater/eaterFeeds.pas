@@ -507,7 +507,15 @@ begin
 
             if EaterGram=nil then
               EaterGram:=CoEaterGram.Create;
-            FeedData:=EaterGram.LoadData(FFeed.URL);
+            try
+              FeedData:=EaterGram.LoadData(FFeed.URL);
+            except
+              on EOleException do
+               begin
+                pointer(EaterGram):=nil;
+                raise;
+               end;
+            end;
             FeedDataType:='applicaton/json';
 
             if SaveData then
