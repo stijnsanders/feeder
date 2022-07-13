@@ -82,7 +82,18 @@ begin
       c:='FFFFFF;color:#'+Copy(c,2,6)+';border:1px solid #'+Copy(c,2,6)
     else
     if (c<>'') and (c[1]='+') then
-      c:='EEEEEE;color:#'+Copy(c,2,6)
+     begin
+      try
+        i:=StrToInt('$0'+Copy(c,2,9));
+      except
+        i:=$EEEEEE;
+      end;
+      j:=0;
+      k:=(i shr 16) and $FF; inc(j,((k*k) shr 8)*3);//R
+      k:=(i shr 8)  and $FF; inc(j,((k*k) shr 8)*5);//G
+      k:= i         and $FF; inc(j,((k*k) shr 8)*2);//B
+      if j<1800 then c:='EEEEEE;color:#'+Copy(c,2,6) else c:='666666;color:#'+Copy(c,2,6);
+     end
     else
      begin
       while Length(c)<6 do c:='0'+c;
@@ -115,6 +126,9 @@ begin
   try
     if ValColor='' then
       c:=$CCCCCC //default
+    else
+    if (ValColor[1]='-') or (ValColor[1]='+') then
+      c:=StrToInt('$0'+Copy(ValColor,2,9))
     else
       c:=StrToInt('$0'+ValColor);
   except

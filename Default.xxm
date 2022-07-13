@@ -262,8 +262,8 @@ else
      begin
       if loadMore then Context.SendHTML('-') else
        begin
-        qr.Free;
-        qr:=TQueryResult.Create(Session.Connection,'select id from "Subscriptions" S where S.user_id=$1 limit 1',[Session.UserID]);
+        FreeAndNil(qr);
+        qr:=TQueryResult.Create(Session.Connection,'select S.id from "Subscription" S where S.user_id=$1 limit 1',[Session.UserID]);
         if qr.EOF then
          begin
           d1:=Now;//UtcNow?
