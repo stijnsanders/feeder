@@ -1,7 +1,7 @@
 [[@DataLank,xxmSession,fCommon,Variants]][[!var
 qr:TQueryResult;
 xx:array of Variant;
-s,sql0,sql1,sql2,sql2b,sql3,cat:string;
+s,sql0,sql1,sql2,sql2b,sql3,sqlPostID,sqlPubDate,cat:string;
 d,d0,f,l,id,id0,lx,qrTimeout:integer;
 d1:TDateTime;
 loadMore,cList:boolean;
@@ -101,6 +101,8 @@ else
   sql2:=' left outer join "Subscription" S on S.id=X.subscription_id';
   sql2b:='';
   sql3:=' where X.user_id=$1';
+  sqlPostID:='X.post_id';
+  sqlPubDate:='X.pubdate';
   if loadMore then lx:=2 else lx:=0;
   SetLength(xx,1+lx);
 
@@ -163,14 +165,14 @@ else
         else
         if Context['d'].Value='' then
          begin
-          sql3:=sql3+' and floor((P.pubdate+$2)*24)::int%24=$3';
+          sql3:=sql3+' and floor((X.pubdate+$2)*24)::int%24=$3';
           SetLength(xx,3+lx);
           xx[1]:=double(Session.TimeBias);
           xx[2]:=Context['h'].AsInteger;
          end
         else
          begin
-          sql3:=sql3+' and P.pubdate>$2 and P.pubdate<$3';
+          sql3:=sql3+' and X.pubdate>$2 and X.pubdate<$3';
           SetLength(xx,3+lx);
           d1:=UtcNow-Context['d'].AsInteger;
           xx[1]:=double(VarFromDateTime(d1-4.0/24.0));
@@ -180,6 +182,8 @@ else
        begin
         sql1:=' from "Post" P left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1';
         sql2:=' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1';
+        sqlPostID:='P.id';
+        sqlPubDate:='P.pubdate';
         SetLength(xx,2+lx);
         if Context['title'].Value='' then
          begin
@@ -197,6 +201,8 @@ else
       sql1:=' from "Post" P left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1';
       sql2:=' left outer join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1';
       sql3:=' where P.feed_id=$2';
+      sqlPostID:='P.id';
+      sqlPubDate:='P.pubdate';
       SetLength(xx,2+lx);
       xx[1]:=f;
       if Context['search'].Value<>'' then
@@ -238,8 +244,8 @@ else
       qr.Free;
     end;
     d:=Trunc(d1+Session.TimeBias);
-    sql3:=sql3+' and ((P.pubdate=$'+IntToStr(Length(xx)-1)+' and P.id>$'+IntToStr(Length(xx))+
-      ') or (P.pubdate'+lessthan[Context['a'].AsInteger<>0]+'$'+IntToStr(Length(xx)-1)+'))';
+    sql3:=sql3+' and (('+sqlPubDate+'=$'+IntToStr(Length(xx)-1)+' and '+sqlPostID+'>$'+IntToStr(Length(xx))+
+      ') or ('+sqlPubDate+lessthan[Context['a'].AsInteger<>0]+'$'+IntToStr(Length(xx)-1)+'))';
     xx[Length(xx)-2]:=double(d1);
     xx[Length(xx)-1]:=id0;
    end
@@ -252,11 +258,11 @@ else
 
 
   if false then begin
-  <<p style="border:2px solid red;">>=sql0+sql1+sql2+sql3+' order by P.pubdate '+descasc[Context['a'].AsInteger<>0]+', P.id limit '+IntToStr(l)<</p>>
+  <<p style="border:2px solid red;">>=sql0+sql1+sql2+sql3+' order by '+sqlPubDate+' '+descasc[Context['a'].AsInteger<>0]+', '+sqlPostID+' limit '+IntToStr(l)<</p>>
   end;
 
   qr:=TQueryResult.Create(Session.Connection,
-    sql0+sql1+sql2+sql2b+sql3+' order by P.pubdate '+descasc[Context['a'].AsInteger<>0]+', P.id limit '+IntToStr(l),xx);
+    sql0+sql1+sql2+sql2b+sql3+' order by '+sqlPubDate+' '+descasc[Context['a'].AsInteger<>0]+', '+sqlPostID+' limit '+IntToStr(l),xx);
   try
     if qr.EOF then
      begin

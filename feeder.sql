@@ -76,12 +76,13 @@ id serial primary key,
 user_id int not null,
 post_id int not null,
 subscription_id int not null,
+pubdate float not null,
 constraint FK_UserPost_User foreign key (user_id) references "User" (id),
 constraint FK_UserPost_Post foreign key (post_id) references "Post" (id),
 constraint FK_UserPost_Subscription foreign key (subscription_id) references "Subscription" (id)
 );
 
-create unique index IX_UserPost on "UserPost" (user_id,post_id);
+create unique index IX_UserPost on "UserPost" (user_id,pubdate) include (subscription_id,post_id);
 
 
 create table "UserBlock" (

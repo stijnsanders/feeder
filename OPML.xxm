@@ -55,7 +55,7 @@ begin
         end;
         //if not, mark recent posts as unread
         if id1=0 then
-          db.Execute('insert into "UserPost" (user_id,post_id,suscription_id) select $1,P.id,S.id'
+          db.Execute('insert into "UserPost" (user_id,post_id,suscription_id,pubdate) select $1,P.id,S.id,P.pubdate'
             +' from "Post"'
             +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
             +' where P.feed_id=$2 and P.pubDate>$3',
