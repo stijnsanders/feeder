@@ -45,7 +45,9 @@ qr:=TQueryResult.Create(Session.Connection,
   ' inner join "HotListSubscription" HS on HS.hotlist_id=H.id'+
   ' inner join "Subscription" S on S.id=HS.subscription_id '+
   ' left outer join ('+
-  '   select P.feed_id, count(*) as UnreadCount from "Post" P inner join "UserPost" X on X.post_id=P.id where X.user_id=$1 group by P.feed_id'+
+  '   select S.feed_id, count(*) as UnreadCount from "UserPost" X'+
+  '   left outer join "Subscription" S on S.id=X.subscription_id'+
+  '   where X.user_id=$1 group by S.feed_id'+
   ' ) X on X.feed_id=S.feed_id'+
   ' inner join "Feed" F on F.id=S.feed_id'+
   ' where H.user_id=$1'+
