@@ -1060,7 +1060,7 @@ begin
       ,'created',double(UtcNow)
       ],'id');
     FDB.Execute('insert into "UserPost" (user_id,post_id,subscription_id,pubdate)'+
-      ' select S.user_id,$1,S.id,$4 from "Subscription" S'+
+      ' select S.user_id,$1,S.id,$2 from "Subscription" S'+
       ' left outer join "UserBlock" B on B.user_id=S.user_id'+
       ' and (B.url=left($3,length(B.url))'+tsql+')'+
       ' where S.feed_id=$4 and B.id is null',[postid,double(FPostPubDate),
