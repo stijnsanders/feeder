@@ -223,11 +223,38 @@ else
        end;
      end
   else 
-   begin
-    sql3:=sql3+' and S.category=$2';
-    SetLength(xx,2+lx);
-    xx[1]:=cat;
-   end;
+    if (Context['search'].Value='') and (Context['title'].Value='') then
+     begin
+      sql3:=sql3+' and S.category=$2';
+      SetLength(xx,2+lx);
+      xx[1]:=cat;
+     end
+    else
+     begin
+      sql1:=' from "Post" P inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1';
+      sql2:=' left outer join "UserPost" X on X.post_id=P.id and X.user_id=$1';
+      sql3:=' where S.category=$2';
+      sqlPostID:='P.id';
+      sqlPubDate:='P.pubdate';
+      SetLength(xx,2+lx);
+      xx[1]:=cat;  
+      if Context['search'].Value<>'' then
+       begin
+        sql3:=sql3
+          +' and P.title||'' ''||P.content ilike $3';
+        SetLength(xx,3+lx);
+        xx[2]:='%'+StringReplace(Context['search'].Value,' ','%',[rfReplaceAll])+'%';
+        qrTimeout:=300;
+       end
+      else
+      if Context['title'].Value<>'' then
+       begin
+        sql3:=sql3
+          +' and P.title ilike $3';
+        SetLength(xx,3+lx);
+        xx[2]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
+       end;
+     end;
 
   if Context['q'].Value='' then l:=0 else l:=Context['q'].AsInteger;
   if l=0 then l:=Session.DefaultBatchSize;//default
