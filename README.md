@@ -48,11 +48,6 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 </tr>
 
 <tr>
-<td>Instagram</td>
-<td>Posts are created from <code>'"graphql":{'</code> JSON in page source</td>
-</tr>
-
-<tr>
 <td>SPARQL</td>
 <td><code>PREFIX schema: &lt;http://schema.org/&gt; SELECT * WHERE { ?news a schema:NewsArticle</code> ...</td>
 </td>

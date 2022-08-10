@@ -67,7 +67,7 @@ var
 implementation
 
 uses Windows, SysUtils, Variants, ComObj, eaterUtils, eaterSanitize, MSXML2_TLB,
-  jsonDoc, VBScript_RegExp_55_TLB, eaterGraphs, feedSoundCloud, eatGram_TLB;
+  jsonDoc, VBScript_RegExp_55_TLB, eaterGraphs, feedSoundCloud;
 
 const
   FeederIniPath='..\..\feeder.ini';
@@ -82,9 +82,6 @@ const
 
   YoutubePrefix1='https://www.youtube.com/channel/';
   YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
-
-var
-  EaterGram:IEaterGram;
 
 function qrDate(qr:TQueryResult;const Idx:Variant):TDateTime;
 var
@@ -210,10 +207,10 @@ var
   i:integer;
 begin
   Out0('Auto-unread after...');
-  qr:=TQueryResult.Create(FDBStats,'select X.id from "UserPost" X'
-    +' inner join "Post" P on P.id=X.post_id'
-    +' inner join "Subscription" S on S.id=X.subscription_id'
-    +' where P.pubdate<$1-S.autounread/24.0 limit 1',[double(UtcNow)]);
+  qr:=TQueryResult.Create(FDBStats,'select X.id from "Subscription" S'
+    +' inner join "UserPost" X on X.subscription_id=S.id'
+    +' where S.autounread is not null'
+    +' and X.pubdate<$1-S.autounread/24.0 limit 1',[double(UtcNow)]);
   try
     if qr.EOF then i:=0 else i:=1;
   finally
@@ -226,10 +223,10 @@ begin
     FDB.BeginTrans;
     try
       i:=FDB.Execute('delete from "UserPost" where id in (select X.id'
-        +' from "UserPost" X'
-        +' inner join "Post" P on P.id=X.post_id'
-        +' inner join "Subscription" S on S.id=X.subscription_id'
-        +' where P.pubdate<$1-S.autounread/24.0)',[double(UtcNow)]);
+        +' from "Subscription" S'
+        +' inner join "UserPost" X on X.subscription_id=S.id'
+        +' where S.autounread is not null'
+        +' and X.pubdate<$1-S.autounread/24.0)',[double(UtcNow)]);
       FDB.CommitTrans;
     except
       FDB.RollbackTrans;
@@ -307,7 +304,6 @@ begin
           ' order by F.id',['%'+FeedLike+'%'])
       else
         qr:=TQueryResult.Create(FDB,'select F.id from "Feed" F where F.id>0'+
-          //' and url like ''%instagram%'''+
           ' order by F.id',[]);
       try
         ids_l:=0;
@@ -486,40 +482,7 @@ begin
           if StartsWith(FFeed.URL,'https://www.instagram.com/') then
            begin
 
-            {
-            i:=cardinal(GetTickCount-InstagramDelayMS);
-            j:=InstagramDelaySecs[InstagramHot];
-            if i<j*1000 then
-             begin
-              Writeln('');
-              while i<j*1000 do
-               begin
-                Write(#13'Instagram delay '+IntToStr(j-(i div 1000))+'s...   ');
-                Sleep(10);
-                i:=cardinal(GetTickCount-InstagramDelayMS);
-               end;
-              Write(#13'[Instagram delay...]');
-             end;
-            }
-
-            if (FFeed.URL<>'') and (FFeed.URL[Length(FFeed.URL)]<>'/') then
-              FFeed.URL:=FFeed.URL+'/';
-
-            if EaterGram=nil then
-              EaterGram:=CoEaterGram.Create;
-            try
-              FeedData:=EaterGram.LoadData(FFeed.URL);
-            except
-              on EOleException do
-               begin
-                pointer(EaterGram):=nil;
-                raise;
-               end;
-            end;
-            FeedDataType:='applicaton/json';
-
-            if SaveData then
-              SaveUTF16('xmls\'+Format('%.4d',[FFeed.ID])+'.json',FeedData);
+            raise Exception.Create('Instagram not supported');
 
            end
           else
@@ -1463,8 +1426,6 @@ end;
 initialization
   PGVersion:='';
   BlackList:=TStringList.Create;
-  EaterGram:=nil;
 finalization
   BlackList.Free;
-  EaterGram:=nil;
 end.

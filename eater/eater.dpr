@@ -23,12 +23,13 @@ uses
   feedSoundCloud in 'feedSoundCloud.pas',
   feedRSSinJSON in 'feedRSSinJSON.pas',
   feedWPv2 in 'feedWPv2.pas',
+  feedPRS in 'feedPRS.pas',
+  feedEBoy in 'feedEBoy.pas',
   feedJSON in 'feedJSON.pas',
   feedTitanium in 'feedTitanium.pas',
   feedFusion in 'feedFusion.pas',
   feedNextData in 'feedNextData.pas',
-  eaterRun in 'eaterRun.pas',
-  eatgram_TLB in '..\eatgram\eatgram_TLB.pas';
+  eaterRun in 'eaterRun.pas';
 
 {$R *.res}
 {$APPTYPE CONSOLE}
