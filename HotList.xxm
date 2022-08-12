@@ -3,7 +3,7 @@ id,sid:integer;
 qr:TQueryResult;
 c,c1:string;
 p:IxxmParameter;
-i,sc:integer;
+i,sc,cn:integer;
 const
 csel:array[boolean] of string=('',' checked="1"');
 ]][[
@@ -41,16 +41,18 @@ case Context['x'].AsInteger of
       ' order by lower(S.category), lower(S.label), lower(F.name), S.id',[Session.UserID,id]);
     try
       c:='';
+      cn:=0;
       while qr.Read do
        begin
         c1:=qr.GetStr('category');
         if c<>c1 then
          begin
-          <<br /><div class="catlink">>=c1<</div>>
+          inc(cn);
+          <<br /><div class="catlink"><a href="#t-[[=c1]]" onclick="return ct([[=cn]]);">>=c1<</a></div>>
           c:=c1;
          end;
         ]]
-        <label style="white-space:nowrap;"><input type="checkbox" name="s[[.id]]" value="1"[[#csel[not qr.IsNull('HLS')]]] />&nbsp;[[#StringReplace(
+        <label style="white-space:nowrap;"><input type="checkbox" name="s[[.id]]" value="1"[[#csel[not qr.IsNull('HLS')]]] xc="[[=cn]]" />&nbsp;[[#StringReplace(
           ShowLabel(qr.GetStr('label'),qr.GetStr('color'),''),
           '<div ','<div title="'+HTMLEncode(qr.GetStr('name'))+'" ',[])<</label>>
        end;
@@ -62,7 +64,17 @@ case Context['x'].AsInteger of
     </dl>
     <p><input type="submit" value="[[if id=0 then Context.SendHTML('Add HotList') else Context.SendHTML('Update HotList');]]" /></p>
     </form>
-    <script>document.getElementById("f1").focus();</script>
+    <script>
+    function ct(n){
+      var e=document.forms[0].elements;
+      for(var i=0;i<e.length;i++){
+        var f=e[i];
+        if(f.attributes["xc"]&&f.attributes["xc"].value==n)f.checked=!f.checked;
+      }
+      return false;
+    }
+    document.getElementById("f1").focus();
+    </script>
     <p><a href="HotLists.xxm">back</a></p>>
    end;
   1://add/update

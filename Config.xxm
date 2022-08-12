@@ -8,6 +8,7 @@ s,t:string;
 Context.Include('dHead.xxmi');
 
 <<div style="position:fixed;top:0;left:0em;background-color:gold;padding:4pt;user-select:none;">
+<a href="."><img src="img_l.png" width="16" height="16" border="0" alt="Back" /></a>
 <a href="Feeds.xxm"><img src="img_l.png" width="16" height="16" border="0" alt="Back" /></a>
 &nbsp;
 <b>Settings</b>

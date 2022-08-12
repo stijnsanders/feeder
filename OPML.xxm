@@ -2,6 +2,9 @@
 m:TStreamAdapter;
 d:DOMDocument60;
 db:TDataConnection;
+qr:TQueryResult;
+c,c1:string;
+cn:integer;
 
 const
 DefaultReadWidth=32;
@@ -55,7 +58,7 @@ begin
         end;
         //if not, mark recent posts as unread
         if id1=0 then
-          db.Execute('insert into "UserPost" (user_id,post_id,suscription_id,pubdate) select $1,P.id,S.id,P.pubdate'
+          db.Execute('insert into "UserPost" (user_id,post_id,suscription_id,pubdate) select $1,P.id,S.id,P.pubdate '
             +' from "Post"'
             +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
             +' where P.feed_id=$2 and P.pubDate>$3',
@@ -101,6 +104,16 @@ end;
 ]][[
 Context.Include('dHead.xxmi');
 
+<<div style="position:fixed;top:0;left:0em;background-color:gold;padding:4pt;user-select:none;">
+<a href="."><img src="img_l.png" width="16" height="16" border="0" alt="Back" /></a>
+<a href="Feeds.xxm"><img src="img_l.png" width="16" height="16" border="0" alt="Back" /></a>
+&nbsp;
+<b>OPML</b>
+</div>
+
+<div style="height:1.5em;padding-bottom:2pt;">&nbsp;</div>>
+
+
 case Context['x'].AsInteger of
   0:
    begin
@@ -126,8 +139,53 @@ case Context['x'].AsInteger of
    end;
   2://export
    begin
-    <<p><a href="OPML1.xxm">Click here do download your personal "subscriptions.opml"</p>>
-    <<p><a href="Feeds.xxm">back</a></p>>
+    <<p><a href="OPML1.xxm">Click here do download your personal "subscriptions.opml"...</a></p>
+    <form method="post" action="OPML1.xxm">
+    <input type="hidden" name="x" value="1" />
+    <dl>
+    <dt>subscriptions</dt>
+    <dd>>
+    qr:=TQueryResult.Create(Session.Connection,
+      'select S.*, F.name, F.url'+
+      ' from "Subscription" S'+
+      ' inner join "Feed" F on F.id=S.feed_id'+
+      ' where S.user_id=$1'+
+      ' order by lower(S.category), lower(S.label), lower(F.name), S.id',[Session.UserID]);
+    try
+      c:='';
+      cn:=0;
+      while qr.Read do
+       begin
+        c1:=qr.GetStr('category');
+        if c<>c1 then
+         begin
+          inc(cn);
+          <<br /><div class="catlink"><a href="#t-[[=c1]]" onclick="return ct([[=cn]]);">>=c1<</a></div>>
+          c:=c1;
+         end;
+        ]]
+        <label style="white-space:nowrap;"><input type="checkbox" name="s[[.id]]" value="1" xc="[[=cn]]" />&nbsp;[[#StringReplace(
+          ShowLabel(qr.GetStr('label'),qr.GetStr('color'),''),
+          '<div ','<div title="'+HTMLEncode(qr.GetStr('name'))+'" ',[])<</label>>
+       end;
+    finally
+      qr.Free;
+    end;
+    <</dd>
+    </dl>
+    <p><input type="submit" value="Export OPML of selected subscriptions..." /></p>
+    </form>
+    <script>
+    function ct(n){
+      var e=document.forms[0].elements;
+      for(var i=0;i<e.length;i++){
+        var f=e[i];
+        if(f.attributes["xc"]&&f.attributes["xc"].value==n)f.checked=!f.checked;
+      }
+      return false;
+    }
+    </script>
+    <p><a href="Feeds.xxm">back</a></p>>
    end;
   3://import upload
    begin

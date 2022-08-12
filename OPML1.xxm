@@ -1,15 +1,36 @@
 [[@xxmSession,DataLank,fCommon]][[!var
 qr:TQueryResult;
-c,c1,d:string;
+c,c1,d,s:string;
+i:integer;
+p:IXxmParameter;
 d1:TDateTime;
 dy,dm,dd:word;
 const
 dow:array[0..6] of string=('Mon','Tue','Wed','Thu','Fri','Sat','Sun');
 mon:array[0..11] of string=('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
 ]][[
+
+
+s:='';
+if Context['x'].AsInteger=1 then
+ begin
+  for i:=0 to Context.ParameterCount-1 do
+   begin
+    p:=Context[i];
+    if Copy(p.Name,1,1)='s' then //and p.Value='1'
+      s:=s+','+Copy(p.Name,2,12);
+   end;
+  if s='' then
+    raise Exception.Create('No subscriptions selected')
+  else
+    s[1]:='(';
+  s:=' and S.id in '+s+')';
+ end;
+
+
 Context.ContentType:='application/xml';
 Context.AutoEncoding:=aeUtf8;
-Context.DispositionAttach('subscriptions.opml');
+Context.DispositionAttach(FormatDateTime('yyyymmddhhnn',Now)+'.opml');
 
 d1:=UtcNow;
 DecodeDate(d1,dy,dm,dd);
@@ -36,7 +57,8 @@ d:=dow[(Trunc(d1)-2) mod 7]+', '+IntToStr(dd)+' '+mon[dm-1]+' '+IntToStr(dy)+For
       ' from "Subscription" S'+
       ' inner join "Feed" F on F.id=S.feed_id'+
       ' where S.user_id=$1'+
-      ' order by lower(S.Category),S.id',[Session.UserID]);
+      s+
+      ' order by lower(S.category),S.id',[Session.UserID]);
     try
       while qr.Read do
        begin
