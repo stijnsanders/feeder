@@ -123,7 +123,8 @@ begin
    begin
     i:=1;
     while (i<=Length(rt)) and (rt[i]<>';') do inc(i);
-    while (i>0) and (rt[i]<=' ') do dec(i);
+    if i<=Length(rt) then
+     while (i>0) and (rt[i]<=' ') do dec(i);
     if (i<=Length(rt)) then SetLength(rt,i-1);
    end;
 end;
