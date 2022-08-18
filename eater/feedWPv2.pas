@@ -80,10 +80,18 @@ begin
           r.send(EmptyParam);
           if r.status=200 then
            begin
-            jl1:=JSONDocArray;
-            jn1:=JSON(['x',jl1]);
-            jn1.Parse('{"x":'+r.responseText+'}');
-            if jl1.Count<>0 then jn1:=JSON(jl1[0]) else jn1:=nil;
+            if Copy(r.responseText,1,1)='[' then
+             begin
+              jl1:=JSONDocArray;
+              jn1:=JSON(['x',jl1]);
+              jn1.Parse('{"x":'+r.responseText+'}');
+              if jl1.Count<>0 then jn1:=JSON(jl1[0]) else jn1:=nil;
+             end
+            else
+             begin
+              jn1:=JSON;
+              jn1.Parse(r.responseText);
+             end;
             if jn1=nil then mediaurl:='' else mediaurl:=VarToStr(jn1['source_url']);
             if mediaurl<>'' then
              begin
