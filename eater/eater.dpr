@@ -29,7 +29,8 @@ uses
   feedTitanium in 'feedTitanium.pas',
   feedFusion in 'feedFusion.pas',
   feedNextData in 'feedNextData.pas',
-  eaterRun in 'eaterRun.pas';
+  eaterRun in 'eaterRun.pas',
+  feedHTML in 'feedHTML.pas';
 
 {$R *.res}
 {$APPTYPE CONSOLE}

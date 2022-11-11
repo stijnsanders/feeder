@@ -85,7 +85,20 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 
 <tr>
 <td>HTML</td>
-<td>Headers are searched for an appropriate <code>&lt;link rel="alternative"</code> element to update feed URL.</td>
+<td>Headers are searched for an appropriate <code>&lt;link rel="alternative"</code> element to update to a feed URL.<br />
+If none is found, the HTML content is search for one of these patterns:
+</td>
+</tr>
+
+<tr>
+<td>HTML:1</td>
+<td><code>&lt;<i>something</i> class="post-item"&gt;&lt;time ...&gt;&lt;a href="<i>url</i>"&gt;<i>title</i>&lt;/a&gt; <i>body</i>&lt;/<i>something</i>&gt;</code>
+</td>
+</tr>
+
+<tr>
+<td>HTML:...</td>
+<td><i>more may get added later</i></td>
 </tr>
 
 </table>
