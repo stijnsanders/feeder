@@ -54,7 +54,7 @@ else
       <<a href="." style="font-weight:bold;"><img src="img_l.png" width="16" height="16" alt="All"/>&nbsp;All</a><br />>
      end;
     ]]
-    <span id="postcount">>
+    <span id="postcount" onclick="document.location.reload(false);">>
     qr:=TQueryResult.Create(Session.Connection,'select count(*) from "UserPost" where user_id=$1',[Session.UserID]);
     try
       Context.Send(qr.GetInt(0));
