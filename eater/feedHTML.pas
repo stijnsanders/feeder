@@ -2,7 +2,7 @@ unit feedHTML;
 
 interface
 
-uses eaterReg, VBScript_RegExp_55_TLB;
+uses eaterReg, VBScript_RegExp_55_TLB, jsonDoc;
 
 type
   THTMLFeedProcessor1=class(TFeedProcessor)
@@ -19,7 +19,8 @@ type
 
   THTMLFeedProcessor2=class(TFeedProcessor)
   private
-    FURL:WideString;
+    FURL,FFeedTitle:WideString;
+    FFeedParams:IJSONDocument;
     FPostItem:RegExp;
   public
     procedure AfterConstruction; override;
@@ -32,7 +33,7 @@ type
 
 implementation
 
-uses SysUtils, eaterUtils, eaterSanitize;
+uses SysUtils, Classes, eaterUtils, eaterSanitize;
 
 { THTMLFeedProcessor1 }
 
@@ -42,7 +43,6 @@ begin
   FPostItem:=CoRegExp.Create;
   FPostItem.Global:=true;
   FPostItem.IgnoreCase:=true;//?
-  FPostItem.Multiline:=false;
   FPostItem.Pattern:='<([a-z]+)[^>]*? class="post-item"[^>]*?>'
     +'.*?<time[^>]*? datetime="([^"]+?)"[^>]*?>.+?</time>'
     +'.*?<a[^>]*? href="([^"]+?)"[^>]*?>(.+?)</a>(.*?)</\1>';
@@ -50,7 +50,6 @@ begin
   FPostBody:=CoRegExp.Create;
   FPostBody.Global:=true;
   FPostBody.IgnoreCase:=true;
-  FPostBody.Multiline:=false;
   FPostBody.Pattern:='^([^<]*?</[a-z]*?>)*'
 end;
 
@@ -129,27 +128,60 @@ begin
   inherited;
   FPostItem:=CoRegExp.Create;
   FPostItem.Global:=true;
-  FPostItem.IgnoreCase:=true;//?
-  FPostItem.Multiline:=false;
-  FPostItem.Pattern:='<div.*?>.*?'
-    +'<a href="([^"]*?)">.*?' //$1:url+guid
-    +'<img .*?src="([^"]*?)".*?>.*?' //$2:img
-    +'</a>.*?</div>.*?'
-    +'<([^ >]+?).*?>.*?' //$3
-    +'<a href="\1".*?>(.*?)</a>.*?' //$4:title
-    +'</\3>.*?'
-    +'<([^ >]+?).*?>' //$5
-    +'(.*?)' //$6: (pubDate)
-    +'</\5>.*?</div>';
+  FPostItem.IgnoreCase:=false;//?
+  //FPostItem.Pattern:= see Determine
+end;
+
+function URLToFileName(const URL:string):string;
+var
+  i,l:integer;
+begin
+  i:=1;
+  l:=Length(URL);
+  //skip 'http://'
+  while (i<=l) and (URL[i]<>'/') do inc(i);
+  while (i<=l) and (URL[i]='/') do inc(i);
+  while (i<=l) and (URL[i]<>'/') do
+   begin
+    case URL[i] of
+      'A'..'Z','a'..'z','0'..'9','-':Result:=Result+URL[i];
+      '.':Result:=Result+'_';
+    end;
+    inc(i);
+   end;
 end;
 
 function THTMLFeedProcessor2.Determine(Store: IFeedStore;
   const FeedURL: WideString; var FeedData: WideString;
   const FeedDataType: WideString): boolean;
+var
+  fn:string;
+  sl:TStringList;
 begin
   FURL:=FeedURL;
   //Store.CheckLastLoadResultPrefix('HTML:2')?
-  Result:=(FeedDataType='text/html') and FPostItem.Test(c0(FeedData));
+
+  Result:=false;
+  if (FeedDataType='text/html') then
+   begin
+    fn:='feeds/'+URLToFileName(string(FeedURL))+'.json';
+    if FileExists(fn) then
+     begin
+      FFeedParams:=JSON;
+      sl:=TStringList.Create;
+      try
+        sl.LoadFromFile(fn);
+        FFeedParams.Parse(sl.Text);
+      finally
+        sl.Free;
+      end;
+
+      FPostItem.IgnoreCase:=FFeedParams['i']=true;
+      FPostItem.Pattern:=FFeedParams['p'];
+      Result:=FPostItem.Test(c0(FeedData));
+
+     end;
+   end;
 end;
 
 procedure THTMLFeedProcessor2.ProcessFeed(Handler: IFeedHandler;
@@ -162,61 +194,95 @@ var
   mci,i,n,l:integer;
   title,url,content:WideString;
   d:TDateTime;
+  p:IJSONDocument;
 begin
   inherited;
+  Handler.UpdateFeedName(FFeedTitle);
   mc:=FPostItem.Execute(c0(FeedData)) as MatchCollection;
   for mci:=0 to mc.Count-1 do
    begin
     m:=mc[mci] as Match;
     sm:=m.SubMatches as SubMatches;
-    //assert sm.Count=6
     try
-      s:=sm[5];
-      l:=Length(s);
-      i:=1;
-      while (i<=l) and not(s[i] in ['0'..'9']) do inc(i);
-      n:=0;
-      while (i<=l) and (s[i] in ['0'..'9']) do
+      p:=JSON(FFeedParams['pubDate']);
+      s:=sm[p['n']-1];
+
+      if p['parse']='1' then d:=ConvDate1(s) else
+      if p['parse']='2' then d:=ConvDate2(s) else
+      if p['parse']='sloppy' then
        begin
-        n:=n*10+(byte(s[i]) and $F);
-        inc(i);
-       end;
-      inc(i);//' '
-      s:=Copy(s,i,l-i+1);
-      if StartsWith(s,'hour ago') then d:=UtcNow-1.0/24.0 else
-      if StartsWith(s,'hours ago') then d:=UtcNow-n/24.0 else
-      if StartsWith(s,'day ago') then d:=UtcNow-1.0 else
-      if StartsWith(s,'days ago') then d:=UtcNow-n else
-      if StartsWith(s,'week ago') then d:=UtcNow-7.0 else
-      if StartsWith(s,'weeks ago') then d:=UtcNow-n*7.0 else
-      if StartsWith(s,'month ago') then d:=UtcNow-30.0 else
-      if StartsWith(s,'months ago') then d:=UtcNow-n*30.0 else
-        Exception.Create('Unknown time interval');
+
+        l:=Length(s);
+        i:=1;
+        while (i<=l) and not(AnsiChar(s[i]) in ['0'..'9']) do inc(i);
+        n:=0;
+        while (i<=l) and (AnsiChar(s[i]) in ['0'..'9']) do
+         begin
+          n:=n*10+(byte(s[i]) and $F);
+          inc(i);
+         end;
+        inc(i);//' '
+        s:=Copy(s,i,l-i+1);
+        if StartsWith(s,'hour ago') then d:=UtcNow-1.0/24.0 else
+        if StartsWith(s,'hours ago') then d:=UtcNow-n/24.0 else
+        if StartsWith(s,'day ago') then d:=UtcNow-1.0 else
+        if StartsWith(s,'days ago') then d:=UtcNow-n else
+        if StartsWith(s,'week ago') then d:=UtcNow-7.0 else
+        if StartsWith(s,'weeks ago') then d:=UtcNow-n*7.0 else
+        if StartsWith(s,'month ago') then d:=UtcNow-30.0 else
+        if StartsWith(s,'months ago') then d:=UtcNow-n*30.0 else
+          raise Exception.Create('Unknown time interval');
+
+       end
+      else
+        raise Exception.Create('No PubDate Parse defined');
+
     except
       d:=UtcNow;
     end;
-    url:=HTMLDecode(sm[0]);
 
+    //TODO FFeedParams['guid']
+
+    p:=JSON(FFeedParams['url']);
+    url:=HTMLDecode(sm[p['n']-1]);
     //TODO: CombineURL!
 
-    title:=SanitizeTitle(Trim(sm[3]));
-    content:='';//?
 
-    s:=sm[1];
-    if s<>'' then
+    p:=JSON(FFeedParams['title']);
+    title:=sm[p['n']-1];
+    if p['trim']=true then title:=Trim(title);
+    title:=SanitizeTitle(c1(title));
+
+    p:=JSON(FFeedParams['content']);
+    if p=nil then
+      content:=''
+    else
      begin
-      content:='<img class="postthumb" referrerpolicy="no-referrer'+
-        '" src="'+HTMLEncode(FURL+s)+
-        //'" alt="'+???
-        '" /><br />'#13#10+content;
+      content:=c1(sm[p['n']-1]);
+      //more?
+
+      //TODO: absorb THTMLFeedProcessor1 here:
+      //TODO: series of replaces
+
      end;
 
-    //TODO: id?
+    p:=JSON(FFeedParams['postThumb']);
+    if p<>nil then
+     begin
+      s:=sm[p['n']-1];
+      if s<>'' then
+       begin
+        content:='<img class="postthumb" referrerpolicy="no-referrer'+
+          '" src="'+HTMLEncode(FURL+s)+
+          //'" alt="'+???
+          '" /><br />'#13#10+content;
+       end;
+     end;
 
     if Handler.CheckNewPost(url,FURL+url,d) then
       Handler.RegisterPost(title,content);
    end;
-  Handler.ReportSuccess('HTML:2');
+  Handler.ReportSuccess('HTML:P');
 end;
 
 initialization
