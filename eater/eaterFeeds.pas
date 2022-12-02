@@ -77,8 +77,8 @@ const
   AvgPostsDays=500;
   OldPostsDays=3660;
 
-  regimesteps=8;
-  regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90);
+  regimesteps=12;
+  regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90,120,150,200,360);
 
   YoutubePrefix1='https://www.youtube.com/channel/';
   YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
@@ -1398,7 +1398,8 @@ begin
         Result:=true;
        end
       else
-      if (sm[s1]='application/atom') or (sm[s1]='text/atom') then
+      if (sm[s1]='application/atom') or (sm[s1]='application/atom+xml') or
+        (sm[s1]='text/atom')or (sm[s1]='text/atom+xml') then
        begin
         FeedCombineURL(sm[s2],'Atom');
         Result:=true;
