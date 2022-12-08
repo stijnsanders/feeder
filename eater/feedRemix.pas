@@ -141,7 +141,7 @@ procedure TRemixContentProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jarts,jauthor:IJSONDocArray;
-  jdoc,j1,j2:IJSONDocument;
+  jdoc,j1,j2,j3:IJSONDocument;
   itemid,itemurl,author:string;
   pubDate:TDateTime;
   title,content:WideString;
@@ -178,17 +178,24 @@ begin
     if handler.CheckNewPost(itemid,itemurl,pubDate) then
      begin
       title:=SanitizeTitle(j1['title']);
+      content:='';//?
       if jauthor.Count=0 then
         author:=''
       else
         author:=JSON(jauthor[0])['name'];
       j2:=JSON(j1['featuredImage']);
-      content:=//???+
-        '<p><img class="postthumb" referrerpolicy="no-referrer" src="'
+      j3:=JSON(j2['asset']);
+      if j3<>nil then content:=content
+        +'<p><img class="postthumb" referrerpolicy="no-referrer" src="'
         +HTMLEncode(JSON(j2['asset'])['url'])
         +'" alt="'+HTMLEncode(VarToStr(j2['alt']))+'" /></p>'
-        +'<p><span style="background-color:'+JSON(j1['color'])['value']+'">&emsp;</span>'
-        +' <i>'+HTMLEncode(author)+'</i></p>';
+        ;
+      j2:=JSON(j1['color']);
+      if j2=nil then j2:=JSON(['color','#FFFFFF']);
+      content:=content
+        +'<p><span style="background-color:'+j2['value']+'">&emsp;</span>'
+        +' <i>'+HTMLEncode(author)+'</i></p>'
+        ;
       Handler.RegisterPost(title,content);
      end;
    end;
