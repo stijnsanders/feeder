@@ -33,7 +33,7 @@ type
 
 implementation
 
-uses SysUtils, Classes, eaterUtils, eaterSanitize;
+uses SysUtils, Classes, Variants, eaterUtils, eaterSanitize;
 
 { THTMLFeedProcessor1 }
 
@@ -235,7 +235,7 @@ begin
 
        end
       else
-        raise Exception.Create('No PubDate Parse defined');
+        raise Exception.Create('Unknown PubDate Parse "'+VarToStr(p['parse'])+'"');
 
     except
       d:=UtcNow;

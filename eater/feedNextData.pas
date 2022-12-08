@@ -78,7 +78,7 @@ begin
           end;
         if p1<>'' then
           content:=
-            '<img class="postthumb" src="'+
+            '<img class="postthumb" referrerpolicy="no-referrer" src="'+
             HTMLEncode(JSON(JSON(jn0['promo_items'])['basic'])['url'])+
             '" /><br />'#13#10+content;
 

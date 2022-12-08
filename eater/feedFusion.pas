@@ -76,7 +76,8 @@ begin
      begin
       jn1:=JSON(jn0['thumbnail']);
       if jn1<>nil then
-        content:='<img class="postthumb" src="'+HTMLEncode(jn1['url'])+
+        content:='<img class="postthumb" referrerpolicy="no-referrer'+
+          '" src="'+HTMLEncode(jn1['url'])+
           '" alt="'+HTMLEncode(VarToStr(jn1['caption']))+
           '" /><br />'#13#10+content;
       Handler.RegisterPost(title,content);

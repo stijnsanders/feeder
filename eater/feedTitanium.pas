@@ -105,7 +105,7 @@ begin
         if (p1<>'') and VarIsArray(v) and (VarArrayLowBound(v,1)<=VarArrayHighBound(v,1)) then
          begin
           if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
-          content:='<img class="postthumb" src="'+p1+
+          content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+p1+
             VarToStr(v[VarArrayLowBound(v,1)])+
             p2+'" />'+h1+content;
          end;
@@ -121,7 +121,7 @@ begin
            begin
             if content='' then content:=VarToStr(jd1['caption']);
             if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
-            content:='<img class="postthumb" src="'+
+            content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
               VarToStr(jd1['gcsBaseUrl'])+
               VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
               VarToStr(jd1['imageFileExtension'])+
