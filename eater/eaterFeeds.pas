@@ -479,11 +479,58 @@ begin
           if (FFeed.Result0='') and StartsWithX(FFeed.URL,YoutubePrefix1,ss) then
             FFeed.URL:=YoutubePrefix2+ss;
 
-          if StartsWith(FFeed.URL,'https://www.instagram.com/') then
+          if StartsWithX(FFeed.URL,'http://www.instagram.com/',ss) then
+            FFeed.URL:='https://instagram.com'+ss;
+          if StartsWithX(FFeed.URL,'http://instagram.com/',ss) then
+            FFeed.URL:='https://instagram.com'+ss;
+          if (StartsWith(FFeed.URL,'https://www.instagram.com/') or
+            StartsWith(FFeed.URL,'https://instagram.com/')) then
            begin
+            r:=CoServerXMLHTTP60.Create;
+            if not(FFeed.URL[Length(FFeed.URL)]='/') then FFeed.URL:=FFeed.URL+'/';
+            if not StartsWithX(FFeed.Name,'instagram:',ss) then
+             begin
+              Write('?');
+              r.open('GET',FFeed.URL,false,EmptyParam,EmptyParam);
+              r.send(EmptyParam);
+              if r.status<>200 then
+                raise Exception.Create('[HTTP:'+IntToStr(r.status)+']'+r.statusText);
+              FeedData:=r.responseText;
+              i:=Pos(WideString('"profile_id":"'),FeedData);
+              if i=0 then
+                raise Exception.Create('Instagram: no profile_id found')
+              else
+               begin
+                inc(i,14);
+                j:=i;
+                while (j<=Length(FeedData)) and (FeedData[j]<>'"') do inc(j); //and FeedData[j] in ['0'..'9']?
+                ss:=Copy(FeedData,i,j-i);
+                FFeed.Name:='instagram:'+ss;
+               end;
+             end;
 
-            raise Exception.Create('Instagram not supported');
-
+            //raise Exception.Create('Instagram not supported');
+            Write('i');
+            if FFeed.LastMod0='' then i:=32 else i:=8;//new?
+            r.open('GET','https://www.instagram.com/graphql/query/?query_hash='
+              +'69cba40317214236af40e7efa697781d&variables=%7B%22id%22%3A%22'
+              +ss+'%22%2C%22first%22%3A'+IntToStr(i)+'%7D'
+              ,false,EmptyParam,EmptyParam);
+            r.setRequestHeader('Accept','application/json');
+            //TODO: check if 'If-Modified-Since' works (prolly naught)
+            r.send(EmptyParam);
+            if r.status=200 then
+             begin
+              Write(':');
+              FeedData:=r.responseText;
+              //FeedDataType:='application/json';
+              FeedDataType:=r.getResponseHeader('Content-Type');
+              if SaveData then
+                SaveUTF16('xmls\'+Format('%.4d',[FFeed.id])+'.json',FeedData);
+             end
+            else
+              FFeed.Result:='[HTTP:'+IntToStr(r.status)+']'+r.statusText;
+            r:=nil;
            end
           else
 

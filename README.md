@@ -22,7 +22,7 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 <th>Description</th>
 </tr>
 
-<tr>
+<tr>	
 <td>Atom</td>
 <td>xmlns:atom="http://www.w3.org/2005/Atom"</td>
 </tr>
@@ -48,6 +48,11 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 </tr>
 
 <tr>
+<td>Instagram</td>
+<td>Posts are created from <a href="https://graphql.org/">GraphQL</a> query JSON.</td>
+</tr>
+
+<tr>
 <td>SPARQL</td>
 <td><code>PREFIX schema: &lt;http://schema.org/&gt; SELECT * WHERE { ?news a schema:NewsArticle</code> ...</td>
 </td>
@@ -70,7 +75,7 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 
 <tr>
 <td>Titanium</td>
-<td>Posts are loaded from <code>window['titanium-state'] = </code> JSON.</td>
+<td>Posts are loaded from <code>window['titanium-state']=</code> JSON.</td>
 </tr>
 
 <tr>
@@ -84,6 +89,15 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 </tr>
 
 <tr>
+<td>NatGeo</td>
+<td>Posts are loaded from <code>window['__natgeo__']=</code> JSON.</td>
+</tr>
+
+<tr>
+<td>Remix</td>
+<td>Posts are loaded from <code>window.__remixContext=</code> JSON.</td>
+
+<tr>
 <td>HTML</td>
 <td>Headers are searched for an appropriate <code>&lt;link rel="alternative"</code> element to update to a feed URL.<br />
 If none is found, the HTML content is search for one of these patterns:
@@ -91,14 +105,9 @@ If none is found, the HTML content is search for one of these patterns:
 </tr>
 
 <tr>
-<td>HTML:1</td>
-<td><code>&lt;<i>something</i> class="post-item"&gt;&lt;time ...&gt;&lt;a href="<i>url</i>"&gt;<i>title</i>&lt;/a&gt; <i>body</i>&lt;/<i>something</i>&gt;</code>
+<td>HTML:P</td>
+<td>Posts are loaded using a specific set of regular expressions on the raw page HTML data.</code>
 </td>
-</tr>
-
-<tr>
-<td>HTML:...</td>
-<td><i>more may get added later</i></td>
 </tr>
 
 </table>
