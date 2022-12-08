@@ -30,17 +30,17 @@ end;
 procedure TNatGeoProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  jfrms,jmods,jtiles,jctas,jtags:IJSONDocArray;
+  jfrms,jmods,jtiles,jctas:IJSONDocArray;
   jdoc,jfrm,jmod,jtile,j1:IJSONDocument;
   itemid,itemurl:string;
   pubDate:TDateTime;
   title,content:WideString;
   frm_i,mod_i,tile_i,tag_i:integer;
-  tags:Variant;
+  tags,v:Variant;
 begin
   jfrms:=JSONDocArray;
   j1:=JSON;
-  jdoc:=JSON(['page',JSON(['meta',j1,'content',JSON(['hub',JSON(['frms',jfrms])])])]);
+  jdoc:=JSON(['page{','meta',j1,'content{','hub{','frms',jfrms,'}}}']);
   try
     jdoc.Parse(FeedData);
   except
@@ -58,8 +58,7 @@ begin
   jmod:=JSON(['tiles',jtiles]);
 
   jctas:=JSONDocArray;
-  jtags:=JSONDocArray;
-  jtile:=JSON(['ctas',jctas,'tags',jtags]);
+  jtile:=JSON(['ctas',jctas]);
 
   for frm_i:=0 to jfrms.Count-1 do
    begin
@@ -82,11 +81,15 @@ begin
             title:=SanitizeTitle(jtile['title']);
             content:=HTMLEncode(jtile['description']);//'abstract'?
 
-            if jtags.Count<>0 then
+            v:=jtile['tags'];
+            if not(VarIsNull(v)) then
              begin
-              tags:=vararraycreate([0,jTags.Count-1],varOleStr);
-              for tag_i:=0 to jtags.Count-1 do
-                tags[tag_i]:=JSON(jtags[tag_i])['name'];
+              tags:=VarArrayCreate([VarArrayLowBound(v,1),VarArrayHighBound(v,1)],varOleStr);
+              for tag_i:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+                if VarType(v[tag_i])=varUnknown then
+                  tags[tag_i]:=JSON(v[tag_i])['name']
+                else
+                  tags[tag_i]:=VarToStr(v[tag_i]);
               Handler.PostTags('tag',tags);
              end;
 
