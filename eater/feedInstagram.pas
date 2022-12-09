@@ -212,7 +212,7 @@ begin
 
       if s<>'' then
        begin
-        content:='<a href="'+HTMLEncode(itemurl)+'"><img src="'
+        content:='<a href="'+HTMLEncodeQ(itemurl)+'"><img src="'
           +ImageDataURL(s)+'" border="0" /></a><br />'#13#10
           +content;
        end;
@@ -233,9 +233,9 @@ begin
           jlinks.LoadItem(j,jc0);
           jd1:=JSON(jc1['user']);
           content:=content+'<a href="https://instagram.com/'+jd1['username']
-            +'/" title="'+HTMLEncode(jd1['full_name'])
+            +'/" title="'+HTMLEncodeQ(jd1['full_name'])
             +'"><img src="'+ImageDataURL(jd1['profile_pic_url'])
-            +'" alt="'+HTMLEncode(jd1['full_name'])
+            +'" alt="'+HTMLEncodeQ(jd1['full_name'])
             +'" referrerpolicy="no-referrer" border="0" /></a>'#13#10;
          end;
         content:=content+'</p>'#13#10;

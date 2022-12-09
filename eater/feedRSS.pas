@@ -119,7 +119,7 @@ begin
          begin
           if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
           content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-            HTMLEncode(x1.text)+'" />'+h1+content;
+            HTMLEncodeQ(x1.text)+'" />'+h1+content;
           x1:=nil;
          end;
        end;

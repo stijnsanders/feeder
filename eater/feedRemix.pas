@@ -187,8 +187,8 @@ begin
       j3:=JSON(j2['asset']);
       if j3<>nil then content:=content
         +'<p><img class="postthumb" referrerpolicy="no-referrer" src="'
-        +HTMLEncode(JSON(j2['asset'])['url'])
-        +'" alt="'+HTMLEncode(VarToStr(j2['alt']))+'" /></p>'
+        +HTMLEncodeQ(JSON(j2['asset'])['url'])
+        +'" alt="'+HTMLEncodeQ(VarToStr(j2['alt']))+'" /></p>'
         ;
       j2:=JSON(j1['color']);
       if j2=nil then j2:=JSON(['color','#FFFFFF']);

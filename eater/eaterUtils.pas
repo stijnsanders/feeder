@@ -16,6 +16,7 @@ function ConvDate2(const x:string):TDateTime;
 function UtcNow:TDateTime;
 
 function HTMLEncode(const x:string):string;
+function HTMLEncodeQ(const x:string):string;
 function URLEncode(const x:string):AnsiString;
 function StripWhiteSpace(const x:WideString):WideString;
 function IsSomethingEmpty(const x:WideString):boolean;
@@ -526,6 +527,21 @@ begin
       ,'&','&amp;',[rfReplaceAll])
       ,'<','&lt;',[rfReplaceAll])
       ,'>','&gt;',[rfReplaceAll])
+  ;
+end;
+
+function HTMLEncodeQ(const x:string):string;
+begin
+  Result:=
+    StringReplace(
+    StringReplace(
+    StringReplace(
+    StringReplace(
+      x
+      ,'&','&amp;',[rfReplaceAll])
+      ,'<','&lt;',[rfReplaceAll])
+      ,'>','&gt;',[rfReplaceAll])
+      ,'"','&quot;',[rfReplaceAll])
   ;
 end;
 

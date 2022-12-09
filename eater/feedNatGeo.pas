@@ -95,8 +95,8 @@ begin
 
             j1:=JSON(jtile['img']);
             content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-              HTMLEncode(j1['src'])+
-              '" alt="'+HTMLEncode(VarToStr(j1['dsc']))+'" /><br />'#13#10+
+              HTMLEncodeQ(j1['src'])+
+              '" alt="'+HTMLEncodeQ(VarToStr(j1['dsc']))+'" /><br />'#13#10+
               content;
 
             Handler.RegisterPost(title,content);

@@ -273,7 +273,7 @@ begin
       if s<>'' then
        begin
         content:='<img class="postthumb" referrerpolicy="no-referrer'+
-          '" src="'+HTMLEncode(FURL+s)+
+          '" src="'+HTMLEncodeQ(FURL+s)+
           //'" alt="'+???
           '" /><br />'#13#10+content;
        end;

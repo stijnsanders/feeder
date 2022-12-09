@@ -99,9 +99,9 @@ begin
               h2:='';
               jn1:=JSON(jn1['media_details']);
               if jn1<>nil then jn1:=JSON(jn1['image_meta']);
-              if jn1<>nil then h2:=' alt="'+HTMLEncode(VarToStr(jn1['caption']))+'"';
+              if jn1<>nil then h2:=' alt="'+HTMLEncodeQ(VarToStr(jn1['caption']))+'"';
               content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-                HTMLEncode(mediaurl)+'"'+h2+' />'+h1+content;
+                HTMLEncodeQ(mediaurl)+'"'+h2+' />'+h1+content;
              end;
            end;
          end;

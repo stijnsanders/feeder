@@ -25,7 +25,70 @@ type
 
 implementation
 
-uses SysUtils, Variants, jsonDoc, eaterUtils;
+uses SysUtils, Variants, ComObj, ActiveX, jsonDoc, eaterUtils, MSXML2_TLB;
+
+{ Base64* }
+
+const
+  Base64Codes:array[0..63] of AnsiChar=
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function Base64Encode(const x:UTF8String):UTF8String;
+var
+  i,j,l:cardinal;
+begin
+  l:=Length(x);
+  i:=(l div 3);
+  if (l mod 3)<>0 then inc(i);
+  SetLength(Result,i*4);
+  i:=1;
+  j:=0;
+  while (i+2<=l) do
+   begin
+    inc(j);Result[j]:=Base64Codes[  byte(x[i  ]) shr 2];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i  ]) and $03) shl 4)
+                                or (byte(x[i+1]) shr 4)];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i+1]) and $0F) shl 2)
+                                or (byte(x[i+2]) shr 6)];
+    inc(j);Result[j]:=Base64Codes[  byte(x[i+2]) and $3F];
+    inc(i,3);
+   end;
+  if i=l then
+   begin
+    inc(j);Result[j]:=Base64Codes[  byte(x[i  ]) shr 2];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i  ]) and $03) shl 4)];
+    inc(j);Result[j]:='=';
+    inc(j);Result[j]:='=';
+   end
+  else if i+1=l then
+   begin
+    inc(j);Result[j]:=Base64Codes[  byte(x[i  ]) shr 2];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i  ]) and $03) shl 4)
+                                or (byte(x[i+1]) shr 4)];
+    inc(j);Result[j]:=Base64Codes[((byte(x[i+1]) and $0F) shl 2)];
+    inc(j);Result[j]:='=';
+   end;
+end;
+
+function Base64EncodeStream_JPEG(const s:IStream):UTF8String;
+var
+  d:UTF8String;
+  i,j:integer;
+  l:FixedUInt;
+begin
+  i:=1;
+  j:=0;
+  l:=1;
+  while l<>0 do
+   begin
+    inc(j,$10000);
+    SetLength(d,j);
+    OleCheck(s.Read(@d[i],$10000,@l));
+    inc(i,l);
+   end;
+  SetLength(d,i-1);
+  Result:=Base64Encode(d);
+end;
 
 { TJsonFeedProcessor }
 
@@ -121,6 +184,7 @@ var
   title,content:WideString;
   pubDate:TDateTime;
   i:integer;
+  r:ServerXMLHTTP60;
 begin
   jitems:=JSONDocArray;
   jdoc:=JSON(['data',jitems]);
@@ -152,10 +216,28 @@ begin
       j1:=JSON(j0['thumbnails']);
       if j1<>nil then
        begin
+        {
         content:='<img class="postthumb" referrerpolicy="no-referrer'+
-          '" src="'+HTMLEncode(FURL+j1['middle'])+
-          '" alt="'+HTMLEncode(VarToStr(j1['alt']))+
+          '" src="'+HTMLEncodeQ(FURL+j1['middle'])+
+          '" alt="'+HTMLEncodeQ(VarToStr(j1['alt']))+
           '" /><br />'#13#10+content;
+        }
+
+        s:=FURL+j1['middle'];
+        r:=CoServerXMLHTTP60.Create;
+        r.open('GET',s,false,EmptyParam,EmptyParam);
+        r.send(EmptyParam);
+        if r.status=200 then
+          content:=
+            '<img class="postthumb" src="data:image/jpeg;base64,'+
+              UTF8ToWideString(Base64EncodeStream_JPEG(IUnknown(r.responseStream) as IStream))+
+              '" alt="'+HTMLEncodeQ(VarToStr(j1['alt']))+
+              '" /><br />'#13#10+
+            content;
+        //else <img?
+
+        r:=nil;
+
        end;
 
       //'videos'?
