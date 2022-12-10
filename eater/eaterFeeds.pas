@@ -63,6 +63,12 @@ const
 var
   PGVersion:string;
   BlackList:TStringList;
+  InstagramLastTC:cardinal;
+  InstagramFailed:TDateTime;
+
+const
+  InstagramIntervalMS=90000;
+  InstagramCoolDown=4.0/24.0;
 
 implementation
 
@@ -486,51 +492,72 @@ begin
           if (StartsWith(FFeed.URL,'https://www.instagram.com/') or
             StartsWith(FFeed.URL,'https://instagram.com/')) then
            begin
-            r:=CoServerXMLHTTP60.Create;
-            if not(FFeed.URL[Length(FFeed.URL)]='/') then FFeed.URL:=FFeed.URL+'/';
-            if not StartsWithX(FFeed.Name,'instagram:',ss) then
+            if (InstagramFailed<>0.0) and (UtcNow>InstagramFailed) then InstagramFailed:=0.0;
+            if InstagramFailed=0.0 then
              begin
-              Write('?');
-              r.open('GET',FFeed.URL,false,EmptyParam,EmptyParam);
+              r:=CoServerXMLHTTP60.Create;
+              if not(FFeed.URL[Length(FFeed.URL)]='/') then FFeed.URL:=FFeed.URL+'/';
+              if not StartsWithX(FFeed.Name,'instagram:',ss) then
+               begin
+                Write('?');
+                r.open('GET',FFeed.URL,false,EmptyParam,EmptyParam);
+                r.send(EmptyParam);
+                if r.status<>200 then
+                  raise Exception.Create('[HTTP:'+IntToStr(r.status)+']'+r.statusText);
+                FeedData:=r.responseText;
+                i:=Pos(WideString('"profile_id":"'),FeedData);
+                if i=0 then
+                  raise Exception.Create('Instagram: no profile_id found')
+                else
+                 begin
+                  inc(i,14);
+                  j:=i;
+                  while (j<=Length(FeedData)) and (FeedData[j]<>'"') do inc(j); //and FeedData[j] in ['0'..'9']?
+                  ss:=Copy(FeedData,i,j-i);
+                  FFeed.Name:='instagram:'+ss;
+                  InstagramLastTC:=GetTickCount-(InstagramLastTC div 2);
+                 end;
+               end;
+
+              //space requests
+              while cardinal(GetTickCount-InstagramLastTC)<InstagramIntervalMS do
+               begin
+                Write(Format(' %.2d"',[(InstagramIntervalMS-
+                  cardinal(GetTickCount-InstagramLastTC)+500) div 1000])+#8#8#8#8);
+                Sleep(1000);
+               end;
+
+              Write('.   '#8#8#8);
+              if FFeed.LastMod0='' then i:=32 else i:=8;//new?
+              r.open('GET','https://www.instagram.com/graphql/query/?query_hash='
+                +'69cba40317214236af40e7efa697781d&variables=%7B%22id%22%3A%22'
+                +ss+'%22%2C%22first%22%3A'+IntToStr(i)+'%7D'
+                ,false,EmptyParam,EmptyParam);
+              r.setRequestHeader('Accept','application/json');
+              //r.setRequestHeader('Referer',FFeed.URL);??
+              r.setRequestHeader('Cookie','csrftoken=r0E0o6p76cxSWJma3DcrEt1EyS40Awdw');//??
+              r.setRequestHeader('X-CSRFToken','r0E0o6p76cxSWJma3DcrEt1EyS40Awdw');
+              //'x-ig-app-id'?
               r.send(EmptyParam);
-              if r.status<>200 then
-                raise Exception.Create('[HTTP:'+IntToStr(r.status)+']'+r.statusText);
-              FeedData:=r.responseText;
-              i:=Pos(WideString('"profile_id":"'),FeedData);
-              if i=0 then
-                raise Exception.Create('Instagram: no profile_id found')
+              if r.status=200 then
+               begin
+                Write(':');
+                FeedData:=r.responseText;
+                //FeedDataType:='application/json';
+                FeedDataType:=r.getResponseHeader('Content-Type');
+                if SaveData then
+                  SaveUTF16('xmls\'+Format('%.4d',[FFeed.id])+'.json',FeedData);
+               end
               else
                begin
-                inc(i,14);
-                j:=i;
-                while (j<=Length(FeedData)) and (FeedData[j]<>'"') do inc(j); //and FeedData[j] in ['0'..'9']?
-                ss:=Copy(FeedData,i,j-i);
-                FFeed.Name:='instagram:'+ss;
+                if r.status=401 then InstagramFailed:=UtcNow+InstagramCoolDown;
+                FFeed.Result:='[HTTP:'+IntToStr(r.status)+']'+r.statusText;
                end;
-             end;
-
-            //raise Exception.Create('Instagram not supported');
-            Write('i');
-            if FFeed.LastMod0='' then i:=32 else i:=8;//new?
-            r.open('GET','https://www.instagram.com/graphql/query/?query_hash='
-              +'69cba40317214236af40e7efa697781d&variables=%7B%22id%22%3A%22'
-              +ss+'%22%2C%22first%22%3A'+IntToStr(i)+'%7D'
-              ,false,EmptyParam,EmptyParam);
-            r.setRequestHeader('Accept','application/json');
-            //TODO: check if 'If-Modified-Since' works (prolly naught)
-            r.send(EmptyParam);
-            if r.status=200 then
-             begin
-              Write(':');
-              FeedData:=r.responseText;
-              //FeedDataType:='application/json';
-              FeedDataType:=r.getResponseHeader('Content-Type');
-              if SaveData then
-                SaveUTF16('xmls\'+Format('%.4d',[FFeed.id])+'.json',FeedData);
+              r:=nil;
+              InstagramLastTC:=GetTickCount;
              end
             else
-              FFeed.Result:='[HTTP:'+IntToStr(r.status)+']'+r.statusText;
-            r:=nil;
+              FFeed.REsult:='[Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+''']';
            end
           else
 
@@ -893,8 +920,8 @@ begin
       inc(ids_i);
      end;
 
-    OutLn(Format('Loaded: %d posts from %d feeds',
-      [Result.PostCount,Result.FeedCount]));
+    OutLn(Format('Loaded: %d posts from %d feeds (%d)',
+      [Result.PostCount,Result.FeedCount,ids_l]));
 
     FReport.Add('</table>');
 
@@ -1474,6 +1501,8 @@ end;
 initialization
   PGVersion:='';
   BlackList:=TStringList.Create;
+  InstagramLastTC:=GetTickCount-InstagramIntervalMS;
+  InstagramFailed:=0.0;
 finalization
   BlackList.Free;
 end.
