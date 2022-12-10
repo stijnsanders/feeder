@@ -21,11 +21,18 @@ uses SysUtils, eaterSanitize, jsonDoc, Variants, eaterUtils, MSXML2_TLB;
 
 function TWPv2FeedProcessor.Determine(Store:IFeedStore;const FeedURL:WideString;
       var FeedData:WideString;const FeedDataType:WideString):boolean;
+var
+  i,l:integer;
 begin
-  Result:=
-    (FeedDataType='application/json') and (Pos(WideString('/wp/v2/'),FeedURL)<>0)
-    and (FeedData<>'') and (Copy(FeedData,1,1)='[');
-    //and ((Copy(rw,1,7)='[{"id":') or (rw='[]'))
+  Result:=false;//default
+  if (FeedDataType='application/json') and (Pos(WideString('/wp/v2/'),FeedURL)<>0) then
+   begin
+    i:=1;
+    l:=Length(FeedData);
+    while (i<=l) and (FeedData[i]<' ') do inc(i);
+    Result:=(i<=l) and (FeedData[i]='[');
+    //'[{"id":'?
+   end;
 end;
 
 procedure TWPv2FeedProcessor.ProcessFeed(Handler: IFeedHandler;
