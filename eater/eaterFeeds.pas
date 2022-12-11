@@ -482,6 +482,8 @@ begin
           if (FFeed.Result0<>'') and (FFeed.Result0[1]='[') then
             FFeed.Result0:='';
 
+          //TODO: if StartsWith(,'https://www.youtube.com/@'
+          // load '/about' to look-up <meta itemprop="channelId" content="
           if (FFeed.Result0='') and StartsWithX(FFeed.URL,YoutubePrefix1,ss) then
             FFeed.URL:=YoutubePrefix2+ss;
 
@@ -528,7 +530,7 @@ begin
                end;
 
               Write('.   '#8#8#8);
-              if FFeed.LastMod0='' then i:=32 else i:=8;//new?
+              if newfeed then i:=32 else i:=8;//new?
               r.open('GET','https://www.instagram.com/graphql/query/?query_hash='
                 +'69cba40317214236af40e7efa697781d&variables=%7B%22id%22%3A%22'
                 +ss+'%22%2C%22first%22%3A'+IntToStr(i)+'%7D'
@@ -1419,6 +1421,7 @@ begin
      begin
       //TODO: check +'wp/v2/articles'?
       FeedCombineURL(sm[3]+'wp/v2/posts','WPv2');
+      //TODO: +'?per_page=32'?
 
       //extract title
       reLink.Pattern:='<title>([^<]+?)</title>';

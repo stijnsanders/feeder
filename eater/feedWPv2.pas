@@ -40,9 +40,9 @@ procedure TWPv2FeedProcessor.ProcessFeed(Handler: IFeedHandler;
 var
   jnodes,jmedia,jl1:IJSONDocArray;
   jdoc,jn0,jn1:IJSONDocument;
-  i:integer;
+  node_i,n:integer;
   itemid,itemurl,mediaurl,h1,h2:string;
-  title,content:WideString;
+  title,content,md:WideString;
   v:Variant;
   pubDate:TDateTime;
   r:ServerXMLHTTP60;
@@ -54,9 +54,9 @@ begin
   jdoc.Parse('{"items":'+FeedData+'}');
   jn0:=JSON(['_links',JSON(['wp:featuredmedia',jmedia,'wp:attachment',jmedia  ])]);
   r:=nil;
-  for i:=0 to jnodes.Count-1 do
+  for node_i:=0 to jnodes.Count-1 do
    begin
-    jnodes.LoadItem(i,jn0);
+    jnodes.LoadItem(node_i,jn0);
     itemid:=VarToStr(jn0['id']);//'slug'?
     if itemid='' then itemid:=VarToStr(JSON(jn0['guid'])['rendered']);
     itemurl:=VarToStr(jn0['link']);
@@ -85,19 +85,22 @@ begin
           if r=nil then r:=CoServerXMLHTTP60.Create;
           r.open('GET',mediaurl,false,EmptyParam,EmptyParam);
           r.send(EmptyParam);
-          if r.status=200 then
+          md:=r.responseText;
+          if (r.status=200) and (md<>'') then
            begin
-            if Copy(r.responseText,1,1)='[' then
+            n:=1;
+            while (n<=Length(md)) and (md[n]<=' ') do inc(n);
+            if md[n]='[' then
              begin
               jl1:=JSONDocArray;
               jn1:=JSON(['x',jl1]);
-              jn1.Parse('{"x":'+r.responseText+'}');
+              jn1.Parse('{"x":'+md+'}');
               if jl1.Count<>0 then jn1:=JSON(jl1[0]) else jn1:=nil;
              end
             else
              begin
               jn1:=JSON;
-              jn1.Parse(r.responseText);
+              jn1.Parse(md);
              end;
             if jn1=nil then mediaurl:='' else mediaurl:=VarToStr(jn1['source_url']);
             if mediaurl<>'' then
