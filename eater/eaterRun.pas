@@ -207,10 +207,10 @@ begin
                   else
                    begin
                     Writeln(#13'Instagram timers: (press "i" again to reset)');
-                    Writeln('Instagram last (UTC) '+DateTimeToStr(UtcNow-
-                      cardinal(GetTickCount-InstagramLastTC)/SecsPerDay));
+                    Writeln('  Instagram last (UTC) '+DateTimeToStr(UtcNow-
+                      cardinal(GetTickCount-InstagramLastTC)/MSecsPerDay));
                     if InstagramFailed<>0.0 then
-                      Writeln('Instagram failed (UTC) '+DateTimeToStr(InstagramFailed));
+                      Writeln('  Instagram failed (UTC) '+DateTimeToStr(InstagramFailed));
                    end;
 
                 '0'..'9':
