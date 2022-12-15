@@ -59,6 +59,7 @@ type
 
 const
   Specific_NewFeeds=-111;
+  Specific_AllFeeds=-113;
 
 var
   PGVersion:string;
