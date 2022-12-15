@@ -224,6 +224,7 @@ begin
       content:='<p>'+content+'</p>'#13#10;
 
       //TODO: likes, views, owner?
+      //TODO: edge_sidecar_to_children...
 
       if jlinks.Count<>0 then
        begin

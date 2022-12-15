@@ -556,15 +556,20 @@ begin
                   SaveUTF16('xmls\'+Format('%.4d',[FFeed.id])+'.json',FeedData);
                end
               else
+              if r.status=401 then
                begin
-                if r.status=401 then InstagramFailed:=UtcNow+InstagramCoolDown;
+                InstagramFailed:=UtcNow+InstagramCoolDown;
+                FFeed.Result:='[Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+''']';
+               end
+              else
+               begin
                 FFeed.Result:='[HTTP:'+IntToStr(r.status)+']'+r.statusText;
                end;
               r:=nil;
               InstagramLastTC:=GetTickCount;
              end
             else
-              FFeed.REsult:='[Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+''']';
+              FFeed.Result:='[Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+''']';
            end
           else
 

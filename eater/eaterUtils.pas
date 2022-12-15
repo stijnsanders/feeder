@@ -125,6 +125,8 @@ begin
    begin
     inc(i);
     nx(tz,3);
+    //ignore superflous digits
+    while (i<=l) and (AnsiChar(x[i]) in ['0'..'9']) do inc(i);
    end
   else
     tz:=0;
@@ -519,6 +521,7 @@ end;
 
 function HTMLEncode(const x:string):string;
 begin
+  //TODO: redo smarter than sequential StringReplace
   Result:=
     StringReplace(
     StringReplace(
