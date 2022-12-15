@@ -446,7 +446,7 @@ begin
         if (FFeed.LoadLast<>0.0) and (d<FFeed.LoadLast) then
           d:=FFeed.LoadLast+FFeed.Regime-PubDateMargin;
        end;
-      dofeed:=(d<FFeed.LoadStart) or ForceLoadAll;
+      dofeed:=(d<FFeed.LoadStart) or ForceLoadAll or (SpecificFeedID>0);
       ss:=ss+'"';
 
       if postavg=0.0 then
@@ -560,7 +560,7 @@ begin
               if r.status=401 then
                begin
                 InstagramFailed:=UtcNow+InstagramCoolDown;
-                FFeed.Result:='[Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+''']';
+                FFeed.Result:='[Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+'''.]';
                end
               else
                begin
