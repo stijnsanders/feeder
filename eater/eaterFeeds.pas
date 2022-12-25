@@ -68,7 +68,7 @@ var
   InstagramFailed:TDateTime;
 
 const
-  InstagramIntervalMS=90000;
+  InstagramIntervalMS=30000;
   InstagramCoolDown=4.0/24.0;
 
 implementation
@@ -250,12 +250,12 @@ var
   ids:array of integer;
   ids_i,ids_l:integer;
   d,oldPostDate:TDateTime;
-  sql1,sql2,ss:string;
+  sql1,sql2,ss,html1,html2:string;
 
   postlast,postavg,f:double;
-  newfeed,dofeed,doreq,loadext,xres:boolean;
+  newfeed,doreq,loadext,xres:boolean;
   r:ServerXMLHTTP60;
-  redirCount,i,j:integer;
+  redirCount,sCount,i,j:integer;
   handler_i:cardinal;
   doc:DOMDocument60;
 
@@ -273,18 +273,9 @@ begin
   FReport.Add('DIV.flag{display:inline;padding:2pt;color:#FFCC00;border-radius:4pt;white-space:nowrap;}');
   FReport.Add('</style>');
   FReport.Add('<table cellspacing="0" cellpadding="4" border="1">');
-  FReport.Add('<tr>');
-  FReport.Add('<th>&nbsp;</th>');
-  FReport.Add('<th>name</th>');
-  FReport.Add('<th title="subscriptions">#</th>');
-  FReport.Add('<th>post:avg</th>');
-  FReport.Add('<th>regime</th>');
-  FReport.Add('<th>since</th>');
-  FReport.Add('<th>load result</th>');
-  FReport.Add('<th>new</th>');
-  FReport.Add('<th>items</th>');
-  FReport.Add('<th>total</th>');
-  FReport.Add('</tr>');
+  FReport.Add('<tr><th>&nbsp;</th><th>name</th><th title="subscriptions">#</th>');
+  FReport.Add('<th>post:avg</th><th>regime</th><th>since</th>');
+  FReport.Add('<th>load result</th><th>new</th><th>items</th><th>total</th></tr>');
 
   try
     OutLn('List feeds for loading...');
@@ -368,17 +359,14 @@ begin
         //feedglobal:=(i and 1)<>0;
         //TODO: more?
 
-        FReport.Add('<tr>');
-        FReport.Add('<th>'+IntToStr(FFeed.id)+'</th>');
-        FReport.Add('<td class="n" title="created:'
+        html1:='<td class="n" title="created: '
           +FormatDateTime('yyyy-mm-dd hh:nn',qrDate(qr,'created'))
-          +#13#10'check:'
+          +#13#10'check: '
           +FormatDateTime('yyyy-mm-dd hh:nn:ss',FFeed.LoadStart)
-          +'">');
+          +'">';
         if FFeed.group_id<>0 then
-          FReport.Add('<div class="flag" style="background-color:red;">'+IntToStr(FFeed.group_id)+'</div>&nbsp;');
-        FReport.Add('<a href="'+HTMLEncode(FFeed.URL)+'">'+HTMLEncode(FFeed.Name)+'</a></td>');
-        FReport.Add('<td style="text-align:right;">'+VarToStr(qr['scount'])+'</td>');
+          html1:=html1+'<div class="flag" style="background-color:red;">'+IntToStr(FFeed.group_id)+'</div>&nbsp;';
+        html2:='<td style="text-align:right;">'+VarToStr(qr['scount'])+'</td>';
 
       finally
         qr.Free;
@@ -430,8 +418,6 @@ begin
         qr.Free;
       end;
 
-      ss:='<td title="';
-      if FFeed.LastMod0<>'' then ss:=ss+'LastMod: '+HTMLEncode(FFeed.LastMod0)+#13#10;
       if postlast=0.0 then
        begin
         if FFeed.LoadLast=0.0 then
@@ -441,42 +427,13 @@ begin
        end
       else
        begin
-        ss:=ss+'LoadLast: '+FormatDateTime('yyyy-mm-dd hh:nn',postlast);
         d:=postlast+postavg-PubDateMargin;
         if (FFeed.LoadLast<>0.0) and (d<FFeed.LoadLast) then
           d:=FFeed.LoadLast+FFeed.Regime-PubDateMargin;
        end;
-      dofeed:=(d<FFeed.LoadStart) or ForceLoadAll or (SpecificFeedID>0);
-      ss:=ss+'"';
-
-      if postavg=0.0 then
-        FReport.Add(ss+' class="empty">&nbsp;</td>')
-      else
-      if postavg>1.0 then
-        FReport.Add(ss+' style="text-align:right;background-color:#FFFFCC;">'+IntToStr(Round(postavg))+' days</td>')
-      else
-        FReport.Add(ss+' style="text-align:right;">'+IntToStr(Round(postavg*1440.0))+' mins</td>');
-
-      if FFeed.Regime=0 then
-        FReport.Add('<td class="empty">&nbsp;</td>')
-      else
-        FReport.Add('<td style="text-align:right;">'+IntToStr(FFeed.Regime)+'</td>');
-
-      if FFeed.LoadLast=0.0 then
-        FReport.Add('<td class="empty">&nbsp;</td>')
-      else
-       begin
-        ss:='<td title="Load last:'+FormatDateTime('yyyy-mm-dd hh:nn',FFeed.LoadLast)
-          +'" style="text-align:right;';
-        f:=UtcNow-FFeed.LoadLast;
-        if f>1.0 then
-          FReport.Add(ss+'background-color:#FFFFCC;">'+IntToStr(Round(f))+' days</td>')
-        else
-          FReport.Add(ss+'">'+IntToStr(Round(f*1440.0))+' mins</td>');
-       end;
 
       //proceed with this feed?
-      if dofeed then
+      if (d<FFeed.LoadStart) or ForceLoadAll or (SpecificFeedID>0) then
        begin
 
         //load feed data
@@ -560,7 +517,7 @@ begin
               if r.status=401 then
                begin
                 InstagramFailed:=UtcNow+InstagramCoolDown;
-                FFeed.Result:='[Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+'''.]';
+                FFeed.Result:='(Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+'''.)';
                end
               else
                begin
@@ -570,7 +527,7 @@ begin
               InstagramLastTC:=GetTickCount;
              end
             else
-              FFeed.Result:='[Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+''']';
+              FFeed.Result:='(Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+''')';
            end
           else
 
@@ -917,11 +874,46 @@ begin
         FFeed.LoadStart:=FFeed.LoadLast;
        end;
 
+      FReport.Add('<tr><th>'+IntToStr(FFeed.id)+'</th>');
+      FReport.Add(html1+'<a href="'+HTMLEncode(FFeed.URL)+'">'+HTMLEncode(FFeed.Name)+'</a></td>');
+      FReport.Add(html2);
+
+      ss:='<td title="';
+      if FFeed.LastMod0<>'' then ss:=ss+'last mod: '+HTMLEncode(FFeed.LastMod0)+#13#10;
+      if postlast<>0.0 then
+        ss:=ss+'post last: '+FormatDateTime('yyyy-mm-dd hh:nn',postlast);
+      ss:=ss+'"';
+      if postavg=0.0 then
+        FReport.Add(ss+' class="empty">&nbsp;</td>')
+      else
+      if postavg>1.0 then
+        FReport.Add(ss+' style="text-align:right;background-color:#FFFFCC;">'+IntToStr(Round(postavg))+' days</td>')
+      else
+        FReport.Add(ss+' style="text-align:right;">'+IntToStr(Round(postavg*1440.0))+' mins</td>');
+
+      if FFeed.Regime=0 then
+        FReport.Add('<td class="empty">&nbsp;</td>')
+      else
+        FReport.Add('<td style="text-align:right;">'+IntToStr(FFeed.Regime)+'</td>');
+
+      if FFeed.LoadLast=0.0 then
+        FReport.Add('<td class="empty">&nbsp;</td>')
+      else
+       begin
+        ss:='<td title="load last: '+FormatDateTime('yyyy-mm-dd hh:nn',FFeed.LoadLast)
+          +'" style="text-align:right;';
+        f:=UtcNow-FFeed.LoadLast;
+        if f>1.0 then
+          FReport.Add(ss+'background-color:#FFFFCC;">'+IntToStr(Round(f))+' days</td>')
+        else
+          FReport.Add(ss+'">'+IntToStr(Round(f*1440.0))+' mins</td>');
+       end;
+
       if (FFeed.Result<>'') and (FFeed.Result[1]='[') then
         FReport.Add('<td style="color:#CC0000;">'+HTMLEncode(FFeed.Result)+'</td>')
       else
         FReport.Add('<td>'+HTMLEncode(FFeed.Result)+'</td>');
-      FReport.Add('<td style="text-align:right;" title="LastMod:'
+      FReport.Add('<td style="text-align:right;" title="last mod:'
         +HTMLEncode(FFeed.LastMod)+'">'+IntToStr(FPostsNew)+'</td>');
       if FPostsTotal=0 then
         FReport.Add('<td class="empty">&nbsp;</td>')
