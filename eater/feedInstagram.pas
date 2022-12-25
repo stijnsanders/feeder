@@ -136,7 +136,7 @@ end;
 procedure TInstagramFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  jnodes,jcaption,jthumbs,jlinks:IJSONDocArray;
+  jnodes,jcaption,jthumbs,jlinks,jchildren:IJSONDocArray;
   jdoc,jdoc1,jd1,jn0,jn1,jc0,jc1:IJSONDocument;
   i,j:integer;
   itemid,itemurl,s:string;
@@ -163,9 +163,11 @@ begin
   jcaption:=JSONDocArray;
   jthumbs:=JSONDocArray;
   jlinks:=JSONDocArray;
+  jchildren:=JSONDocArray;
   jn1:=JSON(
     ['edge_media_to_caption{','edges',jcaption,'}'
     ,'edge_media_to_tagged_user{','edges',jlinks,'}'
+    ,'edge_sidecar_to_children{','edges',jchildren,'}'
     ,'thumbnail_resources',jthumbs]);
   jn0:=JSON(['node',jn1]);
   jc1:=JSON();
@@ -212,7 +214,7 @@ begin
 
       if s<>'' then
        begin
-        content:='<a href="'+HTMLEncodeQ(itemurl)+'"><img src="'
+        content:='<a href="'+HTMLEncodeQ(itemurl)+'"><img id="ig1" src="'
           +ImageDataURL(s)+'" border="0" /></a><br />'#13#10
           +content;
        end;
@@ -223,8 +225,26 @@ begin
 
       content:='<p>'+content+'</p>'#13#10;
 
+      if jchildren.Count<>0 then
+       begin
+{
+        content:=content+'<script>'#13#10
+          +'var ig1=document.getElementById("id1");'#13#10
+          +'</script>'#13#10
+          +'<p>';
+        for j:=0 to jchildren.Count-1 do
+         begin
+          jchildren.LoadItem(j,jc0);
+          if jc1['is_video']=true then s:=#$25BA else s:=#$25A0;
+          content:=content+'<span onclick="ig1.src='''+HTMLEncode(jc1['display_url'])+''';">'+s+'</span> ';
+         end;
+        content:=content+'</p>'#13#10;
+}
+        content:=content+'<p>+'+IntToStr(jchildren.Count)+'</p>'#13#10;
+       end;
+
+
       //TODO: likes, views, owner?
-      //TODO: edge_sidecar_to_children...
 
       if jlinks.Count<>0 then
        begin
@@ -241,6 +261,8 @@ begin
          end;
         content:=content+'</p>'#13#10;
        end;
+
+SaveUTF16('D:\Data\2021\feeder\eater\xmls\test.html',content);
 
       Handler.RegisterPost(title,content);
      end;
