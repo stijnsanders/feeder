@@ -47,7 +47,8 @@ begin
   jcontent:=JSONDocArray;
   jdoc:=JSON(['props',JSON(['pageProps',JSON(['contentState',jd1,
     'data',JSON(
-      ['defaultFeedItems',jcontent
+      ['heroHome',jcontent
+      ,'defaultFeedItems',jcontent
       //,'birthdays',?
       //series,episodes?
       ,'highlightedContent',jcontent])])])]);
@@ -118,7 +119,7 @@ begin
    begin
     jcontent.LoadItem(ci,jn0);
     itemid:=jn0['id'];
-    itemurl:=FFeedURL+jn0['slug'];
+    itemurl:=FFeedURL+'feed/'+itemid+'-'+jn0['slug']+'/';
     try
       p1:=VarToStr(jn0['dateUpdated']);
       if p1='' then p1:=VarToStr(jn0['postDate']);
