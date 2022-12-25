@@ -262,8 +262,6 @@ begin
         content:=content+'</p>'#13#10;
        end;
 
-SaveUTF16('D:\Data\2021\feeder\eater\xmls\test.html',content);
-
       Handler.RegisterPost(title,content);
      end;
 
