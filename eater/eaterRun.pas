@@ -232,6 +232,27 @@ begin
                     checking:=false;
                    end;
 
+                #13:
+                  if id=0 then
+                    if c0=#13 then
+                     begin
+                      Writeln(#13'Manual skip    ');
+                      d:=RunNext;
+                      checking:=false;
+                     end
+                    else
+                     begin
+                      Writeln(#13'Press enter again to skip wait');
+                      //TODO: list of commands?
+                     end
+                  else
+                   begin
+                    Writeln(#13'Skip + feed #'+IntToStr(id)+'   ');
+                    d:=RunNext;
+                    SpecificFeedID:=id;
+                    checking:=false;
+                   end;
+
                 'd'://diagnostics
                  begin
                   Writeln(#13'Diagnostics:  ');

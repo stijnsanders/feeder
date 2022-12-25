@@ -124,6 +124,18 @@ begin
          end;
        end;
 
+      //really no content (news.yahoo?) check <source>
+      if content='' then
+       begin
+        x1:=x.selectSingleNode('source');
+        if x1<>nil then
+         begin
+          content:=content+'<p style="color:silver;" onclick="document.location='''+
+            HTMLEncodeQ(VarToStr((x1 as IXMLDOMElement).getAttribute('url')))+''';">'+
+            HTMLEncode(x1.text)+'</p>'#13#10;
+         end;
+       end;
+
       Handler.RegisterPost(title,content);
      end;
 
