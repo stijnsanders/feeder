@@ -227,20 +227,19 @@ begin
 
       if jchildren.Count<>0 then
        begin
-{
-        content:=content+'<script>'#13#10
+        content:=content
+          {+'<script>'#13#10
           +'var ig1=document.getElementById("id1");'#13#10
-          +'</script>'#13#10
+          +'</script>'#13#10}
           +'<p>';
         for j:=0 to jchildren.Count-1 do
          begin
           jchildren.LoadItem(j,jc0);
-          if jc1['is_video']=true then s:=#$25BA else s:=#$25A0;
-          content:=content+'<span onclick="ig1.src='''+HTMLEncode(jc1['display_url'])+''';">'+s+'</span> ';
+          if jc1['is_video']=true then s:=#$25B6 else s:=#$25A0;
+          //content:=content+'<span onclick="ig1.src='''+HTMLEncode(jc1['display_url'])+''';">'+s+'</span> ';
+          content:=content+s;
          end;
         content:=content+'</p>'#13#10;
-}
-        content:=content+'<p>+'+IntToStr(jchildren.Count)+'</p>'#13#10;
        end;
 
 

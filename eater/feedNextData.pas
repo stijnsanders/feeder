@@ -139,8 +139,8 @@ begin
          begin
           jbody.LoadItem(cj,jn1);
           if not(VarIsNull(jn1['intro'])) then
-            content:=content+'<span style="color:#666666;">'+
-              VarToStr(jn1['intro'])+'</span>'#13#10;
+            content:=content+'<div class="intro">'+
+              VarToStr(jn1['intro'])+'</div>'#13#10;
           if not(VarIsNull(jn1['text'])) then
             content:=content+VarToStr(jn1['text'])+#13#10;
          end;

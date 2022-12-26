@@ -769,7 +769,7 @@ begin
             end;
 
           //update feed data if any changes
-          if (FFeed.Result<>'') and (FFeed.Result[1]='[') then
+          if (FFeed.Result<>'') and ((FFeed.Result[1]='[') or (FFeed.Result[1]='(')) then
            begin
             ErrLn('!!! '+FFeed.Result);
            end
