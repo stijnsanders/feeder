@@ -92,7 +92,7 @@ begin
       k:=(i shr 16) and $FF; inc(j,((k*k) shr 8)*3);//R
       k:=(i shr 8)  and $FF; inc(j,((k*k) shr 8)*5);//G
       k:= i         and $FF; inc(j,((k*k) shr 8)*2);//B
-      if j<1800 then c:='EEEEEE;color:#'+Copy(c,2,6) else c:='666666;color:#'+Copy(c,2,6);
+      if j<1200 then c:='EEEEEE;color:#'+Copy(c,2,6) else c:='666666;color:#'+Copy(c,2,6);
      end
     else
      begin

@@ -1412,8 +1412,14 @@ begin
   reLink.IgnoreCase:=true;
   //search for applicable <link type="" href="">
   reLink.Pattern:='<link[^>]+?(rel|type|href)=["'']([^"'']+?)["''][^>]+?(type|href)=["'']([^"'']+?)["'']([^>]+?(type|href)=["'']([^"'']+?)["''])?[^>]*?>';
-  //                          0                    1                    2                3             (4)     5                6
   mc:=reLink.Execute(data) as MatchCollection;
+
+  if mc.Count=0 then //without quotes?
+   begin
+    reLink.Pattern:='<link[^>]+?(rel|type|href)=([^ >]+)[^>]+?(type|href)=([^ >]+)([^>]+?(type|href)=([^ >]+))?[^>]*?>';
+    mc:=reLink.Execute(data) as MatchCollection;
+   end;
+
   i:=0;
   while (i<mc.Count) and not(Result) do
    begin
