@@ -37,10 +37,12 @@ var
   title,content:WideString;
   tags:Variant;
 begin
+  tags:=Null;//see <source> below
   doc.setProperty('SelectionNamespaces',
     'xmlns:content="http://purl.org/rss/1.0/modules/content/" '+
     'xmlns:media="http://search.yahoo.com/mrss/" '+
-    'xmlns:snf="http://www.smartnews.be/snf"');
+    'xmlns:snf="http://www.smartnews.be/snf" '+
+    'xmlns:dc="http://purl.org/dc/elements/1.1/"');
 
   hasFoaf:=false;
   i:=0;
@@ -74,6 +76,8 @@ begin
     try
       y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
       if y=nil then y:=x.selectSingleNode('pubdate') as IXMLDOMElement; //reddit??!!
+      if y=nil then y:=x.selectSingleNode('date') as IXMLDOMElement;
+      if y=nil then y:=x.selectSingleNode('dc:date') as IXMLDOMElement;
       if y=nil then pubDate:=UtcNow else pubDate:=ConvDate2(y.text);
     except
       pubDate:=UtcNow;
@@ -133,6 +137,12 @@ begin
           content:=content+'<p style="color:silver;" onclick="document.location='''+
             HTMLEncodeQ(VarToStr((x1 as IXMLDOMElement).getAttribute('url')))+''';">'+
             HTMLEncode(x1.text)+'</p>'#13#10;
+          if VarIsNull(tags) then
+           begin
+            tags:=VarArrayCreate([0,0],varOleStr);
+            tags[0]:=x1.text;
+            Handler.PostTags('source',tags);
+           end;
          end;
        end;
 
