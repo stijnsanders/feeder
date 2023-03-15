@@ -12,9 +12,15 @@ type
       override;
   end;
 
+  TSparqlRequestProcessor=class(TRequestProcessor)
+  public
+    function AlternateOpen(const FeedURL: WideString;
+      Request: IServerXMLHTTPRequest2): Boolean; override;
+  end;
+
 implementation
 
-uses eaterUtils;
+uses eaterUtils, Variants;
 
 { TSparqlFeedProcessor }
 
@@ -65,6 +71,31 @@ begin
   Handler.ReportSuccess('SPARQL');
 end;
 
+{ TSparqlRequestProcessor }
+
+function TSparqlRequestProcessor.AlternateOpen(const FeedURL: WideString;
+  Request: IServerXMLHTTPRequest2): Boolean;
+begin
+  if StartsWith(FeedURL,'sparql://') then
+   begin
+    Request.open('GET','https://'+Copy(FeedURL,10,Length(FeedURL)-9)+
+      '?default-graph-uri=&query=PREFIX+schema%3A+<http%3A%2F%2Fschema.org%2F>%0D%0A'+
+      'SELECT+*+WHERE+%7B+%3Fnews+a+schema%3ANewsArticle%0D%0A.+%3Fnews+schema%3Aurl+%3Furl%0D%0A'+
+      '.+%3Fnews+schema%3AdatePublished+%3FpubDate%0D%0A'+
+      '.+%3Fnews+schema%3Aheadline+%3Fheadline%0D%0A'+
+      '.+%3Fnews+schema%3Adescription+%3Fdescription%0D%0A'+
+      '.+%3Fnews+schema%3AarticleBody+%3Fbody%0D%0A'+
+      '%7D+ORDER+BY+DESC%28%3FpubDate%29+LIMIT+20'
+      ,false,EmptyParam,EmptyParam);
+    Request.setRequestHeader('Accept','application/sparql-results+xml, application/xml, text/xml');
+    Request.setRequestHeader('User-Agent','FeedEater/1.1');
+    Result:=true;
+   end
+  else
+    Result:=false;
+end;
+
 initialization
   RegisterFeedProcessorXML(TSparqlFeedProcessor.Create);
+  RegisterRequestProcessors(TSparqlRequestProcessor.Create);
 end.

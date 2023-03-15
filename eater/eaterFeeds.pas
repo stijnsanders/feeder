@@ -450,6 +450,7 @@ begin
           if (FFeed.Result0='') and StartsWithX(FFeed.URL,YoutubePrefix1,ss) then
             FFeed.URL:=YoutubePrefix2+ss;
 
+          //TODO: move this to feedInstagram.pas
           if StartsWithX(FFeed.URL,'http://www.instagram.com/',ss) then
             FFeed.URL:='https://instagram.com'+ss;
           if StartsWithX(FFeed.URL,'http://instagram.com/',ss) then
@@ -546,57 +547,25 @@ begin
             doreq:=true;
             while doreq do
              begin
-              doreq:=false;
               Write(':');
               r:=CoServerXMLHTTP60.Create;
 
-              if StartsWith(FFeed.URL,'sparql://') then
-               begin
-                r.open('GET','https://'+Copy(FFeed.URL,10,Length(FFeed.URL)-9)+
-                  '?default-graph-uri=&query=PREFIX+schema%3A+<http%3A%2F%2Fschema.org%2F>%0D%0A'+
-                  'SELECT+*+WHERE+%7B+%3Fnews+a+schema%3ANewsArticle%0D%0A.+%3Fnews+schema%3Aurl+%3Furl%0D%0A'+
-                  '.+%3Fnews+schema%3AdatePublished+%3FpubDate%0D%0A'+
-                  '.+%3Fnews+schema%3Aheadline+%3Fheadline%0D%0A'+
-                  '.+%3Fnews+schema%3Adescription+%3Fdescription%0D%0A'+
-                  '.+%3Fnews+schema%3AarticleBody+%3Fbody%0D%0A'+
-                  '%7D+ORDER+BY+DESC%28%3FpubDate%29+LIMIT+20'
-                  ,false,EmptyParam,EmptyParam);
-                r.setRequestHeader('Accept','application/sparql-results+xml, application/xml, text/xml')
-               end
-              else
-              if StartsWith(FFeed.URL,'https://soundcloud.com/') then
-               begin
-                r.open('GET','https://api-v2.soundcloud.com/resolve?url='+
-                  string(URLEncode(FFeed.URL))+'&client_id='+SoundCloudClientID,
-                  false,EmptyParam,EmptyParam);
-                r.setRequestHeader('Accept','application/json');
-               end
-              else
-               begin
-                r.open('GET',FFeed.URL,false,EmptyParam,EmptyParam);
-                if Pos('sparql',FFeed.URL)<>0 then
-                  r.setRequestHeader('Accept','application/sparql-results+xml, application/xml, text/xml')
+              handler_i:=0;
+              while (handler_i<RequestProcessorsIndex) and doreq do
+                if RequestProcessors[handler_i].AlternateOpen(FFeed.URL,r) then
+                  doreq:=false
                 else
-                  r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
-               end;
-              r.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
-              if Pos('tumblr.com',FFeed.URL)<>0 then
+                  inc(handler_i);
+              if doreq then //if (handler_i=RequestProcessors) then
                begin
-                r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x'+
-                  '64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36');
-                r.setRequestHeader('Cookie','_ga=GA1.2.23714421.1433010142; rxx=1tcxhdz'+
-                  'ww7.1lckhv27&v=1; tmgioct=5d2ce7032975560097163000; pfg=1fd4f3446c5c'+
-                  'c43c229f7759a039c1f03c54916c6dbe1ad54d36c333d0cf0ed4%23%7B%22eu_resi'+
-                  'dent%22%3A1%2C%22gdpr_is_acceptable_age%22%3A1%2C%22gdpr_consent_cor'+
-                  'e%22%3A1%2C%22gdpr_consent_first_party_ads%22%3A1%2C%22gdpr_consent_'+
-                  'third_party_ads%22%3A1%2C%22gdpr_consent_search_history%22%3A1%2C%22'+
-                  'exp%22%3A1594760108%2C%22vc%22%3A%22granted_vendor_oids%3D%26oath_ve'+
-                  'ndor_list_version%3D18%26vendor_list_version%3D154%22%7D%233273090316');
-               end
-              else
+                doreq:=false;
+
+                r.open('GET',FFeed.URL,false,EmptyParam,EmptyParam);
+                r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
                 r.setRequestHeader('User-Agent','FeedEater/1.1');
-              if StartsWith(FFeed.URL,'https://www.washingtonpost.com') then
-                r.setRequestHeader('Cookie','wp_gdpr=1|1');
+                r.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
+               end;
+
               //TODO: ...'/wp/v2/posts' param 'after' last load time?
               if (FFeed.LastMod<>'') and not(ForceLoadAll) then
                 r.setRequestHeader('If-Modified-Since',FFeed.LastMod);
@@ -692,7 +661,6 @@ begin
 
               handler_i:=0;
               while handler_i<FeedProcessorsIndex do
-               begin
                 if FeedProcessors[handler_i].Determine(
                   Self,FFeed.URL,FeedData,FeedDataType) then
                  begin
@@ -702,7 +670,6 @@ begin
                  end
                 else
                   inc(handler_i);
-               end;
 
               //nothing yet? process as XML
               if FFeed.Result='' then
@@ -728,7 +695,6 @@ begin
 
                   handler_i:=0;
                   while handler_i<FeedProcessorsXMLIndex do
-                   begin
                     if FeedProcessorsXML[handler_i].Determine(doc) then
                      begin
                       FeedProcessorsXML[handler_i].ProcessFeed(Self,doc);
@@ -737,7 +703,6 @@ begin
                      end
                     else
                       inc(handler_i);
-                   end;
 
                   //still nothing?
                   if FFeed.Result='' then

@@ -2,7 +2,7 @@ unit feedSoundCloud;
 
 interface
 
-uses eaterReg;
+uses eaterReg, MSXML2_TLB;
 
 type
   TSoundCloudProcessor=class(TFeedProcessor)
@@ -13,12 +13,17 @@ type
       override;
   end;
 
+  TSoundCloudRequest=class(TRequestProcessor)
+  public
+    function AlternateOpen(const FeedURL: WideString;
+      Request: IServerXMLHTTPRequest2): Boolean; override;
+  end;
+
 function SoundCloudClientID:string;
 
 implementation
 
-uses SysUtils, Variants, jsonDoc, eaterUtils, MSXML2_TLB,
-  VBScript_RegExp_55_TLB;
+uses SysUtils, Variants, jsonDoc, eaterUtils, VBScript_RegExp_55_TLB;
 
 { TSoundCloudProcessor }
 
@@ -179,8 +184,27 @@ begin
   Result:=SC_ID;
 end;
 
+{ TSoundCloudRequest }
+
+function TSoundCloudRequest.AlternateOpen(const FeedURL: WideString;
+  Request: IServerXMLHTTPRequest2): Boolean;
+begin
+  if StartsWith(FeedURL,'https://soundcloud.com/') then
+   begin
+    Request.open('GET','https://api-v2.soundcloud.com/resolve?url='+
+      string(URLEncode(FeedURL))+'&client_id='+SoundCloudClientID,
+      false,EmptyParam,EmptyParam);
+    Request.setRequestHeader('Accept','application/json');
+    Request.setRequestHeader('User-Agent','FeedEater/1.1');
+    Result:=true;
+   end
+  else
+    Result:=false;
+end;
+
 initialization
   SC_TS:=0.0;
   SC_ID:='';
   RegisterFeedProcessor(TSoundCloudProcessor.Create);
+  RegisterRequestProcessors(TSoundCloudRequest.Create);
 end.

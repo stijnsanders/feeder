@@ -32,6 +32,12 @@ type
     procedure ProcessFeed(Handler:IFeedHandler;Doc:DOMDocument60); virtual; //abstract
   end;
 
+  TRequestProcessor=class(TObject)
+  public
+    function AlternateOpen(const FeedURL:WideString;
+      Request:ServerXMLHTTP60):boolean; virtual; //abstract
+  end;
+
 var
   FeedProcessors:array of TFeedProcessor;
   FeedProcessorsIndex,FeedProcessorsSize:cardinal;
@@ -39,8 +45,12 @@ var
   FeedProcessorsXML:array of TFeedProcessorXML;
   FeedProcessorsXMLIndex,FeedProcessorsXMLSize:cardinal;
 
+  RequestProcessors:array of TRequestProcessor;
+  RequestProcessorsIndex,RequestProcessorsSize:cardinal;
+
 procedure RegisterFeedProcessor(Processor:TFeedProcessor);
 procedure RegisterFeedProcessorXML(Processor:TFeedProcessorXML);
+procedure RegisterRequestProcessors(Processor:TRequestProcessor);
 
 implementation
 
@@ -75,6 +85,15 @@ begin
   //inheriter is expected to end with either ReportSuccess or ReportFailure
 end;
 
+{ TRequestProcessor }
+
+function TRequestProcessor.AlternateOpen(const FeedURL: WideString;
+  Request: ServerXMLHTTP60): boolean;
+begin
+  //inheriter is responsible of calling Req.open() when resulting true
+  Result:=false;//default
+end;
+
 {  }
 
 procedure RegisterFeedProcessor(Processor:TFeedProcessor);
@@ -97,6 +116,17 @@ begin
    end;
   FeedProcessorsXML[FeedProcessorsXMLIndex]:=Processor;
   inc(FeedProcessorsXMLIndex);
+end;
+
+procedure RegisterRequestProcessors(Processor:TRequestProcessor);
+begin
+  if RequestProcessorsIndex=RequestProcessorsSize then
+   begin
+    inc(RequestProcessorsSize,$20);//grow step
+    SetLEngth(RequestProcessors,RequestProcessorsSize);
+   end;
+  RequestProcessors[RequestProcessorsIndex]:=Processor;
+  inc(RequestProcessorsIndex);
 end;
 
 initialization

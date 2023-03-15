@@ -12,6 +12,12 @@ type
       override;
   end;
 
+  TRSSRequestProcessor=class(TRequestProcessor)
+  public
+    function AlternateOpen(const FeedURL: WideString;
+      Request: IServerXMLHTTPRequest2): Boolean; override;
+  end;
+
 implementation
 
 uses eaterUtils, Variants, eaterSanitize;
@@ -155,6 +161,42 @@ begin
   Handler.ReportSuccess('RSS');
 end;
 
+{ TRSSRequestProcessor }
+
+function TRSSRequestProcessor.AlternateOpen(const FeedURL: WideString;
+  Request: IServerXMLHTTPRequest2): Boolean;
+begin
+  if Pos(WideString('tumblr.com'),FeedURL)<>0 then
+   begin
+    Request.open('GET',FeedURL,false,EmptyParam,EmptyParam);
+    Request.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x'+
+      '64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36');
+    Request.setRequestHeader('Cookie','_ga=GA1.2.23714421.1433010142; rxx=1tcxhdz'+
+      'ww7.1lckhv27&v=1; tmgioct=5d2ce7032975560097163000; pfg=1fd4f3446c5c'+
+      'c43c229f7759a039c1f03c54916c6dbe1ad54d36c333d0cf0ed4%23%7B%22eu_resi'+
+      'dent%22%3A1%2C%22gdpr_is_acceptable_age%22%3A1%2C%22gdpr_consent_cor'+
+      'e%22%3A1%2C%22gdpr_consent_first_party_ads%22%3A1%2C%22gdpr_consent_'+
+      'third_party_ads%22%3A1%2C%22gdpr_consent_search_history%22%3A1%2C%22'+
+      'exp%22%3A1594760108%2C%22vc%22%3A%22granted_vendor_oids%3D%26oath_ve'+
+      'ndor_list_version%3D18%26vendor_list_version%3D154%22%7D%233273090316');
+    Request.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
+    Request.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
+    Result:=true;
+   end
+  else
+  if StartsWith(FeedURL,'https://www.washingtonpost.com') then
+   begin
+    Request.open('GET',FeedURL,false,EmptyParam,EmptyParam);
+    Request.setRequestHeader('Cookie','wp_gdpr=1|1');
+    Request.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
+    Request.setRequestHeader('User-Agent','FeedEater/1.1');
+    Result:=true;
+   end
+  else
+    Result:=false;
+end;
+
 initialization
   RegisterFeedProcessorXML(TRSSFeedProcessor.Create);
+  RegisterRequestProcessors(TRSSRequestProcessor.Create);
 end.
