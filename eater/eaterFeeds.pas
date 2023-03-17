@@ -87,9 +87,6 @@ const
   regimesteps=12;
   regimestep:array[0..regimesteps-1] of integer=(1,2,3,7,14,30,60,90,120,150,200,360);
 
-  YoutubePrefix1='https://www.youtube.com/channel/';
-  YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
-
 function qrDate(qr:TQueryResult;const Idx:Variant):TDateTime;
 var
   v:Variant;
@@ -445,10 +442,8 @@ begin
           if (FFeed.Result0<>'') and (FFeed.Result0[1]='[') then
             FFeed.Result0:='';
 
-          //TODO: if StartsWith(,'https://www.youtube.com/@'
-          // load '/about' to look-up <meta itemprop="channelId" content="
-          if (FFeed.Result0='') and StartsWithX(FFeed.URL,YoutubePrefix1,ss) then
-            FFeed.URL:=YoutubePrefix2+ss;
+          if (FFeed.Result0='') and StartsWith(FFeed.URL,'https://www.youtube.com') then
+            SanitizeYoutubeURL(FFeed.URL);
 
           //TODO: move this to feedInstagram.pas
           if StartsWithX(FFeed.URL,'http://www.instagram.com/',ss) then

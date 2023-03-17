@@ -2,7 +2,7 @@ unit eaterSanitize;
 
 interface
 
-uses MSXML2_TLB;
+uses SysUtils, MSXML2_TLB;
 
 procedure SanitizeInit;
 function SanitizeTrim(const x:WideString):WideString;
@@ -22,9 +22,11 @@ function FindMatch(const data:WideString;const pattern:WideString):WideString;
 function FixUndeclNSPrefix(doc:DOMDocument60;var FeedData:WideString):boolean;
 function FixNBSP(doc:DOMDocument60;var FeedData:WideString):boolean;
 
+procedure SanitizeYoutubeURL(var URL:string);
+
 implementation
 
-uses VBScript_RegExp_55_TLB, Variants;
+uses VBScript_RegExp_55_TLB, Variants, eaterUtils;
 
 var
   rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhTrim,
@@ -276,6 +278,51 @@ begin
   //rw:=re.Replace(rw,'&amp;nbsp;');
   FeedData:=re.Replace(FeedData,#$00A0);
   Result:=doc.loadXML(FeedData);
+end;
+
+procedure SanitizeYoutubeURL(var URL:string);
+const
+  YoutubePrefix0='https://www.youtube.com/@';
+  YoutubePrefix1='https://www.youtube.com/channel/';
+  YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
+  YoutubePrefix3='https://www.youtube.com/feeds/videos.xml?user=';
+var
+  d:ServerXMLHTTP60;
+  r:RegExp;
+  m:MatchCollection;
+  mm:Match;
+  s:string;
+begin
+  if StartsWith(URL,YoutubePrefix0) then
+   begin
+    d:=CoServerXMLHTTP60.Create;
+    d.open('GET',URL,false,EmptyParam,EmptyParam);
+    d.setRequestHeader('User-Agent','FeedEater/1.1');
+    d.setRequestHeader('Cookie','CONSENT=YES+EN.us+V9+BX');
+    d.send(EmptyParam);
+    //assert d.status=200
+    r:=CoRegExp.Create;
+    r.Pattern:='<meta property="og:url" content="https://www.youtube.com/channel/([^"]+?)">';
+    m:=r.Execute(d.responseText) as MatchCollection;
+    if m.Count=0 then
+      raise Exception.Create('YouTube: unable to get channel ID from channel name');
+    mm:=m.Item[0] as Match;
+    URL:=YoutubePrefix2+(mm.SubMatches as SubMatches).Item[0];
+   end
+  else
+  if StartsWithX(URL,YoutubePrefix1,s) then
+    URL:=YoutubePrefix2+s
+  else
+   begin
+    r:=CoRegExp.Create;
+    r.Pattern:='^https://www.youtube.com/([^/@]+)$';
+    m:=r.Execute(URL) as MatchCollection;
+    if m.Count=1 then
+     begin
+      mm:=m.Item[0] as Match;
+      URL:=YoutubePrefix3+(mm.SubMatches as SubMatches).Item[0];
+     end;
+   end;
 end;
 
 end.
