@@ -110,4 +110,9 @@ If none is found, the HTML content is search for one of these patterns:
 </td>
 </tr>
 
+<tr>
+<td><i>more?</i></td>
+<td><i>If you find a site with periodical entries, that doesn't offer an RSS feed, feel free to post an issue on this repo with the URL and ny extra information.</i></td>
+</tr>
+
 </table>

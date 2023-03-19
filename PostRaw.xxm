@@ -181,7 +181,7 @@ try
           while (j<=l) and not(s[j]=';') and not(s[j]='<') and not(s[j]='&') and not(s[j]<=' ') do inc(j);
           if (j<=l) and (s[j]=';') then inc(j);
           <<span class="x">>=u(i,j-i)<</span>>
-          i:=j+1;
+          i:=j;
          end;
         else
          begin
