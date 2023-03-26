@@ -85,6 +85,13 @@ begin
   l:=Length(Value);
   //ignore white space
   while (i<=l) and (Value[i]<=' ') do inc(i);
+  //ignore link of any
+  if (i+3<=l) and (Value[i]='<') and (Value[i+1]='a') and (Value[i+2]=' ') then
+   begin
+    while (i<=l) and (Value[i]<>'>') do inc(i);
+    while (i<=l) and (Value[i]<=' ') do inc(i);
+   end;
+  //image here?
   if (i+3<=l) and (Value[i]='<') and (Value[i+1]='p') and ((Value[i+2]='>') or (Value[i+2]=' ')) then
    begin
     while (i<=l) and (Value[i]<>'>') do inc(i);
