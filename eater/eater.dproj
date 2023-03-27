@@ -140,6 +140,7 @@
         <DCCReference Include="feedSoundCloud.pas"/>
         <DCCReference Include="feedRSSinJSON.pas"/>
         <DCCReference Include="feedWPv2.pas"/>
+        <DCCReference Include="feedGatsby.pas"/>
         <DCCReference Include="feedJSON.pas"/>
         <DCCReference Include="feedTitanium.pas"/>
         <DCCReference Include="feedFusion.pas"/>

@@ -23,6 +23,7 @@ uses
   feedSoundCloud in 'feedSoundCloud.pas',
   feedRSSinJSON in 'feedRSSinJSON.pas',
   feedWPv2 in 'feedWPv2.pas',
+  feedGatsby in 'feedGatsby.pas',
   feedJSON in 'feedJSON.pas',
   feedTitanium in 'feedTitanium.pas',
   feedFusion in 'feedFusion.pas',
