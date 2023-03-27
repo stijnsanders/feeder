@@ -18,7 +18,7 @@ type
 
 implementation
 
-uses jsonDoc, eaterUtils, eaterSanitize, Variants;
+uses SysUtils, Variants, jsonDoc, eaterUtils, eaterSanitize;
 
 { TNextDataFeedProcessor }
 
@@ -34,10 +34,10 @@ end;
 procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  jdoc,jd1,jn0,jn1:IJSONDocument;
-  jcontent,jimg,jbody,jcats:IJSONDocArray;
+  jdoc,jd1,jd2,jn0,jn1:IJSONDocument;
+  jcontent,jzones,jarticles,jimg,jbody,jcats:IJSONDocArray;
   je:IJSONEnumerator;
-  ci,cj:integer;
+  ci,cj,ck:integer;
   itemid,itemurl,p1:string;
   pubDate:TDateTime;
   title,content:WideString;
@@ -45,13 +45,19 @@ var
 begin
   jd1:=JSON;
   jcontent:=JSONDocArray;
-  jdoc:=JSON(['props',JSON(['pageProps',JSON(['contentState',jd1,
-    'data',JSON(
-      ['heroHome',jcontent
-      ,'defaultFeedItems',jcontent
-      //,'birthdays',?
-      //series,episodes?
-      ,'highlightedContent',jcontent])])])]);
+  jzones:=JSONDocArray;
+  jdoc:=JSON(['props',JSON(['pageProps',
+    JSON(
+      ['contentState',jd1
+      ,'data',JSON(
+        ['heroHome',jcontent
+        ,'defaultFeedItems',jcontent
+        //,'birthdays',?
+        //series,episodes?
+        ,'highlightedContent',jcontent])
+      ,'pageData',JSON(['zones',jzones])
+      ])
+    ])]);
   try
     jdoc.Parse(FeedData);
   except
@@ -103,70 +109,127 @@ begin
    end;
 
   //new style
-  try
-    jn1:=JSON(JSON(JSON(JSON(JSON(
-      jdoc['props'])['pageProps'])['seo'])['seomatic'])['metaTitleContainer']);
-    Handler.UpdateFeedName(JSON(jn1['title'])['title']);
-  except
-    //silent
-  end;
-  jimg:=JSONDocArray;
-  jbody:=JSONDocArray;
-  jcats:=JSONDocArray;
-  jn0:=JSON(['image',jimg,'body',jbody,'feedCategories',jcats]);
-  jn1:=JSON;
-  for ci:=0 to jcontent.Count-1 do
+  if jcontent.Count<>0 then
    begin
-    jcontent.LoadItem(ci,jn0);
-    itemid:=jn0['id'];
-    itemurl:=FFeedURL+'feed/'+itemid+'-'+jn0['slug']+'/';
+
     try
-      p1:=VarToStr(jn0['dateUpdated']);
-      if p1='' then p1:=VarToStr(jn0['postDate']);
-      pubDate:=ConvDate1(p1);
+      jn1:=JSON(JSON(JSON(JSON(JSON(
+        jdoc['props'])['pageProps'])['seo'])['seomatic'])['metaTitleContainer']);
+      Handler.UpdateFeedName(JSON(jn1['title'])['title']);
     except
-      pubDate:=UtcNow;
+      //silent
     end;
-    if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+    jimg:=JSONDocArray;
+    jbody:=JSONDocArray;
+    jcats:=JSONDocArray;
+    jn0:=JSON(['image',jimg,'body',jbody,'feedCategories',jcats]);
+    jn1:=JSON;
+    for ci:=0 to jcontent.Count-1 do
      begin
-      title:=SanitizeTitle(jn0['title']);
-      if jbody.Count=0 then
-        content:=VarToStr(jn0['excerpt'])
-      else
+      jcontent.LoadItem(ci,jn0);
+      itemid:=jn0['id'];
+      itemurl:=FFeedURL+'feed/'+itemid+'-'+jn0['slug']+'/';
+      try
+        p1:=VarToStr(jn0['dateUpdated']);
+        if p1='' then p1:=VarToStr(jn0['postDate']);
+        pubDate:=ConvDate1(p1);
+      except
+        pubDate:=UtcNow;
+      end;
+      if Handler.CheckNewPost(itemid,itemurl,pubDate) then
        begin
-        content:='';
-        for cj:=0 to jbody.Count-1 do
+        title:=SanitizeTitle(jn0['title']);
+        if jbody.Count=0 then
+          content:=VarToStr(jn0['excerpt'])
+        else
          begin
-          jbody.LoadItem(cj,jn1);
-          if not(VarIsNull(jn1['intro'])) then
-            content:=content+'<div class="intro">'+
-              VarToStr(jn1['intro'])+'</div>'#13#10;
-          if not(VarIsNull(jn1['text'])) then
-            content:=content+VarToStr(jn1['text'])+#13#10;
+          content:='';
+          for cj:=0 to jbody.Count-1 do
+           begin
+            jbody.LoadItem(cj,jn1);
+            if not(VarIsNull(jn1['intro'])) then
+              content:=content+'<div class="intro">'+
+                VarToStr(jn1['intro'])+'</div>'#13#10;
+            if not(VarIsNull(jn1['text'])) then
+              content:=content+VarToStr(jn1['text'])+#13#10;
+           end;
+         end;
+
+        if jimg.Count<>0 then
+         begin
+          jimg.LoadItem(0,jn1);
+          content:=
+            '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+            HTMLEncode(JSON(jn1['heroOptimized'])['src'])+
+            '" /><br />'#13#10+content;
+         end;
+
+        if jcats.Count<>0 then
+         begin
+          tags:=VarArrayCreate([0,jcats.Count-1],varOleStr);
+          for cj:=0 to jcats.Count-1 do
+           begin
+            jcats.LoadItem(cj,jn1);
+            tags[cj]:=jn1['title'];
+           end;
+          Handler.PostTags('category',tags);
+         end;
+
+        Handler.RegisterPost(title,content);
+       end;
+     end;
+   end;
+
+  //zones
+  if jzones.Count<>0 then
+   begin
+    if (FFeedURL<>'') and (FFeedURL[Length(FFeedURL)]<>'/') then
+      FFeedURL:=FFeedURL+'/';
+    try
+      Handler.UpdateFeedName(JSON(JSON(JSON(JSON(
+        jdoc['props'])['pageProps'])['pageData'])['pageMetas'])['title']);
+    except
+      //ignore
+    end;
+    jn0:=JSON(['blocks',jcontent]);
+    jarticles:=JSONDocArray;
+    jn1:=JSON(['articles',jarticles]);
+    jimg:=JSONDocArray;
+    jbody:=JSONDocArray;
+    jd1:=JSON(['media',jimg,'body',jbody]);
+    jd2:=JSON;
+    for ci:=0 to jzones.Count-1 do
+     begin
+      jzones.LoadItem(ci,jn0);
+      for cj:=0 to jcontent.Count-1 do
+       begin
+        jcontent.LoadItem(cj,jn1);
+        //if not(VarIsNull(jcontent['articleUrl']))?
+        for ck:=0 to jarticles.Count-1 do
+         begin
+          jarticles.LoadItem(ck,jd1);
+          itemid:=jd1['id'];//?
+          itemurl:=FFeedURL+jd1['url'];
+          pubDate:=int64(jd1['pubDate'])/SecsPerDay+UnixDateDelta;
+          if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+           begin
+            title:=SanitizeTitle(jd1['title']);
+            content:=jd1['chapo'];//??!!
+            //TODO: if jbody.Count<>0?
+            if jimg.Count<>0 then
+             begin
+              jimg.LoadItem(0,jd2);
+              content:=
+                '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                HTMLEncode(jd2['source'])+ //jd2['default']?
+                '" /><br />'#13#10+content;
+                //alt=" 'title'? 'credit'?
+             end;
+            //TODO: 'destinations' Handler.PostTags?
+            Handler.RegisterPost(title,content);
+           end;
          end;
        end;
-
-      if jimg.Count<>0 then
-       begin
-        jimg.LoadItem(0,jn1);
-        content:=
-          '<img class="postthumb" referrerpolicy="no-referrer" src="'+
-          HTMLEncode(JSON(jn1['heroOptimized'])['src'])+
-          '" /><br />'#13#10+content;
-       end;
-
-      if jcats.Count<>0 then
-       begin
-        tags:=VarArrayCreate([0,jcats.Count-1],varOleStr);
-        for cj:=0 to jcats.Count-1 do
-         begin
-          jcats.LoadItem(cj,jn1);
-          tags[cj]:=jn1['title'];
-         end;
-        Handler.PostTags('category',tags);
-       end;
-
-      Handler.RegisterPost(title,content);
      end;
    end;
 
