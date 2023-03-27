@@ -1445,7 +1445,7 @@ begin
        end
       else
       if (sm[s1]='application/atom') or (sm[s1]='application/atom+xml') or
-        (sm[s1]='text/atom')or (sm[s1]='text/atom+xml') then
+        (sm[s1]='text/atom') or (sm[s1]='text/atom+xml') then
        begin
         FeedCombineURL(sm[s2],'Atom');
         Result:=true;
@@ -1463,6 +1463,13 @@ begin
       Result:=true;
      end;
    end;
+  //search for id="__gatsby"
+  if not(Result) then
+    if Pos(WideString('<div id="___gatsby"'),data)<>0 then
+     begin
+      FeedCombineURL('/page-data/index/page-data.json','PageDataIndex');
+      Result:=true;
+     end;
 end;
 
 procedure TFeedEater.RenderGraphs;

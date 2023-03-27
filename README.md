@@ -96,6 +96,12 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 <tr>
 <td>Remix</td>
 <td>Posts are loaded from <code>window.__remixContext=</code> JSON.</td>
+</tr>
+
+<tr>
+<td>Gatsby</td>
+<td>Posts are laded from <code>/page-data/index/page-data.json</code>.</td>
+</tr>
 
 <tr>
 <td>HTML</td>
