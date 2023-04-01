@@ -2,12 +2,13 @@ unit feedGatsby;
 
 interface
 
-uses eaterReg;
+uses eaterReg, jsonDoc;
 
 type
   TGatsbyPageDataProcessor=class(TFeedProcessor)
   private
     FFeedURL,FURLPrefix:WideString;
+    procedure ProcessEntity(Handler: IFeedHandler; Post: IJSONDocument);
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
       var FeedData: WideString; const FeedDataType: WideString): Boolean;
@@ -20,7 +21,7 @@ implementation
 
 { TGatsbyPageDataProcessor }
 
-uses Variants, eaterUtils, jsonDoc, eaterSanitize;
+uses SysUtils, Variants, eaterUtils, eaterSanitize;
 
 function TGatsbyPageDataProcessor.Determine(Store: IFeedStore;
   const FeedURL: WideString; var FeedData: WideString;
@@ -59,62 +60,142 @@ var
 begin
   inherited;
   lTaxNodes:=JSONDocArray;
-  d:=JSON(['result{','data{','allWpTghpTaxonomyIssue{','nodes',lTaxNodes]);
-  d.Parse(FeedData);
-  try
-    Handler.UpdateFeedName(
-      JSON(JSON(JSON(JSON(d['result'])['data'])['wpPage'])['seo'])['title']);
-  except
-    //ignore
-  end;
-
   lPosts:=JSONDocArray;
-  dTaxNode:=JSON(['posts{','nodes',lPosts]);
-  lCats:=JSONDocArray;
-  dPost:=JSON(['categories{','nodes',lCats]);
-  dCat:=JSON;
-  for iTaxNode:=0 to lTaxNodes.Count-1 do
+  d:=JSON(['result{','data{','allWpTghpTaxonomyIssue{','nodes',lTaxNodes,'}}',
+    'pageContext{','node{','data{','content{','mainContent',lPosts,'}}}}']);
+  d.Parse(FeedData);
+
+  if lTaxNodes.Count<>0 then
    begin
-    lTaxNodes.LoadItem(iTaxNode,dTaxNode);
-    //dTaxNode['name']?
+    try
+      Handler.UpdateFeedName(
+        JSON(JSON(JSON(JSON(d['result'])['data'])['wpPage'])['seo'])['title']);
+    except
+      //ignore
+    end;
+    lPosts:=JSONDocArray;
+    dTaxNode:=JSON(['posts{','nodes',lPosts]);
+    lCats:=JSONDocArray;
+    dPost:=JSON(['categories{','nodes',lCats]);
+    dCat:=JSON;
+    for iTaxNode:=0 to lTaxNodes.Count-1 do
+     begin
+      lTaxNodes.LoadItem(iTaxNode,dTaxNode);
+      //dTaxNode['name']?
+      for iPost:=0 to lPosts.Count-1 do
+       begin
+        lPosts.LoadItem(iPost,dPost);
+        itemid:=dPost['slug'];
+        itemurl:=FURLPrefix+itemid;
+        pubDate:=ConvDate1(dPost['date']);
+        if handler.CheckNewPost(itemid,itemurl,pubDate) then
+         begin
+          title:=SanitizeTitle(dPost['title']);
+          content:=dPost['excerpt'];
+
+          dImg:=JSON(dPost['featuredImage']);
+          if dImg<>nil then
+           begin
+            dImg:=JSON(dImg['node']);
+            //TODO: from dImg['srcSet']?
+            content:='<img class="postthumb" referrerpolicy="no-referrer'+
+              '" src="'+HTMLEncodeQ(FFeedURL+dImg['publicUrl'])+
+              '" alt="'+HTMLEncode(VarToStr(dImg['altText']))+
+              '" /><br />'#13#10+content;
+           end;
+
+          if lCats.Count<>0 then
+           begin
+            vCats:=VarArrayCreate([0,lCats.Count-1],varOleStr);
+            for iCat:=0 to lCats.Count-1 do
+             begin
+              lCats.LoadItem(iCat,dCat);
+              vCats[iCat]:=dCat['name'];//'slug'?
+             end;
+            Handler.PostTags('category',vCats);
+           end;
+
+          Handler.RegisterPost(title,content);
+         end;
+       end;
+     end;
+   end
+  else
+
+  if lPosts.Count<>0 then
+   begin
+    dPost:=JSON;
     for iPost:=0 to lPosts.Count-1 do
      begin
       lPosts.LoadItem(iPost,dPost);
-      itemid:=dPost['slug'];
-      itemurl:=FURLPrefix+itemid;
-      pubDate:=ConvDate1(dPost['date']);
-      if handler.CheckNewPost(itemid,itemurl,pubDate) then
-       begin
-        title:=SanitizeTitle(dPost['title']);
-        content:=dPost['excerpt'];
-
-        dImg:=JSON(dPost['featuredImage']);
-        if dImg<>nil then
-         begin
-          dImg:=JSON(dImg['node']);
-          //TODO: from dImg['srcSet']?
-          content:='<img class="postthumb" referrerpolicy="no-referrer'+
-            '" src="'+HTMLEncodeQ(FFeedURL+dImg['publicUrl'])+
-            '" alt="'+HTMLEncode(VarToStr(dImg['altText']))+
-            '" /><br />'#13#10+content;
-         end;
-
-        if lCats.Count<>0 then
-         begin
-          vCats:=VarArrayCreate([0,lCats.Count-1],varOleStr);
-          for iCat:=0 to lCats.Count-1 do
-           begin
-            lCats.LoadItem(iCat,dCat);
-            vCats[iCat]:=dCat['name'];//'slug'?
-           end;
-          Handler.PostTags('category',vCats);
-         end;
-
-        Handler.RegisterPost(title,content);
-       end;
+      ProcessEntity(Handler,JSON(dPost['entity']));
      end;
    end;
+
   Handler.ReportSuccess('Gatsby')
+end;
+
+procedure TGatsbyPageDataProcessor.ProcessEntity(Handler: IFeedHandler;
+  Post: IJSONDocument);
+const
+  varArrayDoc=varArray or varUnknown;
+var
+  e:IJSONEnumerator;
+  v:Variant;
+  i:integer;
+  itemid,itemurl:string;
+  pubDate:TDateTime;
+  title,content:WideString;
+  dImg:IJSONDocument;
+begin
+  if VarIsNull(Post['bundle']) then
+   begin
+    //assert not(VarIsNull(Post['type']))
+    e:=JSONEnum(Post);
+    while e.Next do
+     begin
+      v:=e.Value;
+      case VarType(v) of
+        varUnknown:
+         begin
+          dImg:=JSON(v);
+          if dImg<>nil then dImg:=JSON(dImg['entity']);
+          if dImg<>nil then ProcessEntity(Handler,dImg);
+         end;
+        varArrayDoc:
+          for i:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+            ProcessEntity(Handler,JSON(JSON(v[i])['entity']));
+      end;
+     end;
+   end
+  else
+   begin
+    //Post['bundle']='article'?
+    itemid:=VarToStr(Post['id']);
+    itemurl:=JSON(Post['url'])['path'];
+    if (itemurl<>'') and (itemurl[1]='/') then itemurl:=Copy(itemurl,2,Length(itemurl)-1);
+    itemurl:=FFeedURL+itemurl;
+    pubDate:=UnixDateDelta+Post['created']*SecsPerDay;
+    if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+     begin
+      title:=SanitizeTitle(Post['title']);
+      content:=HTMLEncode(VarToStr(Post['subHeadline']));
+
+      if VarIsArray(Post['promoImage']) then
+       begin
+        dImg:=JSON(JSON(Post['promoImage'][0])['entity']);
+        content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+          FFeedURL+HTMLEncode(JSON(dImg['mediaImage'])['url'])+
+          '" alt="'+HTMLEncode(VarToStr(dImg['caption']))+
+          '" /><br />'+content;
+        //TODO: 'contributor'?
+       end;
+
+      //primaryTaxonomy into Handler.PostTags?
+
+      Handler.RegisterPost(title,content);
+     end;
+   end;
 end;
 
 initialization
