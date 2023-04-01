@@ -168,7 +168,9 @@ begin
     ['edge_media_to_caption{','edges',jcaption,'}'
     ,'edge_media_to_tagged_user{','edges',jlinks,'}'
     ,'edge_sidecar_to_children{','edges',jchildren,'}'
-    ,'thumbnail_resources',jthumbs]);
+    ,'display_resources',jthumbs
+    //,'thumbnail_resources',jthumbs
+    ]);
   jn0:=JSON(['node',jn1]);
   jc1:=JSON();
   jc0:=JSON(['node',jc1]);
@@ -208,9 +210,10 @@ begin
       if jn1['is_video']=true then title:=#$25B6+title;
 
       if jthumbs.Count=0 then s:='' else
-        s:=VarToStr(JSON(jthumbs.GetJSON(jthumbs.Count-1))['src']);
-      if s='' then s:=VarToStr(jn1['thumbnail_src']);
+        //s:=VarToStr(JSON(jthumbs.GetJSON(jthumbs.Count-1))['src']);
+        s:=VarToStr(JSON(jthumbs.GetJSON(0))['src']);
       if s='' then s:=VarToStr(jn1['display_url']);
+      if s='' then s:=VarToStr(jn1['thumbnail_src']);
 
       if s<>'' then
        begin

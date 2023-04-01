@@ -16,7 +16,7 @@ type
   TSoundCloudRequest=class(TRequestProcessor)
   public
     function AlternateOpen(const FeedURL: WideString;
-      Request: IServerXMLHTTPRequest2): Boolean; override;
+      Request: ServerXMLHTTP60): Boolean; override;
   end;
 
 function SoundCloudClientID:string;
@@ -187,7 +187,7 @@ end;
 { TSoundCloudRequest }
 
 function TSoundCloudRequest.AlternateOpen(const FeedURL: WideString;
-  Request: IServerXMLHTTPRequest2): Boolean;
+  Request: ServerXMLHTTP60): Boolean;
 begin
   if StartsWith(FeedURL,'https://soundcloud.com/') then
    begin

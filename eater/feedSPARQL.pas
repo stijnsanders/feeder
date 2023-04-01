@@ -15,7 +15,7 @@ type
   TSparqlRequestProcessor=class(TRequestProcessor)
   public
     function AlternateOpen(const FeedURL: WideString;
-      Request: IServerXMLHTTPRequest2): Boolean; override;
+      Request: ServerXMLHTTP60): Boolean; override;
   end;
 
 implementation
@@ -74,7 +74,7 @@ end;
 { TSparqlRequestProcessor }
 
 function TSparqlRequestProcessor.AlternateOpen(const FeedURL: WideString;
-  Request: IServerXMLHTTPRequest2): Boolean;
+  Request: ServerXMLHTTP60): Boolean;
 begin
   if StartsWith(FeedURL,'sparql://') then
    begin

@@ -85,17 +85,26 @@ begin
   l:=Length(Value);
   //ignore white space
   while (i<=l) and (Value[i]<=' ') do inc(i);
-  //ignore link of any
-  if (i+3<=l) and (Value[i]='<') and (Value[i+1]='a') and (Value[i+2]=' ') then
+  //ignore div if any
+  if (i+4<=l) and (Value[i]='<') and (Value[i+1]='d') and (Value[i+2]='i') and (Value[i+3]='v') then
    begin
     while (i<=l) and (Value[i]<>'>') do inc(i);
+    inc(i);//'>'
     while (i<=l) and (Value[i]<=' ') do inc(i);
    end;
-  //image here?
+  //ignore p if any
   if (i+3<=l) and (Value[i]='<') and (Value[i+1]='p') and ((Value[i+2]='>') or (Value[i+2]=' ')) then
    begin
     while (i<=l) and (Value[i]<>'>') do inc(i);
-    if (i<=l) then inc(i);//'>'
+    inc(i);//'>'
+    while (i<=l) and (Value[i]<=' ') do inc(i);
+   end;
+  //ignore link if any
+  if (i+3<=l) and (Value[i]='<') and (Value[i+1]='a') and (Value[i+2]=' ') then
+   begin
+    while (i<=l) and (Value[i]<>'>') do inc(i);
+    inc(i);//'>'
+    while (i<=l) and (Value[i]<=' ') do inc(i);
    end;
   Result:=(Copy(Value,i,5)='<img ')
     or (Copy(Value,i,8)='<figure ')
