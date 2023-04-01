@@ -175,7 +175,11 @@ begin
     itemurl:=JSON(Post['url'])['path'];
     if (itemurl<>'') and (itemurl[1]='/') then itemurl:=Copy(itemurl,2,Length(itemurl)-1);
     itemurl:=FFeedURL+itemurl;
-    pubDate:=UnixDateDelta+Post['created']*SecsPerDay;
+    dImg:=JSON(Post['publishDate']);
+    if dImg=nil then
+      pubDate:=UnixDateDelta+Post['created']/SecsPerDay
+    else
+      pubDate:=ConvDate1(dImg['date']);
     if Handler.CheckNewPost(itemid,itemurl,pubDate) then
      begin
       title:=SanitizeTitle(Post['title']);
