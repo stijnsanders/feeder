@@ -19,9 +19,10 @@ type
 
   THTMLFeedProcessor2=class(TFeedProcessor)
   private
-    FURL,FFeedTitle:WideString;
+    FURL:WideString;
     FFeedParams:IJSONDocument;
     FPostItem:RegExp;
+    FFeedData:WideString;
   public
     procedure AfterConstruction; override;
     function Determine(Store:IFeedStore;const FeedURL:WideString;
@@ -177,8 +178,13 @@ begin
       end;
 
       FPostItem.IgnoreCase:=FFeedParams['i']=true;
+      FPostItem.Multiline:=FFeedParams['m']=true;
+      //FPostItem.Global:=FFeedParams['g']=true;
       FPostItem.Pattern:=FFeedParams['p'];
-      Result:=FPostItem.Test(c0(FeedData));
+      FFeedData:=c0(FeedData);
+      Result:=FPostItem.Test(FFeedData);
+      if not(Result) then FFeedData:='';
+
 
      end;
    end;
@@ -195,10 +201,19 @@ var
   title,url,content:WideString;
   d:TDateTime;
   p:IJSONDocument;
+  re:RegExp;
 begin
   inherited;
-  Handler.UpdateFeedName(FFeedTitle);
-  mc:=FPostItem.Execute(c0(FeedData)) as MatchCollection;
+  p:=JSON(FFeedParams['feedname']);
+  if p<>nil then
+   begin
+    re:=CoRegExp.Create;
+    re.Pattern:=p['p'];
+    re.IgnoreCase:=p['i']='true';
+    Handler.UpdateFeedName(re.Replace(FFeedData,p['r']));
+    re:=nil;
+   end;
+  mc:=FPostItem.Execute(FFeedData) as MatchCollection;
   for mci:=0 to mc.Count-1 do
    begin
     m:=mc[mci] as Match;

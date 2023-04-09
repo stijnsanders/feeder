@@ -7,7 +7,7 @@ uses eaterReg, jsonDoc;
 type
   TGatsbyPageDataProcessor=class(TFeedProcessor)
   private
-    FFeedURL,FURLPrefix:WideString;
+    FFeedURL,FStaticURL,FURLPrefix:WideString;
     procedure ProcessEntity(Handler: IFeedHandler; Post: IJSONDocument);
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
@@ -61,8 +61,9 @@ begin
   inherited;
   lTaxNodes:=JSONDocArray;
   lPosts:=JSONDocArray;
+  dPost:=JSON;
   d:=JSON(['result{','data{','allWpTghpTaxonomyIssue{','nodes',lTaxNodes,'}}',
-    'pageContext{','node{','data{','content{','mainContent',lPosts,'}}}}']);
+    'pageContext{','node{','data{','content{','mainContent',lPosts,'metaTags',dPost,'}}}}']);
   d.Parse(FeedData);
 
   if lTaxNodes.Count<>0 then
@@ -124,6 +125,11 @@ begin
 
   if lPosts.Count<>0 then
    begin
+    Handler.UpdateFeedName(VarToStr(dPost['title']));//'description'?
+    if Copy(FFeedURL,9,4)='www.' then
+      FStaticURL:='https://static.'+Copy(FFeedURL,13,Length(FFeedURL)-13)
+    else
+      FStaticURL:='https://static.'+Copy(FFeedURL,9,Length(FFeedURL)-9);
     dPost:=JSON;
     for iPost:=0 to lPosts.Count-1 do
      begin
@@ -143,7 +149,7 @@ var
   e:IJSONEnumerator;
   v:Variant;
   i:integer;
-  itemid,itemurl:string;
+  itemid,itemurl,imgurl:string;
   pubDate:TDateTime;
   title,content:WideString;
   dImg:IJSONDocument;
@@ -170,7 +176,7 @@ begin
    end
   else
    begin
-    //Post['bundle']='article'?
+    //Post['bundle']='article'?'page'?
     itemid:=VarToStr(Post['id']);
     itemurl:=JSON(Post['url'])['path'];
     if (itemurl<>'') and (itemurl[1]='/') then itemurl:=Copy(itemurl,2,Length(itemurl)-1);
@@ -183,13 +189,18 @@ begin
     if Handler.CheckNewPost(itemid,itemurl,pubDate) then
      begin
       title:=SanitizeTitle(Post['title']);
-      content:=HTMLEncode(VarToStr(Post['subHeadline']));
-
+      dImg:=JSON(Post['promoSummary']);
+      if dImg=nil then
+        content:=HTMLEncode(VarToStr(Post['subHeadline']))
+      else
+        content:=dImg['value'];
       if VarIsArray(Post['promoImage']) then
        begin
         dImg:=JSON(JSON(Post['promoImage'][0])['entity']);
+        imgurl:=JSON(dImg['mediaImage'])['url'];
+        if (imgurl<>'') and (imgurl[1]='/') then imgurl:=FStaticURL+imgurl;
         content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-          FFeedURL+HTMLEncode(JSON(dImg['mediaImage'])['url'])+
+          HTMLEncode(imgurl)+
           '" alt="'+HTMLEncode(VarToStr(dImg['caption']))+
           '" /><br />'+content;
         //TODO: 'contributor'?
