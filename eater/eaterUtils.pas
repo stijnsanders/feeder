@@ -79,36 +79,45 @@ end;
 
 function HTMLStartsWithImg(const Value:string):boolean;
 var
-  i,l:integer;
+  i,j,l:integer;
+  ok:boolean;
+  s:string;
 begin
   i:=1;
   l:=Length(Value);
-  //ignore white space
-  while (i<=l) and (Value[i]<=' ') do inc(i);
-  //ignore div if any
-  if (i+4<=l) and (Value[i]='<') and (Value[i+1]='d') and (Value[i+2]='i') and (Value[i+3]='v') then
+  Result:=false;//default
+  ok:=true;//
+  while ok do
    begin
-    while (i<=l) and (Value[i]<>'>') do inc(i);
-    inc(i);//'>'
+    //ignore white space
     while (i<=l) and (Value[i]<=' ') do inc(i);
+    //next element
+    if (i<=l) and (Value[i]='<') then
+     begin
+      inc(i);
+      j:=i;
+      while (j<=l) and (Value[j]<>' ') and (Value[j]<>'>') and (Value[j]<>'/') do inc(j);
+      s:=LowerCase(Copy(Value,i,j-i));
+      //skippable?
+      if (s='a') or (s='div') or (s='p') or (s='center') then
+        //continue loop
+      else
+      //image?
+      if (s='img') or (s='figure') then
+       begin
+        Result:=true;
+        ok:=false;//end loop
+       end;
+      if ok then
+       begin
+        i:=j;
+        while (i<=l) and (Value[i]<>'>') do inc(i);
+        inc(i);
+       end;
+     end
+    else
+      ok:=false;//end loop
    end;
-  //ignore p if any
-  if (i+3<=l) and (Value[i]='<') and (Value[i+1]='p') and ((Value[i+2]='>') or (Value[i+2]=' ')) then
-   begin
-    while (i<=l) and (Value[i]<>'>') do inc(i);
-    inc(i);//'>'
-    while (i<=l) and (Value[i]<=' ') do inc(i);
-   end;
-  //ignore link if any
-  if (i+3<=l) and (Value[i]='<') and (Value[i+1]='a') and (Value[i+2]=' ') then
-   begin
-    while (i<=l) and (Value[i]<>'>') do inc(i);
-    inc(i);//'>'
-    while (i<=l) and (Value[i]<=' ') do inc(i);
-   end;
-  Result:=(Copy(Value,i,5)='<img ')
-    or (Copy(Value,i,8)='<figure ')
-    or (Copy(Value,i,8)='<figure>');
 end;
 
 function ConvDate1(const x:string):TDateTime;

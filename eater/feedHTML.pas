@@ -210,7 +210,14 @@ begin
     re:=CoRegExp.Create;
     re.Pattern:=p['p'];
     re.IgnoreCase:=p['i']='true';
-    Handler.UpdateFeedName(re.Replace(FFeedData,p['r']));
+    //re.Multiline:=
+    mc:=re.Execute(FFeedData) as MatchCollection;
+    if mc.Count<>0 then
+     begin
+      m:=mc[0] as Match;
+      sm:=m.SubMatches as SubMatches;
+      Handler.UpdateFeedName(sm[p['n']-1]);
+     end;
     re:=nil;
    end;
   mc:=FPostItem.Execute(FFeedData) as MatchCollection;
