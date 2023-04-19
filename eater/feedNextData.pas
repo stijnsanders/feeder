@@ -2,12 +2,13 @@ unit feedNextData;
 
 interface
 
-uses eaterReg;
+uses eaterReg, jsonDoc;
 
 type
   TNextDataFeedProcessor=class(TFeedProcessor)
   private
     FFeedURL:WideString;
+    procedure ProcessArticle(Handler:IFeedHandler;jdata:IJSONDocument);
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
       var FeedData: WideString; const FeedDataType: WideString): Boolean;
@@ -18,7 +19,7 @@ type
 
 implementation
 
-uses SysUtils, Variants, jsonDoc, eaterUtils, eaterSanitize;
+uses SysUtils, Variants, eaterUtils, eaterSanitize;
 
 { TNextDataFeedProcessor }
 
@@ -41,11 +42,18 @@ var
   itemid,itemurl,p1:string;
   pubDate:TDateTime;
   title,content:WideString;
-  tags:Variant;
+  tags,v:Variant;
 begin
   jd1:=JSON;
   jcontent:=JSONDocArray;
   jzones:=JSONDocArray;
+  jarticles:=JSONDocArray;
+  jn0:=JSON(
+    ['homepageBuilder',jarticles
+    //,'heroArticle',jarticles
+    ,'stickyArticle',jarticles
+    ,'featuredArticles',jarticles
+    ]);
   jdoc:=JSON(['props',JSON(['pageProps',
     JSON(
       ['contentState',jd1
@@ -56,6 +64,8 @@ begin
         //series,episodes?
         ,'highlightedContent',jcontent])
       ,'pageData',JSON(['zones',jzones])
+      ,'entry',jn0
+      ,'latestArticles',jarticles
       ])
     ])]);
   try
@@ -180,6 +190,48 @@ begin
      end;
    end;
 
+  //homepagebuilder
+  if jarticles.Count<>0 then
+   begin
+    if (FFeedURL<>'') and (FFeedURL[Length(FFeedURL)]<>'/') then
+      FFeedURL:=FFeedURL+'/';
+    try
+      jn1:=JSON(JSON(jn0['seomatic'])['metaTitleContainer']);
+      Handler.UpdateFeedName(JSON(jn1['title'])['title']);
+    except
+      //silent
+    end;
+    //ProcessArticle(Handler,JSON(jn0['heroArticle']));
+    //ProcessArticle(Handler,JSON(jn0['stickyArticle']));
+    jn1:=JSON(['cards',jcontent]);
+    jd2:=JSON;
+    for ci:=0 to jarticles.Count-1 do
+     begin
+      jarticles.LoadItem(ci,jn1);
+      if jcontent.Count=0 then
+       begin
+        v:=jn1['article'];
+        if VarIsArray(v) then
+          for cj:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+            ProcessArticle(Handler,JSON(v[cj]))
+        else
+         begin
+          jd1:=JSON(v);
+          if jd1=nil then
+            ProcessArticle(Handler,jn1)
+          else
+            ProcessArticle(Handler,jd1);
+         end;
+       end
+      else
+        for cj:=0 to jcontent.Count-1 do
+         begin
+          jcontent.LoadItem(cj,jd2);
+          ProcessArticle(Handler,jd2);
+         end;
+     end;
+   end;
+
   //zones
   if jzones.Count<>0 then
    begin
@@ -234,6 +286,70 @@ begin
    end;
 
   Handler.ReportSuccess('NextData');
+end;
+
+procedure TNextDataFeedProcessor.ProcessArticle(Handler: IFeedHandler;
+  jdata: IJSONDocument);
+var
+  d1:IJSONDocument;
+  v:Variant;
+  i,i1,i2:integer;
+  itemid,itemurl,p1:string;
+  pubDate:TDateTime;
+  title,content:WideString;
+  tags:Variant;
+begin
+  if (jdata=nil) then itemid:='' else itemid:=VarToStr(jdata['id']);
+  if itemid<>'' then
+   begin
+    itemurl:=VarToStr(jdata['href']);
+    if (itemurl='') or (itemurl[1]='/') then itemurl:=Copy(itemurl,2,Length(itemurl)-1);
+    itemurl:=FFeedURL+itemurl;
+
+    try
+      d1:=JSON(jdata['date']);
+      if d1=nil then
+        pubDate:=ConvDate1(jdata['dateIso'])
+      else
+        pubDate:=ConvDate1(d1['iso']);
+    except
+      pubDate:=UtcNow;
+    end;
+    if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+     begin
+      title:=SanitizeTitle(jdata['title']);
+      content:=HTMLEncode(jdata['excerpt']);
+
+      //image
+      v:=jdata['image'];
+      if VarIsArray(v) then d1:=JSON(v[0]) else d1:=nil;
+      if d1<>nil then
+       begin
+        content:=
+          '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+          HTMLEncode(d1['src'])+
+          '" alt="'+HTMLEncode(VarToStr(d1['caption']))+'"'+
+          '" /><br />'#13#10+content;
+       end;
+
+      v:=jdata['category'];
+      if VarIsArray(v) then //if VarType(v) = varArray or varUnknown then
+       begin
+        d1:=JSON;
+        i1:=VarArrayLowBound(v,1);
+        i2:=VarArrayHighBound(v,1);
+        tags:=VararrayCreate([i1,i2],varOleStr);
+        for i:=i1 to i2 do
+         begin
+          d1:=JSON(v[i]);
+          tags[i]:=d1['title'];
+         end;
+        Handler.PostTags('category',tags);
+       end;
+
+      Handler.RegisterPost(title,content);
+     end;
+   end;
 end;
 
 initialization
