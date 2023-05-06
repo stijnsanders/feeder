@@ -149,6 +149,14 @@ begin
         content:=HTMLEncode(VarToStr(jn0['content_text']))
       else
         content:=VarToStr(jn0['content_html']);
+
+      //TODO: jn0['tags']
+      //jn0['author']?
+
+      if not VarIsNull(jn0['image']) then
+        content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+          HTMLEncode(jn0['image'])+'" /><br />'#13#10+content;
+
       Handler.RegisterPost(title,content);
      end;
    end;

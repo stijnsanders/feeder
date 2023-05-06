@@ -103,7 +103,7 @@ begin
         //continue loop
       else
       //image?
-      if (s='img') or (s='figure') then
+      if (s='img') or (s='figure') or (s='picture') then
        begin
         Result:=true;
         ok:=false;//end loop
