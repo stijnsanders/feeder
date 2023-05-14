@@ -168,9 +168,11 @@ begin
         if jimg.Count<>0 then
          begin
           jimg.LoadItem(0,jn1);
-          content:=
+          jd1:=JSON(jn1['heroOptimized']);
+          if jd1=nil then jd1:=JSON(jn1['coverOptimized']);
+          if jd1<>nil then content:=
             '<img class="postthumb" referrerpolicy="no-referrer" src="'+
-            HTMLEncode(JSON(jn1['heroOptimized'])['src'])+
+            HTMLEncode(jd1['src'])+
             '" /><br />'#13#10+content;
          end;
 
@@ -294,7 +296,7 @@ var
   d1:IJSONDocument;
   v:Variant;
   i,i1,i2:integer;
-  itemid,itemurl,p1:string;
+  itemid,itemurl:string;
   pubDate:TDateTime;
   title,content:WideString;
   tags:Variant;
