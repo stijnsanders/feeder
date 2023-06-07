@@ -48,14 +48,6 @@ begin
    begin
     itemid:=x.selectSingleNode('s:binding[@name="news"]/s:uri').text;
     itemurl:=x.selectSingleNode('s:binding[@name="url"]/s:uri').text;
-    title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
-
-    y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
-    if (y<>nil) and (y.text<>title) then
-      title:=title+' '#$2014' '+y.text;
-
-    y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
-    if y=nil then content:='' else content:=y.text;
     try
       y:=x.selectSingleNode('s:binding[@name="pubDate"]/s:literal') as IXMLDOMElement;
       pubDate:=ConvDate1(y.text);
@@ -63,7 +55,15 @@ begin
       pubDate:=UtcNow;
     end;
     if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+     begin
+      title:=x.selectSingleNode('s:binding[@name="headline"]/s:literal').text;
+      y:=x.selectSingleNode('s:binding[@name="description"]/s:literal') as IXMLDOMElement;
+      if (y<>nil) and (y.text<>title) then
+        title:=title+' '#$2014' '+y.text;
+      y:=x.selectSingleNode('s:binding[@name="body"]/s:literal') as IXMLDOMElement;
+      if y=nil then content:='' else content:=y.text;
       Handler.RegisterPost(title,content);
+     end;
     x:=xl.nextNode as IXMLDOMElement;
    end;
   xl:=nil;

@@ -60,7 +60,6 @@ begin
     itemid:=VarToStr(jn0['id']);//'slug'?
     if itemid='' then itemid:=VarToStr(JSON(jn0['guid'])['rendered']);
     itemurl:=VarToStr(jn0['link']);
-    title:=VarToStr(JSON(jn0['title'])['rendered']);
     try
       v:=jn0['date_gmt'];
       if VarIsNull(v) then v:=jn0['date'];//modified(_gmt)?
@@ -70,6 +69,7 @@ begin
     end;
     if Handler.CheckNewPost(itemid,itemurl,pubdate) then
      begin
+      title:=VarToStr(JSON(jn0['title'])['rendered']);
       //'excerpt'?
       content:=VarToStr(JSON(jn0['content'])['rendered']);
 

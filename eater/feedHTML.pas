@@ -110,14 +110,16 @@ begin
 
     //TODO: CombineURL!
 
-    title:=SanitizeTitle(c1(sm[3]));
-    body:=c1(FPostBody.Replace(sm[4],''));
-
-    //TODO: id?
-    //TODO: image?
-
     if Handler.CheckNewPost(url,url,d) then
+     begin
+      title:=SanitizeTitle(c1(sm[3]));
+      body:=c1(FPostBody.Replace(sm[4],''));
+
+      //TODO: id?
+      //TODO: image?
+
       Handler.RegisterPost(title,body);
+     end;
    end;
   Handler.ReportSuccess('HTML:1');
 end;
@@ -269,40 +271,41 @@ begin
     url:=HTMLDecode(sm[p['n']-1]);
     //TODO: CombineURL!
 
-
-    p:=JSON(FFeedParams['title']);
-    title:=sm[p['n']-1];
-    if p['trim']=true then title:=Trim(title);
-    title:=SanitizeTitle(c1(title));
-
-    p:=JSON(FFeedParams['content']);
-    if p=nil then
-      content:=''
-    else
-     begin
-      content:=c1(sm[p['n']-1]);
-      //more?
-
-      //TODO: absorb THTMLFeedProcessor1 here:
-      //TODO: series of replaces
-
-     end;
-
-    p:=JSON(FFeedParams['postThumb']);
-    if p<>nil then
-     begin
-      s:=sm[p['n']-1];
-      if s<>'' then
-       begin
-        content:='<img class="postthumb" referrerpolicy="no-referrer'+
-          '" src="'+HTMLEncodeQ(FURL+s)+
-          //'" alt="'+???
-          '" /><br />'#13#10+content;
-       end;
-     end;
-
     if Handler.CheckNewPost(url,FURL+url,d) then
+     begin
+      p:=JSON(FFeedParams['title']);
+      title:=sm[p['n']-1];
+      if p['trim']=true then title:=Trim(title);
+      title:=SanitizeTitle(c1(title));
+
+      p:=JSON(FFeedParams['content']);
+      if p=nil then
+        content:=''
+      else
+       begin
+        content:=c1(sm[p['n']-1]);
+        //more?
+
+        //TODO: absorb THTMLFeedProcessor1 here:
+        //TODO: series of replaces
+
+       end;
+
+      p:=JSON(FFeedParams['postThumb']);
+      if p<>nil then
+       begin
+        s:=sm[p['n']-1];
+        if s<>'' then
+         begin
+          content:='<img class="postthumb" referrerpolicy="no-referrer'+
+            '" src="'+HTMLEncodeQ(FURL+s)+
+            //'" alt="'+???
+            '" /><br />'#13#10+content;
+         end;
+       end;
+
       Handler.RegisterPost(title,content);
+     end;
    end;
   Handler.ReportSuccess('HTML:P');
 end;

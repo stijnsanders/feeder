@@ -86,66 +86,66 @@ begin
       except
         pubDate:=UtcNow;
       end;
-      title:=VarToStr(jn1['headline']);
-
-      //TODO: media, mediumIds (leadPhotoId?
-
-      content:=VarToStr(jn1['storyHTML']);
-      if content='' then
-       begin
-        content:=VarToStr(jn1['firstWords']);
-        if content<>'' then
-          content:=content+'<span style="color:silver;">...</span>';
-       end;
-
-      //jn1['media']
-      if jthumbs.Count=0 then
-       begin
-        v:=jn1['mediumIds'];
-        if (p1<>'') and VarIsArray(v) and (VarArrayLowBound(v,1)<=VarArrayHighBound(v,1)) then
-         begin
-          if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
-          content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+p1+
-            VarToStr(v[VarArrayLowBound(v,1)])+
-            p2+'" />'+h1+content;
-         end;
-
-       end
-      else
-       begin
-        n:=0;
-        while n<jthumbs.Count do
-         begin
-          jthumbs.LoadItem(n,jd1);
-          if StartsWith(VarToStr(jd1['imageMimeType']),'image/') then
-           begin
-            if content='' then content:=VarToStr(jd1['caption']);
-            if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
-            content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-              VarToStr(jd1['gcsBaseUrl'])+
-              VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
-              VarToStr(jd1['imageFileExtension'])+
-              '" />'+h1+content;
-            if p1='' then //see 'mediumIDs' above
-             begin
-              p1:=VarToStr(jd1['gcsBaseUrl']);
-              k:=Length(p1)-1;
-              while (k<>0) and (p1[k]<>'/') do dec(k);
-              SetLength(p1,k);
-              p2:='/'+//?
-                VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
-                VarToStr(jd1['imageFileExtension']);
-             end;
-            n:=jthumbs.Count;
-           end
-          else
-            inc(n);
-         end;
-       end;
-
       if not((itemurl='') and (content='')) and
         Handler.CheckNewPost(itemid,itemurl,pubDate) then
        begin
+        title:=VarToStr(jn1['headline']);
+
+        //TODO: media, mediumIds (leadPhotoId?
+
+        content:=VarToStr(jn1['storyHTML']);
+        if content='' then
+         begin
+          content:=VarToStr(jn1['firstWords']);
+          if content<>'' then
+            content:=content+'<span style="color:silver;">...</span>';
+         end;
+
+        //jn1['media']
+        if jthumbs.Count=0 then
+         begin
+          v:=jn1['mediumIds'];
+          if (p1<>'') and VarIsArray(v) and (VarArrayLowBound(v,1)<=VarArrayHighBound(v,1)) then
+           begin
+            if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
+            content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+p1+
+              VarToStr(v[VarArrayLowBound(v,1)])+
+              p2+'" />'+h1+content;
+           end;
+
+         end
+        else
+         begin
+          n:=0;
+          while n<jthumbs.Count do
+           begin
+            jthumbs.LoadItem(n,jd1);
+            if StartsWith(VarToStr(jd1['imageMimeType']),'image/') then
+             begin
+              if content='' then content:=VarToStr(jd1['caption']);
+              if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
+              content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                VarToStr(jd1['gcsBaseUrl'])+
+                VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
+                VarToStr(jd1['imageFileExtension'])+
+                '" />'+h1+content;
+              if p1='' then //see 'mediumIDs' above
+               begin
+                p1:=VarToStr(jd1['gcsBaseUrl']);
+                k:=Length(p1)-1;
+                while (k<>0) and (p1[k]<>'/') do dec(k);
+                SetLength(p1,k);
+                p2:='/'+//?
+                  VarToStr(VarArrLast(jd1['imageRenderedSizes']))+
+                  VarToStr(jd1['imageFileExtension']);
+               end;
+              n:=jthumbs.Count;
+             end
+            else
+              inc(n);
+           end;
+         end;
+
         Handler.PostTags('tag',jn1['tagIds']);
         Handler.RegisterPost(title,content);
        end;

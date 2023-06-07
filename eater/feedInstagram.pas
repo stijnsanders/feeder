@@ -191,18 +191,18 @@ begin
     itemurl:='https://www.instagram.com/p/'+VarToStr(jn1['shortcode'])+'/';
     pubDate:=int64(jn1['taken_at_timestamp'])/SecsPerDay+UnixDateDelta;//is UTC?
 
-    content:=VarToStr(jn1['title'])+' ';
-    for j:=0 to jcaption.Count-1 do
-     begin
-      jcaption.LoadItem(j,jc0);
-      content:=content+VarToStr(jc1['text'])+#13#10;
-     end;
-
-    if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
-    //TODO: SanitizeTitle?
-
     if Handler.CheckNewPost(itemid,itemurl,pubdate) then
      begin
+      content:=VarToStr(jn1['title'])+' ';
+      for j:=0 to jcaption.Count-1 do
+       begin
+        jcaption.LoadItem(j,jc0);
+        content:=content+VarToStr(jc1['text'])+#13#10;
+       end;
+
+      if Length(content)<200 then title:=content else title:=Copy(content,1,99)+'...';
+      //TODO: SanitizeTitle?
+
       content:=r1.Replace(r2.Replace(HTMLEncode(content)
         ,'<a href="https://instagram.com/explore/tags/$1/">#$1</a>')
         ,'<a href="https://instagram.com/$1/">@$1</a>');

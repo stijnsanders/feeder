@@ -46,10 +46,6 @@ begin
    begin
     itemid:=x.getAttribute('rdf:about');
     itemurl:=x.selectSingleNode('rss:link').text;
-    y:=x.selectSingleNode('rss:title') as IXMLDOMElement;
-    if y=nil then title:='' else title:=y.text;
-    y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
-    if y=nil then content:='' else content:=y.text;
     try
       y:=x.selectSingleNode('rss:pubDate') as IXMLDOMElement;
       if y=nil then
@@ -63,6 +59,10 @@ begin
     end;
     if Handler.CheckNewPost(itemid,itemurl,pubDate) then
      begin
+      y:=x.selectSingleNode('rss:title') as IXMLDOMElement;
+      if y=nil then title:='' else title:=y.text;
+      y:=x.selectSingleNode('rss:description') as IXMLDOMElement;
+      if y=nil then content:='' else content:=y.text;
       Handler.RegisterPost(title,content);
       inc(c);
      end;
@@ -83,13 +83,6 @@ begin
       y:=x.selectSingleNode('schema:url') as IXMLDOMElement;
       if y=nil then itemurl:=itemid else
         itemurl:=VarToStr(y.getAttribute('rdf:resource'));
-      y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
-      if y=nil then title:='' else title:=y.text;
-      y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
-      if y<>nil then title:=title+' '#$2014' '+y.text;
-
-      y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
-      if y=nil then content:='' else content:=y.text;
       try
         y:=x.selectSingleNode('schema:datePublished') as IXMLDOMElement;
         pubDate:=ConvDate1(y.text);
@@ -97,7 +90,17 @@ begin
         pubDate:=UtcNow;
       end;
       if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+       begin
+        y:=x.selectSingleNode('schema:headline') as IXMLDOMElement;
+        if y=nil then title:='' else title:=y.text;
+        y:=x.selectSingleNode('schema:description') as IXMLDOMElement;
+        if y<>nil then title:=title+' '#$2014' '+y.text;
+
+        y:=x.selectSingleNode('schema:articleBody') as IXMLDOMElement;
+        if y=nil then content:='' else content:=y.text;
+
         Handler.RegisterPost(title,content);
+       end;
       x:=xl.nextNode as IXMLDOMElement;
      end;
     xl:=nil;

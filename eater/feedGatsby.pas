@@ -19,23 +19,24 @@ type
 
 implementation
 
-{ TGatsbyPageDataProcessor }
-
 uses SysUtils, Variants, eaterUtils, eaterSanitize;
+
+const
+  //GatsbyPageDataSuffix='/page-data/index/page-data.json';
+  GatsbyPageDataSuffix='/page-data.json';
+
+{ TGatsbyPageDataProcessor }
 
 function TGatsbyPageDataProcessor.Determine(Store: IFeedStore;
   const FeedURL: WideString; var FeedData: WideString;
   const FeedDataType: WideString): Boolean;
-const
-  //PageDataSuffix='/page-data/index/page-data.json';
-  PageDataSuffix='/page-data.json';
 var
   i:integer;
 begin
   //detect '<div id="___gatsby"': see FindFeedURL
   Result:=(FeedDataType='application/json') and (Copy(FeedURL,
-    Length(FeedURL)-Length(PageDataSuffix)+1,Length(PageDataSuffix))=
-    PageDataSuffix);
+    Length(FeedURL)-Length(GatsbyPageDataSuffix)+1,Length(GatsbyPageDataSuffix))=
+    GatsbyPageDataSuffix);
   if Result then
    begin
     FFeedURL:=FeedURL;

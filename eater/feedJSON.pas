@@ -125,7 +125,6 @@ begin
     jn1:=JSON(jn0['contents']);
     itemid:=VarToStr(jn0['id']);
     itemurl:=VarToStr(jn0['url']);
-    title:=VarToStr(jn0['title']);
     try
       pubDate:=ConvDate1(VarToStr(jn0['date_published']));
     except
@@ -133,6 +132,7 @@ begin
     end;
     if Handler.CheckNewPost(itemid,itemurl,pubDate) then
      begin
+      title:=VarToStr(jn0['title']);
       //TODO: if summary<>content?
       {
       if not(VarIsNull(jn0['summary'])) then
@@ -204,7 +204,6 @@ begin
     jitems.LoadItem(i,j0);
     itemid:=j0['id'];
     itemurl:=FURL+j0['page_url'];
-    title:=VarToStr(j0['title']);
     try
       //s:=j0['public_at']?
       s:=j0['updated_at'];
@@ -215,6 +214,7 @@ begin
     end;
     if Handler.CheckNewPost(itemid,itemurl,pubDate) then
      begin
+      title:=VarToStr(j0['title']);
       content:=HTMLEncode(j0['description']);
       //if j0['breaking'] then title:=':fire:'+title;//?
 

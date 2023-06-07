@@ -71,14 +71,6 @@ begin
     if y=nil then itemid:='' else itemid:=y.text;
     y:=x.selectSingleNode('link') as IXMLDOMElement;
     if y=nil then itemurl:='' else itemurl:=y.text;
-    y:=x.selectSingleNode('title') as IXMLDOMElement;
-    if y=nil then title:='' else title:=y.text;
-    y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
-    if (y=nil) or IsSomeThingEmpty(y.text) then
-      y:=x.selectSingleNode('content') as IXMLDOMElement;
-    if y=nil then
-      y:=x.selectSingleNode('description') as IXMLDOMElement;
-    if y=nil then content:='' else content:=y.text;
     try
       y:=x.selectSingleNode('pubDate') as IXMLDOMElement;
       if y=nil then y:=x.selectSingleNode('pubdate') as IXMLDOMElement; //reddit??!!
@@ -91,6 +83,15 @@ begin
 
     if Handler.CheckNewPost(itemid,itemurl,pubDate) then
      begin
+      y:=x.selectSingleNode('title') as IXMLDOMElement;
+      if y=nil then title:='' else title:=y.text;
+      y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
+      if (y=nil) or IsSomeThingEmpty(y.text) then
+        y:=x.selectSingleNode('content') as IXMLDOMElement;
+      if y=nil then
+        y:=x.selectSingleNode('description') as IXMLDOMElement;
+      if y=nil then content:='' else content:=y.text;
+
       xl1:=x.selectNodes('category');
       if xl1.length<>0 then
        begin

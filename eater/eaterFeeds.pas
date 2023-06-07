@@ -787,7 +787,7 @@ begin
              begin
               FDB.Update('Feed',
                 ['id',FFeed.id
-                ,'name',FFeed.Name
+                ,'name',Copy(FFeed.Name,1,200)
                 ,'url',FFeed.URL
                 ,'loadlast',double(FFeed.LoadStart)
                 ,'result',FFeed.Result
@@ -1085,6 +1085,9 @@ begin
   FFeed.Result:=Msg;
 end;
 
+const
+  GatsbyPageDataSuffix='/page-data.json';
+
 function TFeedEater.LoadExternal(const URL, FilePath, LastMod,
   Accept: string): WideString;
 var
@@ -1095,17 +1098,12 @@ var
   i:integer;
   w:word;
   r,mr:cardinal;
-  p1,ua:string;
+  cl,ua:string;
 begin
   WriteLn(' ->');
   DeleteFile(PChar(FilePath));//remove any previous file
   ua:='FeedEater/1.0';
   mr:=8;
-
-  if not(ForceLoadAll) and (LastMod<>'') then
-    p1:=' --header="If-Modified-Since: '+LastMod+'"'
-  else
-    p1:='';
 
   if StartsWith(URL,'https://www.instagram.com/') then
    begin
@@ -1113,13 +1111,31 @@ begin
     //ua:=
    end;
 
+  cl:='wget.exe -nv --no-cache --max-redirect='+IntToStr(mr)+
+    ' --no-http-keep-alive --no-check-certificate';
+
+  if not(ForceLoadAll) and (LastMod<>'') then
+    cl:=cl+' --header="If-Modified-Since: '+LastMod+'"';
+
+  cl:=cl+
+    ' --save-headers --content-on-error --header="Accept: '+Accept+'"';
+
+  if Copy(URL,Length(URL)-
+    Length(GatsbyPageDataSuffix)+1,Length(GatsbyPageDataSuffix))=
+    GatsbyPageDataSuffix then
+   begin
+    i:=9;//past 'https://'
+    while (i<=Length(URL)) and (URL[i]<>'/') do inc(i);
+    cl:=cl+' --referer="'+Copy(URL,1,i)+'"';
+   end;
+
+  cl:=cl+
+    ' --user-agent="'+ua+'" --compression=auto'+
+    ' -O "'+FilePath+'" "'+URL+'"';
+
   ZeroMemory(@si,SizeOf(TStartupInfo));
   si.cb:=SizeOf(TStartupInfo);
-  if not CreateProcess(nil,PChar(
-    'wget.exe -nv --no-cache --max-redirect='+IntToStr(mr)+' --no-http-keep-alive --no-check-certificate'+
-    p1+' --save-headers --content-on-error --header="Accept: '+Accept+'"'+
-    ' --user-agent="'+ua+'" --compression=auto'+
-    ' -O "'+FilePath+'" "'+URL+'"'),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
+  if not CreateProcess(nil,PChar(cl),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
   r:=WaitForSingleObject(pi.hProcess,30000);
   if r<>WAIT_OBJECT_0 then
@@ -1202,13 +1218,74 @@ begin
   content:=Copy(content,i,Length(content)-i+1);
 end;
 
+procedure PerformReplace(data:IJSONDocument;var subject:WideString);
+var
+  re,re1:RegExp;
+  sub:IJSONDocument;
+  base,p:WideString;
+  i,j,k,l:integer;
+  mc:MatchCollection;
+  m:Match;
+  sm:SubMatches;
+begin
+  re:=CoRegExp.Create;
+  re.Pattern:=data['x'];
+  if not(VarIsNull(data['g'])) then re.Global:=boolean(data['g']);
+  if not(VarIsNull(data['m'])) then re.Multiline:=boolean(data['m']);
+  if not(VarIsNull(data['i'])) then re.IgnoreCase:=boolean(data['i']);
+  sub:=JSON(data['p']);
+  if sub=nil then
+    subject:=re.Replace(subject,data['s'])
+  else
+   begin
+    mc:=re.Execute(subject) as MatchCollection;
+    if mc.Count<>0 then
+     begin
+      base:=subject;
+      re1:=CoRegExp.Create;
+      re1.Pattern:=sub['x'];
+      if not(VarIsNull(sub['g'])) then re1.Global:=boolean(sub['g']);
+      if not(VarIsNull(sub['m'])) then re1.Multiline:=boolean(sub['m']);
+      if not(VarIsNull(sub['i'])) then re1.IgnoreCase:=boolean(sub['i']);
+      j:=0;
+      subject:='';
+      for i:=0 to mc.Count-1 do
+       begin
+        m:=mc.Item[i] as Match;
+        subject:=subject+Copy(base,j+1,m.FirstIndex-j);
+        //assert m.Value=Copy(base,m.FirstIndex+1,m.Length)
+        if VarIsNull(sub['n']) then
+          subject:=subject+re1.Replace(m.Value,sub['s'])
+        else
+         begin
+          sm:=(m.SubMatches as SubMatches);
+          j:=m.FirstIndex;
+          //for k:=0 to sm.Count-1 do
+          k:=sub['n']-1;
+           begin
+            //////??????? sm.Index? Pos(sm[k],m.Value)?
+            p:=sm[k];
+            l:=m.FirstIndex;
+            while (l<=Length(base)) and (Copy(base,l,Length(p))<>p) do inc(l);
+            subject:=subject+Copy(base,j+1,l-j-1);
+            subject:=subject+re1.Replace(p,sub['s']);
+            j:=l+Length(p);
+           end;
+          subject:=subject+Copy(base,j,m.FirstIndex+m.Length-j+1);
+         end;
+        j:=m.FirstIndex+m.Length;
+       end;
+      subject:=subject+Copy(base,j+1,Length(base)-j);
+     end;
+   end;
+end;
+
 procedure TFeedEater.PerformReplaces(var title,content: WideString);
 var
   sl:TStringList;
   j,rd:IJSONDocument;
   rc,rt:IJSONDocArray;
   i:integer;
-  re:RegExp;
 begin
   rc:=JSONDocArray;
   rt:=JSONDocArray;
@@ -1227,24 +1304,14 @@ begin
   for i:=0 to rc.Count-1 do
    begin
     rc.LoadItem(i,rd);
-    re:=CoRegExp.Create;
-    re.Pattern:=rd['x'];
-    if not(VarIsNull(rd['g'])) then re.Global:=boolean(rd['g']);
-    if not(VarIsNull(rd['m'])) then re.Multiline:=boolean(rd['m']);
-    if not(VarIsNull(rd['i'])) then re.IgnoreCase:=boolean(rd['i']);
-    content:=re.Replace(content,rd['s']);
+    PerformReplace(rd,content);
    end;
 
   //replaces: title
   for i:=0 to rt.Count-1 do
    begin
     rt.LoadItem(i,rd);
-    re:=CoRegExp.Create;
-    re.Pattern:=rd['x'];
-    if not(VarIsNull(rd['g'])) then re.Global:=boolean(rd['g']);
-    if not(VarIsNull(rd['m'])) then re.Multiline:=boolean(rd['m']);
-    if not(VarIsNull(rd['i'])) then re.IgnoreCase:=boolean(rd['i']);
-    title:=re.Replace(title,rd['s']);
+    PerformReplace(rd,title);
    end;
 
   //prefixes
@@ -1265,7 +1332,6 @@ var
   j,rd:IJSONDocument;
   r:IJSONDocArray;
   i:integer;
-  re:RegExp;
 begin
   r:=JSONDocArray;
   j:=JSON(['r',r]);
@@ -1282,12 +1348,7 @@ begin
   for i:=0 to r.Count-1 do
    begin
     r.LoadItem(i,rd);
-    re:=CoRegExp.Create;
-    re.Pattern:=rd['x'];
-    if not(VarIsNull(rd['g'])) then re.Global:=boolean(rd['g']);
-    if not(VarIsNull(rd['m'])) then re.Multiline:=boolean(rd['m']);
-    if not(VarIsNull(rd['i'])) then re.IgnoreCase:=boolean(rd['i']);
-    data:=re.Replace(data,rd['s']);
+    PerformReplace(rd,data);
    end;
 end;
 
@@ -1457,7 +1518,7 @@ begin
    begin
     reLink.Pattern:='<meta[^>]+?http-equiv=["'']?refresh["'']?[^>]+?content=["'']\d+?;url=([^"'']+?)["''][^>]*?>';
     mc:=reLink.Execute(data) as MatchCollection;
-    if (mc.Count<>0) and (sm[0]<>'') then
+    if mc.Count<>0 then
      begin
       FeedCombineURL(((mc[0] as Match).SubMatches as SubMatches)[0],'Meta');
       Result:=true;
