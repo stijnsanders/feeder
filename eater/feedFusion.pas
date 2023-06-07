@@ -150,7 +150,9 @@ begin
               else
                 itemurl:=FURLPrefix+jn0['canonical_url'];
               try
-                p1:=VarToStr(jn0['display_date']);//publish_date?
+                p1:=VarToStr(jn0['display_date']);
+                if p1='' then p1:=VarToStr(jn0['publish_date']);
+                if p1='' then p1:=VarToStr(jn0['created_date']);
                 if p1='' then pubDate:=UtcNow else pubDate:=ConvDate1(p1);
               except
                 pubDate:=UtcNow;
