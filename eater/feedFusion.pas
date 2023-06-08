@@ -166,14 +166,12 @@ begin
                   title:=SanitizeTitle(VarToStr(jn0['headline']))//fallback
                 else
                   title:=SanitizeTitle(VarToStr(jn1['basic']));
-                v:=jn0['subtitle'];
-                if not(VarIsNull(v)) then title:=title+' '#$2014' '+v;
 
                 jn1:=JSON(jn0['subheadlines']);
                 if jn1=nil then
-                  content:=HTMLEncode(jn0['description'])//fallback
+                  content:=HTMLEncode(VarToStr(jn0['subheadline']))//fallback
                 else
-                  content:=HTMLEncode(jn1['basic']);
+                  content:=HTMLEncode(VarToStr(jn1['basic']));
 
                 //TODO: labels -> Handler.PostTags()
 
