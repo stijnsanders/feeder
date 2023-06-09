@@ -34,7 +34,7 @@ type
 
   TRequestProcessor=class(TObject)
   public
-    function AlternateOpen(const FeedURL:WideString;
+    function AlternateOpen(const FeedURL:string;var LastMod:string;
       Request:ServerXMLHTTP60):boolean; virtual; //abstract
   end;
 
@@ -87,8 +87,8 @@ end;
 
 { TRequestProcessor }
 
-function TRequestProcessor.AlternateOpen(const FeedURL: WideString;
-  Request: ServerXMLHTTP60): boolean;
+function TRequestProcessor.AlternateOpen(const FeedURL:string;
+  var LastMod:string;Request:ServerXMLHTTP60): boolean;
 begin
   //inheriter is responsible of calling Req.open() when resulting true
   Result:=false;//default

@@ -14,7 +14,7 @@ type
 
   TRSSRequestProcessor=class(TRequestProcessor)
   public
-    function AlternateOpen(const FeedURL: WideString;
+    function AlternateOpen(const FeedURL: string; var LastMod: string;
       Request: IServerXMLHTTPRequest2): Boolean; override;
   end;
 
@@ -127,11 +127,6 @@ begin
         if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/jpeg"]/@url');
         if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/jpg"]/@url');
         if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/png"]/@url');
-        if x1=nil then
-         begin
-          x1:=x.selectSingleNode('image');
-          if (x1<>nil) and (Copy(x1.text,1,4)<>'http') then x1:=nil;
-         end;
         if x1<>nil then //<a href="?
          begin
           if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
@@ -170,10 +165,10 @@ end;
 
 { TRSSRequestProcessor }
 
-function TRSSRequestProcessor.AlternateOpen(const FeedURL: WideString;
-  Request: IServerXMLHTTPRequest2): Boolean;
+function TRSSRequestProcessor.AlternateOpen(const FeedURL: string;
+  var LastMod: string; Request: IServerXMLHTTPRequest2): Boolean;
 begin
-  if Pos(WideString('tumblr.com'),FeedURL)<>0 then
+  if Pos('tumblr.com',FeedURL)<>0 then
    begin
     Request.open('GET',FeedURL,false,EmptyParam,EmptyParam);
     Request.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x'+

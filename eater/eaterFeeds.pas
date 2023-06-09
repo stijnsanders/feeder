@@ -547,7 +547,7 @@ begin
 
               handler_i:=0;
               while (handler_i<RequestProcessorsIndex) and doreq do
-                if RequestProcessors[handler_i].AlternateOpen(FFeed.URL,r) then
+                if RequestProcessors[handler_i].AlternateOpen(FFeed.URL,FFeed.LastMod,r) then
                   doreq:=false
                 else
                   inc(handler_i);
