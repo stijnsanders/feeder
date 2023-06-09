@@ -127,6 +127,11 @@ begin
         if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/jpeg"]/@url');
         if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/jpg"]/@url');
         if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/png"]/@url');
+        if x1=nil then
+         begin
+          x1:=x.selectSingleNode('image');
+          if (x1<>nil) and (Copy(x1.text,1,4)<>'http') then x1:=nil;
+         end;
         if x1<>nil then //<a href="?
          begin
           if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
