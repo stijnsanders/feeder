@@ -153,7 +153,7 @@ begin
                 if itemurl='' then
                  begin
                   itemurl:=VarToStr(JSON(JSON(jn0['taxonomy'])['primary_section'])['_id']);
-                  title:=#$D83D#$DEC8#$2009;
+                  title:=#$2139#$FE0F#$2009;
                  end;
                 if itemurl<>'' then itemurl:=FURLPrefix+itemurl;
                end
