@@ -139,13 +139,23 @@ begin
              begin
               jn0:=JSON(vNodes[inode]);
               itemid:=jn0['_id'];
+              title:='';//see below
               if VarIsNull(jn0['canonical_url']) then
                begin
                 jw0:=JSONEnum(jn0['websites']);
                 if jw0.Next then
-                  itemurl:=FURLPrefix+JSON(jw0.Value)['website_url']
+                 begin
+                  itemurl:=JSON(jw0.Value)['website_url'];
+                 end
                 else
-                  itemurl:='';//else raise?
+                  itemurl:='';//raise?
+                jw0:=nil;
+                if itemurl='' then
+                 begin
+                  itemurl:=VarToStr(JSON(JSON(jn0['taxonomy'])['primary_section'])['_id']);
+                  title:=#$D83D#$DEC8#$2009;
+                 end;
+                if itemurl<>'' then itemurl:=FURLPrefix+itemurl;
                end
               else
                 itemurl:=FURLPrefix+jn0['canonical_url'];
@@ -163,9 +173,9 @@ begin
 
                 jn1:=JSON(jn0['headlines']);
                 if jn1=nil then
-                  title:=SanitizeTitle(VarToStr(jn0['headline']))//fallback
+                  title:=title+SanitizeTitle(VarToStr(jn0['headline']))//fallback
                 else
-                  title:=SanitizeTitle(VarToStr(jn1['basic']));
+                  title:=title+SanitizeTitle(VarToStr(jn1['basic']));
 
                 jn1:=JSON(jn0['subheadlines']);
                 if jn1=nil then
@@ -187,7 +197,9 @@ begin
                end;
              end;
            end;
+          je0:=nil;
          end;
+      jd0:=nil;
      end;
    end;
   Handler.ReportSuccess('Fusion');
