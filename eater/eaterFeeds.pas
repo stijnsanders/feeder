@@ -597,7 +597,13 @@ begin
         except
           on e:Exception do
            begin
-            FFeed.Result:='['+e.ClassName+']'+e.Message;
+            if e is EAlternateProcessFeed then
+             begin
+              FeedData:=e.Message;//see AlternateOpen
+              FeedDataType:='text/plain';
+             end
+            else
+              FFeed.Result:='['+e.ClassName+']'+e.Message;
             if not(loadext) and (e is EOleException)
               and ((e.Message='A security error occurred')
               or (e.Message='A connection with the server could not be established'))

@@ -2,7 +2,7 @@ unit eaterReg;
 
 interface
 
-uses MSXML2_TLB;
+uses SysUtils, MSXML2_TLB;
 
 type
   IFeedStore=interface
@@ -37,6 +37,8 @@ type
     function AlternateOpen(const FeedURL:string;var LastMod:string;
       Request:ServerXMLHTTP60):boolean; virtual; //abstract
   end;
+
+  EAlternateProcessFeed=class(Exception);
 
 var
   FeedProcessors:array of TFeedProcessor;
@@ -91,6 +93,7 @@ function TRequestProcessor.AlternateOpen(const FeedURL:string;
   var LastMod:string;Request:ServerXMLHTTP60): boolean;
 begin
   //inheriter is responsible of calling Req.open() when resulting true
+  //or trowing an EAlternateProcessFeed exception to handle the request in ProcessFeed
   Result:=false;//default
 end;
 
