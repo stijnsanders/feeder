@@ -96,7 +96,7 @@ begin
      begin
       inc(i);
       j:=i;
-      while (j<=l) and (Value[j]<>' ') and (Value[j]<>'>') and (Value[j]<>'/') do inc(j);
+      while (j<=l) and (Value[j]>' ') and (Value[j]<>'>') and (Value[j]<>'/') do inc(j);
       s:=LowerCase(Copy(Value,i,j-i));
       //skippable?
       if (s='a') or (s='div') or (s='p') or (s='center') then
