@@ -29,7 +29,7 @@ end;
 procedure TTitaniumFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  jnodes,jcaption,jThumbs:IJSONDocArray;
+  jCards,jItems,jFeed,jThumbs:IJSONDocArray;
   jdoc,jn0,jn1,jd0,jd1:IJSONDocument;
   p1,p2,itemid,itemurl:string;
   pubDate:TDateTime;
@@ -37,8 +37,8 @@ var
   i,j,k,n:integer;
   v:Variant;
 begin
-  jnodes:=JSONDocArray;
-  jd0:=JSON(['cards',jnodes]);
+  jCards:=JSONDocArray;
+  jd0:=JSON(['cards',jCards]);
   jdoc:=JSON(['hub',JSON(['data',JSON([
     FindMatch(FeedData,'"data":{"([^"]*?)":{"[^"]+?":\['),
     jd0])])]);
@@ -57,24 +57,28 @@ begin
       //ignore
     end;
 
-  jcaption:=JSONDocArray;
+  jItems:=JSONDocArray;
+  jFeed:=JSONDocArray;
   jThumbs:=JSONDocArray;
-  jn0:=JSON(['contents',jcaption,'feeds',jThumbs]);
+  jn0:=JSON(['contents',jItems,'feed',jFeed]);
   jn1:=JSON(['media',jThumbs]);
   jd1:=JSON;
   p1:='';
   p2:='';
-  for i:=0 to jnodes.Count-1 do
+  //for i:=0 to jCards.Count-1 do
+  i:=0;
+  while i<jCards.Count do
    begin
-    jnodes.LoadItem(i,jn0);
+    jCards.LoadItem(i,jn0);
+    inc(i);
 
     //coalesce contents under feed onto contents
-    for j:=0 to jThumbs.Count-1 do
-      jcaption.AddJSON(jThumbs.GetJSON(j));
+    for j:=0 to jFeed.Count-1 do
+      jCards.AddJSON(jFeed.GetJSON(j));
 
-    for j:=0 to jcaption.Count-1 do
+    for j:=0 to jItems.Count-1 do
      begin
-      jcaption.LoadItem(j,jn1);
+      jItems.LoadItem(j,jn1);
 
       itemid:=VarToStr(jn1['id']);
       itemurl:=VarToStr(jn1['localLinkUrl']);
