@@ -1224,68 +1224,6 @@ begin
   content:=Copy(content,i,Length(content)-i+1);
 end;
 
-procedure PerformReplace(data:IJSONDocument;var subject:WideString);
-var
-  re,re1:RegExp;
-  sub:IJSONDocument;
-  base,p:WideString;
-  i,j,k,l:integer;
-  mc:MatchCollection;
-  m:Match;
-  sm:SubMatches;
-begin
-  re:=CoRegExp.Create;
-  re.Pattern:=data['x'];
-  if not(VarIsNull(data['g'])) then re.Global:=boolean(data['g']);
-  if not(VarIsNull(data['m'])) then re.Multiline:=boolean(data['m']);
-  if not(VarIsNull(data['i'])) then re.IgnoreCase:=boolean(data['i']);
-  sub:=JSON(data['p']);
-  if sub=nil then
-    subject:=re.Replace(subject,data['s'])
-  else
-   begin
-    mc:=re.Execute(subject) as MatchCollection;
-    if mc.Count<>0 then
-     begin
-      base:=subject;
-      re1:=CoRegExp.Create;
-      re1.Pattern:=sub['x'];
-      if not(VarIsNull(sub['g'])) then re1.Global:=boolean(sub['g']);
-      if not(VarIsNull(sub['m'])) then re1.Multiline:=boolean(sub['m']);
-      if not(VarIsNull(sub['i'])) then re1.IgnoreCase:=boolean(sub['i']);
-      j:=0;
-      subject:='';
-      for i:=0 to mc.Count-1 do
-       begin
-        m:=mc.Item[i] as Match;
-        subject:=subject+Copy(base,j+1,m.FirstIndex-j);
-        //assert m.Value=Copy(base,m.FirstIndex+1,m.Length)
-        if VarIsNull(sub['n']) then
-          subject:=subject+re1.Replace(m.Value,sub['s'])
-        else
-         begin
-          sm:=(m.SubMatches as SubMatches);
-          j:=m.FirstIndex;
-          //for k:=0 to sm.Count-1 do
-          k:=sub['n']-1;
-           begin
-            //////??????? sm.Index? Pos(sm[k],m.Value)?
-            p:=sm[k];
-            l:=m.FirstIndex;
-            while (l<=Length(base)) and (Copy(base,l,Length(p))<>p) do inc(l);
-            subject:=subject+Copy(base,j+1,l-j-1);
-            subject:=subject+re1.Replace(p,sub['s']);
-            j:=l+Length(p);
-           end;
-          subject:=subject+Copy(base,j,m.FirstIndex+m.Length-j+1);
-         end;
-        j:=m.FirstIndex+m.Length;
-       end;
-      subject:=subject+Copy(base,j+1,Length(base)-j);
-     end;
-   end;
-end;
-
 procedure TFeedEater.PerformReplaces(var title,content: WideString);
 var
   sl:TStringList;
