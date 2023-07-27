@@ -121,7 +121,7 @@ begin
        end;
       xl1:=nil;
 
-      if not IsProbablyHTML(content) then
+      if not(HTMLStartsWithImg(content))then
        begin
         x1:=x.selectSingleNode('atom:link[@rel="enclosure" and @type="image/jpeg"]/@href');
         if x1=nil then x1:=x.selectSingleNode('atom:link[@rel="enclosure" and @type="image/png"]/@href');
