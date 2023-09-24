@@ -3,8 +3,9 @@ m:TStreamAdapter;
 d:DOMDocument60;
 db:TDataConnection;
 qr:TQueryResult;
-c,c1:string;
-cn:integer;
+c,c1,pn:string;
+cn,i,j,l:integer;
+p:IXxmParameter;
 
 const
 DefaultReadWidth=32;
@@ -18,88 +19,84 @@ var
   ur:Variant;
 begin
   x:=xl.nextNode as IXMLDOMElement;
-  while x<>nil do
+  if x<>nil then
    begin
-    s:=VarToStr(x.getAttribute('xmlUrl'));
-    if s<>'' then
+    Context.SendHTML('<div style="margin-left:0.5em;">'#13#10);
+    while x<>nil do
      begin
-      Context.SendHTML('<p>'+HTMLEncode(s)+' ('+Group+')</p>');
-      Context.Flush;
-
-      db:=Session.Connection;
-
-      //feed exists?
-      t:=VarToStr(x.getAttribute('f:label'));
-      qr:=TQueryResult.Create(db,'select id, name from "Feed" where url=$1',[s]);
-      try
-        if qr.EOF then id:=0 else
-         begin
-          id:=qr.GetInt(0);
-          if t='' then t:=qr.GetStr(1);
-         end;
-      finally
-        qr.Free;
-      end;
-      if id=0 then
+      s:=VarToStr(x.getAttribute('xmlUrl'));
+      if s<>'' then
        begin
-        //nope, add it
-        if t='' then t:=NameFromFeedURL(s);
-        id:=db.Insert('Feed',['name',t,'url',s,'created',double(UtcNow)],'id');
-        id1:=0;
-       end
-      else
-       begin
-        //already subscribed?
-        qr:=TQueryResult.Create(db,'select id from "Subscription" where user_id=$1 and feed_id=$2',[Session.UserID,id]);
+        //feed exists?
+        t:=VarToStr(x.getAttribute('f:label'));
+        qr:=TQueryResult.Create(db,'select id, name from "Feed" where url=$1',[s]);
         try
-          if qr.EOF then id1:=0 else id1:=qr.GetInt(0);
+          if qr.EOF then id:=0 else
+           begin
+            id:=qr.GetInt(0);
+            if t='' then t:=qr.GetStr(1);
+           end;
         finally
           qr.Free;
         end;
-        //if not, mark recent posts as unread
+        if id=0 then
+         begin
+          if t='' then t:=NameFromFeedURL(s);
+          id1:=0;
+         end
+        else
+         begin
+          //already subscribed?
+          qr:=TQueryResult.Create(db,'select id from "Subscription" where user_id=$1 and feed_id=$2',[Session.UserID,id]);
+          try
+            if qr.EOF then id1:=0 else id1:=qr.GetInt(0);
+          finally
+            qr.Free;
+          end;
+         end;
+      
+        feedcolor:=VarToStr(x.getAttribute('f:color'));
+        if not TryStrToInt(VarToStr(x.getAttribute('f:readwidth')),rw) then
+          rw:=DefaultReadWidth;
+        autounread:=VarToStr(x.getAttribute('f:autounread'));
+        if autounread='' then ur:=Null else
+          if TryStrToInt(autounread,ur0) then ur:=ur0 else ur:=Null;
+
         if id1=0 then
-          db.Execute('insert into "UserPost" (user_id,post_id,suscription_id,pubdate) select $1,P.id,S.id,P.pubdate '
-            +' from "Post"'
-            +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
-            +' where P.feed_id=$2 and P.pubDate>$3',
-            [Session.UserID,id,double(UtcNow-366.0)]);
+          Context.SendHTML('<label><input type="checkbox" name="f" value="'+URLEncode(
+              ['l',s
+              ,'f',id
+              ,'t',t
+              ,'c',feedcolor
+              ,'x',Group
+              ,'w',rw
+              ,'u',ur
+              ])+'" checked="1" />')
+        else
+          Context.SendHTML('&emsp;');
+        Context.SendHTML('&nbsp;'+ShowLabel(t,feedcolor,'')+'&nbsp;'+HTMLEncode(t)+' <span style="color:silver;">'+HTMLEncode(s)+'</span>');
+        if Group<>'' then Context.SendHTML(' ('+HTMLEncode(Group)+')');
+        if id1=0 then
+          Context.SendHTML('</label>');
+        Context.SendHTML('<br />'#13#10);
+  
        end;
-    
-      feedcolor:=VarToStr(x.getAttribute('f:color'));
-      if not TryStrToInt(VarToStr(x.getAttribute('f:readwidth')),rw) then
-        rw:=DefaultReadWidth;
-      autounread:=VarToStr(x.getAttribute('f:autounread'));
-      if autounread='' then ur:=Null else
-        if TryStrToInt(autounread,ur0) then ur0:=ur else ur:=Null;
-
-      if id1=0 then
-       begin
-        //add subscription
-        db.Insert('Subscription',
-          ['user_id',Session.UserID
-          ,'feed_id',id
-          ,'label',t
-          ,'color',feedcolor
-          ,'category',Group
-          ,'readwidth',rw
-          ,'autounread',ur
-          ,'created',double(UtcNow)
-          ],'id');
-       end
-      else
-       begin
-        //update category? (allow duplicates?)
-       end;
-
+  
+      s:=VarToStr(x.getAttribute('title'));
+      if s='' then s:=Group else if Group<>'' then s:=Group+'\'+s;
+      DoOutlines(x.selectNodes('outline'),s);
+      DoOutlines(x.selectNodes('opml:outline'),s);
+      x:=xl.nextNode as IXMLDOMElement;
      end;
-
-    s:=VarToStr(x.getAttribute('title'));
-    if s='' then s:=Group else if Group<>'' then s:=Group+'\'+s;
-    DoOutlines(x.selectNodes('outline'),s);
-    DoOutlines(x.selectNodes('opml:outline'),s);
-    x:=xl.nextNode as IXMLDOMElement;
+    Context.SendHTML('</div>'#13#10);
    end;
 end;
+
+var
+  s,t,u,g,feedcolor,autounread:string;
+  id,id1,rw,ur0:integer;
+  ur:Variant;
+
 
 ]][[
 Context.Include('dHead.xxmi');
@@ -189,6 +186,9 @@ case Context['x'].AsInteger of
    end;
   3://import upload
    begin
+    <form method="post" action="?">
+    <input type="hidden" name="x" value="4" />
+    db:=Session.Connection;
     m:=TStreamAdapter.Create(TMemoryStream.Create,soOwned);
     try
       (m as IUnknown)._AddRef;
@@ -203,25 +203,95 @@ case Context['x'].AsInteger of
 
       d.setProperty('SelectionNamespaces','xmlns:opml=''http://opml.org/spec2'' xmlns:f=''http://yoy.be/schema/2018/feeder_subs''');
       
-      db:=Session.Connection;
-      db.BeginTrans;
-      try
-        DoOutlines(d.documentElement.selectNodes('body/outline'),Context['c'].Value);
-        DoOutlines(d.documentElement.selectNodes('opml:body/opml:outline'),Context['c'].Value);
-
-        db.CommitTrans;
-      except
-        db.RollbackTrans;
-        raise;
-      end;
+      DoOutlines(d.documentElement.selectNodes('body/outline'),Context['c'].Value);
+      DoOutlines(d.documentElement.selectNodes('opml:body/opml:outline'),Context['c'].Value);
 
     finally
       d:=nil;
+      db:=nil;
       //m.Free;
       (m as IUnknown)._Release;
     end;
-    <<p><a href="Feeds.xxm">continue...</a></p>>
+    <p><input type="submit" value=" Add " /></p>
+    </form>
+    <p><a href="?">back</a></p>
    end;
+  4://import selected
+   begin
+    //TODO
+
+    db:=Session.Connection;
+    db.BeginTrans;
+    try
+
+      p:=Context['f'];
+      while p<>nil do
+       begin
+        pn:=p.Value;
+        l:=Length(pn);
+        i:=2;//assert pn[1]='?'
+        while i<=l do
+         begin
+          //assert pn[i+1]='='
+          j:=i+2;
+          while (j<=l) and (pn[j]<>'&') do inc(j);
+          u:=URLDecode(Copy(pn,i+2,j-i-2));
+          case pn[i] of
+            'l':s:=u;
+            'f':id:=StrToInt(u);
+            't':t:=u;
+            'c':feedcolor:=u;
+            'x':g:=u;
+            'w':rw:=StrToInt(u);
+            'u':if u='' then ur:=Null else ur:=StrToInt(u);
+            else raise Exception.Create('Unexpected parameter "'+pn[i]+'"');
+          end;
+          i:=j+1;
+         end;
+        <<p>>=s</p>>
+        Context.Flush;
+
+        if id=0 then
+          id:=db.Insert('Feed',['name',t,'url',s,'created',double(UtcNow)],'id');
+
+        if id1=0 then
+         begin
+          //add subscription
+          db.Insert('Subscription',
+            ['user_id',Session.UserID
+            ,'feed_id',id
+            ,'label',t
+            ,'color',feedcolor
+            ,'category',g
+            ,'readwidth',rw
+            ,'autounread',ur
+            ,'created',double(UtcNow)
+            ],'id');
+          //mark recent posts as unread
+          db.Execute('insert into "UserPost" (user_id,post_id,subscription_id,pubdate) select $1,P.id,S.id,P.pubdate '
+            +' from "Post" P'
+            +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
+            +' where P.feed_id=$2 and P.pubDate>$3',
+            [Session.UserID,id,double(UtcNow-366.0)]);
+         end
+        else
+         begin
+          //update category? (allow duplicates?)
+         end;
+
+        p:=p.NextBySameName;
+       end;
+
+
+      db.CommitTrans;
+    except
+      db.RollbackTrans;
+      raise;
+    end;
+
+    <p><a href="Feeds.xxm">continue...</a></p>
+   end
+  //5:
   else
     raise Exception.Create('Unknown action');
 end;

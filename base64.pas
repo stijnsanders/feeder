@@ -12,6 +12,8 @@ const
   Base64Codes:array[0..63] of AnsiChar=
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
+{$R-}
+
 function base64encode(const x:UTF8String):UTF8String;
 type
   TBArr=array[0..0] of byte;
