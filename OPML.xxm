@@ -248,7 +248,7 @@ case Context['x'].AsInteger of
           end;
           i:=j+1;
          end;
-        <<p>>=s</p>>
+        <<p>>=s<</p>>
         Context.Flush;
 
         if id=0 then
