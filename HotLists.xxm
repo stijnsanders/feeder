@@ -51,7 +51,7 @@ qr:=TQueryResult.Create(Session.Connection,
   ' ) X on X.feed_id=S.feed_id'+
   ' inner join "Feed" F on F.id=S.feed_id'+
   ' where H.user_id=$1'+
-  'group by H.id'
+  ' group by H.id'
   //+' order by S.category, S.label, F.name, S.id'
   ,[Session.UserID]);
 try

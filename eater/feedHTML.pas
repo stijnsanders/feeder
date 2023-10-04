@@ -275,8 +275,9 @@ begin
       url:=HTMLDecode(sm[p['n']-1]);
       id:=url;//?
       //TODO: CombineURL!
-      if p['prefix']<>false then url:=FURL+url; //"<>false" because of variant
-
+      if (p['prefix']<>false) //"<>false" because of variant
+        and not(StartsWith(LowerCase(url),LowerCase(FURL)))
+        then url:=FURL+url;
 
       if Handler.CheckNewPost(id,url,d) then
        begin
@@ -304,7 +305,9 @@ begin
           s:=sm[p['n']-1];
           if s<>'' then
            begin
-            if p['prefix']<>false then s:=FURL+s; //"<>false" because of variant
+            if p['prefix']<>false //"<>false" because of variant
+              and not(StartsWith(LowerCase(s),LowerCase(FURL)))
+              then s:=FURL+s;
             content:='<img class="postthumb" referrerpolicy="no-referrer'+
               '" src="'+HTMLEncodeQ(s)+
               //'" alt="'+???
