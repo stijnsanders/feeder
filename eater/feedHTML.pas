@@ -200,7 +200,7 @@ var
   sm,sm1:SubMatches;
   s:string;
   mci,i,n,l,contentN:integer;
-  title,url,content,w,imgurl,crs1:WideString;
+  title,id,url,content,w,imgurl,crs1:WideString;
   d:TDateTime;
   p:IJSONDocument;
   re,re1:RegExp;
@@ -273,9 +273,12 @@ begin
 
       p:=JSON(FFeedParams['url']);
       url:=HTMLDecode(sm[p['n']-1]);
+      id:=url;//?
       //TODO: CombineURL!
+      if p['prefix']<>false then url:=FURL+url; //"<>false" because of variant
 
-      if Handler.CheckNewPost(url,FURL+url,d) then
+
+      if Handler.CheckNewPost(id,url,d) then
        begin
         p:=JSON(FFeedParams['title']);
         title:=sm[p['n']-1];
@@ -301,8 +304,9 @@ begin
           s:=sm[p['n']-1];
           if s<>'' then
            begin
+            if p['prefix']<>false then s:=FURL+s; //"<>false" because of variant
             content:='<img class="postthumb" referrerpolicy="no-referrer'+
-              '" src="'+HTMLEncodeQ(FURL+s)+
+              '" src="'+HTMLEncodeQ(s)+
               //'" alt="'+???
               '" /><br />'#13#10+content;
            end;
@@ -314,7 +318,7 @@ begin
     Handler.ReportSuccess('HTML:P');
    end
   else
-  if not(VarIsNull(FFeedParams['fetchItems'])) then // "=true" because variant!
+  if not(VarIsNull(FFeedParams['fetchItems'])) then
    begin
     r:=CoServerXMLHTTP60.Create;
     n:=FFeedParams['fetchItems'];
