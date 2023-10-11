@@ -199,13 +199,15 @@ var
   m,m1:Match;
   sm,sm1:SubMatches;
   s:string;
-  mci,i,n,l,contentN:integer;
+  mci,i,n,l,contentN,skipStale:integer;
+  contentAll:boolean;
   title,id,url,content,w,imgurl,crs1:WideString;
   d:TDateTime;
   p:IJSONDocument;
   re,re1:RegExp;
   r:ServerXMLHTTP60;
   v:Variant;
+  urls:TStringList;
 begin
   inherited;
   p:=JSON(FFeedParams['feedname']);
@@ -350,10 +352,13 @@ begin
     n:=FFeedParams['fetchItems'];
     p:=JSON(FFeedParams['content']);
     re:=CoRegExp.Create;
-    re.Global:=false;
+    re.Global:=p['all']=true;
     re.IgnoreCase:=true;
     re.Pattern:=p['p'];
     contentN:=p['n'];
+    contentAll:=p['all']=true;
+    if VarIsNull(FFeedParams['skipStale']) then skipStale:=1
+      else skipStale:=FFeedParams['skipStale'];
 
     p:=JSON(p['r']);
     if p=nil then
@@ -369,96 +374,171 @@ begin
 
     //for mci:=0 to mc.Count-1 do
     mci:=0; //stop at first existing, see below
-    while mci<mc.Count do
-     begin
-      m:=mc[mci] as Match;
-      sm:=m.SubMatches as SubMatches;
-
-      //defaults, see below
-      d:=UtcNow;
-      title:='';
-      content:='';
-      imgurl:='';
-
-      r.open('GET',sm[n-1],false,EmptyParam,EmptyParam);
-      r.send(EmptyParam);
-      if r.status=200 then
-      w:=r.responseText;
-
-      mc1:=re.Execute(r.responseText) as MatchCollection;//(w)?
-      if mc1.Count<>0 then
+    p:=JSON;
+    urls:=TStringList.Create;
+    try
+      urls.Sorted:=true;
+      urls.Duplicates:=dupIgnore;
+      while mci<mc.Count do
        begin
+        m:=mc[mci] as Match;
+        sm:=m.SubMatches as SubMatches;
 
-        if FindPrefixAndCrop(w,FFeedParams['infoJson']) then
+        //defaults, see below
+        d:=UtcNow;
+        title:='';
+        content:='';
+        imgurl:='';
+
+        url:=sm[n-1];
+        if urls.IndexOf(url)=-1 then
          begin
-          try
-            p.Parse(w);
-          except
-            on EJSONDecodeException do ;//ignore trailing </script>
-          end;
-          v:=p['@graph'];
-          for i:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+          urls.Add(url);
+
+          r.open('GET',url,false,EmptyParam,EmptyParam);
+          r.send(EmptyParam);
+          if r.status=200 then
+          w:=r.responseText;//see below
+
+          if VarIsNull(FFeedParams['clip']) then
+            mc1:=re.Execute(r.responseText) as MatchCollection
+          else
            begin
-            p:=JSON(v[i]);
-            if p['@type']='Article' then
-             begin
-              title:=p['headline'];
-              imgurl:=p['thumbnailUrl'];
-              try
-                d:=ConvDate1(p['datePublished']);
-              except
-                //d:=UtcNow;//see above
-              end;
-              //p['keywords']?
-              //p['author']?
-             end
-            else
-            if p['@type']='WebPage' then
-             begin
-              url:=p['url'];
-              //p['thumbnailUrl']//assert same as above
-              //p['name']?
-              //p['description']?
-             end
-            {
-            else
-            if p['@type']='ImageObject' then
-             begin
-              imageurl:=p['url'];
-              //p['caption']?
-             end
-            }
-            //else if p['@type']=''
+            content:=r.responseText;
+            FindPrefixAndCrop(content,FFeedParams['clip']);//if?
+            mc1:=re.Execute(content) as MatchCollection;
            end;
-         end
-        else
-          raise Exception.Create('infoJson not found');
 
-        if Handler.CheckNewPost(url,url,d) then
-         begin
-          if mc1.Count=0 then
-            raise Exception.Create('content not found');
-          m1:=mc1[0] as Match;
-          sm1:=m1.SubMatches as SubMatches;
-          content:=sm1[contentN-1];
+          if mc1.Count<>0 then
+           begin
 
-          if re1<>nil then
-            content:=re1.Replace(content,crs1);
+            if FindPrefixAndCrop(w,FFeedParams['infoJson']) then
+             begin
+              try
+                p.Parse(w);
+              except
+                on EJSONDecodeException do ;//ignore trailing </script>
+              end;
+              v:=p['@graph'];
+              if VarIsNull(v) then
+               begin
+                //p['@type']='NewsArticle'
+                title:=p['headline'];
+                imgurl:=VarToStr(p['thumbnailUrl']);
+                try
+                  d:=ConvDate1(p['datePublished']);
+                except
+                  //d:=UtcNow;//see above
+                end;
+                //p['keywords']? p['articleSection']?
+                if imgurl='' then
+                 begin
+                  v:=p['image'];
+                  if VarIsArray(v) then
+                   begin
+                    p:=JSON(v[0]);
+                    imgurl:=VarToStr(p['url']);
+                   end;
+                 end;
 
-          if imgurl<>'' then
-            content:='<img class="postthumb" referrerpolicy="no-referrer'+
-              '" src="'+HTMLEncodeQ(imgurl)+
-              //'" alt="'+???
-              '" /><br />'#13#10+content;
+               end
+              else
+              for i:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+               begin
+                p:=JSON(v[i]);
+                if p['@type']='Article' then
+                 begin
+                  title:=p['headline'];
+                  imgurl:=p['thumbnailUrl'];
+                  try
+                    d:=ConvDate1(p['datePublished']);
+                  except
+                    //d:=UtcNow;//see above
+                  end;
+                  //p['keywords']?
+                  //p['author']?
+                 end
+                else
+                if p['@type']='WebPage' then
+                 begin
+                  url:=p['url'];
+                  //p['thumbnailUrl']//assert same as above
+                  //p['name']?
+                  //p['description']?
+                 end
+                {
+                else
+                if p['@type']='ImageObject' then
+                 begin
+                  imageurl:=p['url'];
+                  //p['caption']?
+                 end
+                }
+                //else if p['@type']=''
+               end;
+             end
+            else
+              raise Exception.Create('infoJson not found');
 
-          Handler.RegisterPost(title,content);
-         end
-        else
-          mci:=mc.Count;//first existing, stop checking
+            if Handler.CheckNewPost(url,url,d) then
+             begin
+              if contentAll then
+               begin
+                content:='';
+                for i:=0 to mc1.Count-1 do
+                 begin
+                  m1:=mc1[i] as Match;
+                  if contentN=0 then
+                    w:=m1.Value
+                  else
+                   begin
+                    sm1:=m1.SubMatches as SubMatches;
+                    w:=sm1[contentN-1];
+                   end;
+                  if re1<>nil then
+                    w:=re1.Replace(w,crs1);
+                  if i<>0 then
+                    content:=content+VarToStr(FFeedParams['separator']);
+                  content:=content+w;
+                 end;
+               end
+              else
+               begin
+                m1:=mc1[0] as Match;
+                if contentN=0 then
+                  content:=m1.Value
+                else
+                 begin
+                  sm1:=m1.SubMatches as SubMatches;
+                  content:=sm1[contentN-1];
+                 end;
+                if re1<>nil then
+                  content:=re1.Replace(content,crs1);
+               end;
 
+              if imgurl<>'' then
+                content:='<img class="postthumb" referrerpolicy="no-referrer'+
+                  '" src="'+HTMLEncodeQ(imgurl)+
+                  //'" alt="'+???
+                  '" /><br />'#13#10+content;
+
+              Handler.RegisterPost(title,content);
+             end
+            else
+             begin
+              //post exists, stop checking
+              dec(skipStale);
+              if skipStale<=0 then
+                mci:=mc.Count;
+             end;
+
+           end;
+         end;
+        inc(mci);
        end;
-      inc(mci);
-     end;
+    finally
+      urls.Free;
+    end;
 
     Handler.ReportSuccess('HTML:Q');
    end
