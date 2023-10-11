@@ -213,7 +213,7 @@ begin
    begin
     re:=CoRegExp.Create;
     re.Pattern:=p['p'];
-    re.IgnoreCase:=p['i']='true';
+    re.IgnoreCase:=p['i']=true;
     //re.Multiline:=
     mc:=re.Execute(FFeedData) as MatchCollection;
     if mc.Count<>0 then
@@ -227,95 +227,118 @@ begin
   mc:=FPostItem.Execute(FFeedData) as MatchCollection;
   if not(VarIsNull(FFeedParams['pubDate'])) then
    begin
+
+    if VarIsNull(FFeedParams['match']) then
+      re1:=nil
+    else
+     begin
+      p:=JSON(FFeedParams['match']);
+      re1:=CoRegExp.Create;
+      re1.Pattern:=p['p'];
+      re1.IgnoreCase:=p['i']=true;
+      //re1.Multiline:=
+     end;
+
     for mci:=0 to mc.Count-1 do
      begin
       m:=mc[mci] as Match;
-      sm:=m.SubMatches as SubMatches;
-      try
-        p:=JSON(FFeedParams['pubDate']);
-        s:=sm[p['n']-1];
-
-        if p['parse']='1' then d:=ConvDate1(s) else
-        if p['parse']='2' then d:=ConvDate2(s) else
-        if p['parse']='sloppy' then
-         begin
-
-          l:=Length(s);
-          i:=1;
-          while (i<=l) and not(AnsiChar(s[i]) in ['0'..'9']) do inc(i);
-          n:=0;
-          while (i<=l) and (AnsiChar(s[i]) in ['0'..'9']) do
-           begin
-            n:=n*10+(byte(s[i]) and $F);
-            inc(i);
-           end;
-          inc(i);//' '
-          s:=Copy(s,i,l-i+1);
-          if StartsWith(s,'hour ago') then d:=UtcNow-1.0/24.0 else
-          if StartsWith(s,'hours ago') then d:=UtcNow-n/24.0 else
-          if StartsWith(s,'day ago') then d:=UtcNow-1.0 else
-          if StartsWith(s,'days ago') then d:=UtcNow-n else
-          if StartsWith(s,'week ago') then d:=UtcNow-7.0 else
-          if StartsWith(s,'weeks ago') then d:=UtcNow-n*7.0 else
-          if StartsWith(s,'month ago') then d:=UtcNow-30.0 else
-          if StartsWith(s,'months ago') then d:=UtcNow-n*30.0 else
-            raise Exception.Create('Unknown time interval');
-
-         end
-        else
-          raise Exception.Create('Unknown PubDate Parse "'+VarToStr(p['parse'])+'"');
-
-      except
-        d:=UtcNow;
-      end;
-
-      //TODO FFeedParams['guid']
-
-      p:=JSON(FFeedParams['url']);
-      url:=HTMLDecode(sm[p['n']-1]);
-      id:=url;//?
-      //TODO: CombineURL!
-      if (p['prefix']<>false) //"<>false" because of variant
-        and not(StartsWith(LowerCase(url),LowerCase(FURL)))
-        then url:=FURL+url;
-
-      if Handler.CheckNewPost(id,url,d) then
+      if re1<>nil then
        begin
-        p:=JSON(FFeedParams['title']);
-        title:=sm[p['n']-1];
-        if p['trim']=true then title:=Trim(title);
-        title:=SanitizeTitle(c1(title));
-
-        p:=JSON(FFeedParams['content']);
-        if p=nil then
-          content:=''
+        mc1:=re1.Execute(m.Value) as MatchCollection;
+        if mc1.Count=0 then
+          m:=nil
         else
-         begin
-          content:=c1(sm[p['n']-1]);
-          //more?
-
-          //TODO: absorb THTMLFeedProcessor1 here:
-          //TODO: series of replaces
-
-         end;
-
-        p:=JSON(FFeedParams['postThumb']);
-        if p<>nil then
-         begin
+          m:=mc1[0] as Match; //assert mc1.Count=1!
+       end;
+      if m<>nil then
+       begin
+        sm:=m.SubMatches as SubMatches;
+        try
+          p:=JSON(FFeedParams['pubDate']);
           s:=sm[p['n']-1];
-          if s<>'' then
-           begin
-            if p['prefix']<>false //"<>false" because of variant
-              and not(StartsWith(LowerCase(s),LowerCase(FURL)))
-              then s:=FURL+s;
-            content:='<img class="postthumb" referrerpolicy="no-referrer'+
-              '" src="'+HTMLEncodeQ(s)+
-              //'" alt="'+???
-              '" /><br />'#13#10+content;
-           end;
-         end;
 
-        Handler.RegisterPost(title,content);
+          if p['parse']='1' then d:=ConvDate1(s) else
+          if p['parse']='2' then d:=ConvDate2(s) else
+          if p['parse']='sloppy' then
+           begin
+
+            l:=Length(s);
+            i:=1;
+            while (i<=l) and not(AnsiChar(s[i]) in ['0'..'9']) do inc(i);
+            n:=0;
+            while (i<=l) and (AnsiChar(s[i]) in ['0'..'9']) do
+             begin
+              n:=n*10+(byte(s[i]) and $F);
+              inc(i);
+             end;
+            inc(i);//' '
+            s:=Copy(s,i,l-i+1);
+            if StartsWith(s,'hour ago') then d:=UtcNow-1.0/24.0 else
+            if StartsWith(s,'hours ago') then d:=UtcNow-n/24.0 else
+            if StartsWith(s,'day ago') then d:=UtcNow-1.0 else
+            if StartsWith(s,'days ago') then d:=UtcNow-n else
+            if StartsWith(s,'week ago') then d:=UtcNow-7.0 else
+            if StartsWith(s,'weeks ago') then d:=UtcNow-n*7.0 else
+            if StartsWith(s,'month ago') then d:=UtcNow-30.0 else
+            if StartsWith(s,'months ago') then d:=UtcNow-n*30.0 else
+              raise Exception.Create('Unknown time interval');
+
+           end
+          else
+            raise Exception.Create('Unknown PubDate Parse "'+VarToStr(p['parse'])+'"');
+
+        except
+          d:=UtcNow;
+        end;
+
+        //TODO FFeedParams['guid']
+
+        p:=JSON(FFeedParams['url']);
+        url:=HTMLDecode(sm[p['n']-1]);
+        id:=url;//?
+        //TODO: CombineURL!
+        if (p['prefix']<>false) //"<>false" because of variant
+          and not(StartsWith(LowerCase(url),LowerCase(FURL)))
+          then url:=FURL+url;
+
+        if Handler.CheckNewPost(id,url,d) then
+         begin
+          p:=JSON(FFeedParams['title']);
+          title:=sm[p['n']-1];
+          if p['trim']=true then title:=Trim(title);
+          title:=SanitizeTitle(c1(title));
+
+          p:=JSON(FFeedParams['content']);
+          if p=nil then
+            content:=''
+          else
+           begin
+            content:=c1(sm[p['n']-1]);
+            //more?
+
+            //TODO: absorb THTMLFeedProcessor1 here:
+            //TODO: series of replaces
+
+           end;
+
+          p:=JSON(FFeedParams['postThumb']);
+          if p<>nil then
+           begin
+            s:=sm[p['n']-1];
+            if s<>'' then
+             begin
+              if p['prefix']<>false //"<>false" because of variant
+                and not(StartsWith(LowerCase(s),LowerCase(FURL)))
+                then s:=FURL+s;
+              content:='<img class="postthumb" referrerpolicy="no-referrer'+
+                '" src="'+HTMLEncodeQ(s)+
+                //'" alt="'+???
+                '" /><br />'#13#10+content;
+             end;
+           end;
+
+          Handler.RegisterPost(title,content);
+         end;
        end;
      end;
     Handler.ReportSuccess('HTML:P');
