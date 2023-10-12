@@ -199,7 +199,7 @@ var
   m,m1:Match;
   sm,sm1:SubMatches;
   s:string;
-  mci,i,n,l,contentN,skipStale:integer;
+  mci,i,n,l,contentN,skipStale,skipStale0:integer;
   contentAll:boolean;
   title,id,url,content,w,imgurl,crs1:WideString;
   d:TDateTime;
@@ -208,6 +208,7 @@ var
   r:ServerXMLHTTP60;
   v:Variant;
   urls:TStringList;
+  bias:double;
 begin
   inherited;
   p:=JSON(FFeedParams['feedname']);
@@ -289,6 +290,9 @@ begin
           else
             raise Exception.Create('Unknown PubDate Parse "'+VarToStr(p['parse'])+'"');
 
+          if VarIsNull(p['bias']) then bias:=0 else bias:=p['bias'];
+          d:=d-bias/24.0;
+
         except
           d:=UtcNow;
         end;
@@ -359,6 +363,7 @@ begin
     contentAll:=p['all']=true;
     if VarIsNull(FFeedParams['skipStale']) then skipStale:=1
       else skipStale:=FFeedParams['skipStale'];
+    skipStale0:=skipStale;
 
     p:=JSON(p['r']);
     if p=nil then
@@ -523,6 +528,7 @@ begin
                   '" /><br />'#13#10+content;
 
               Handler.RegisterPost(title,content);
+              skipStale:=skipStale0;
              end
             else
              begin
