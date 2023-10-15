@@ -23,6 +23,7 @@ function IsSomethingEmpty(const x:WideString):boolean;
 function StripHTML(const x:WideString;MaxLength:integer):WideString;
 function HTMLDecode(const w:WideString):WideString;
 function IsProbablyHTML(const x:WideString):boolean;
+function URLToFileName(const URL:string):string;
 
 function VarArrFirst(const v:Variant):Variant;
 function VarArrLast(const v:Variant):Variant;
@@ -755,6 +756,25 @@ begin
   i:=1;
   while (i<=Length(x)) and (x[i]<=' ') do inc(i); //skip whitespace
   Result:=(i<=Length(x)) and (x[i]='<');
+end;
+
+function URLToFileName(const URL:string):string;
+var
+  i,l:integer;
+begin
+  i:=1;
+  l:=Length(URL);
+  //skip 'http://'
+  while (i<=l) and (URL[i]<>'/') do inc(i);
+  while (i<=l) and (URL[i]='/') do inc(i);
+  while (i<=l) and (URL[i]<>'/') do
+   begin
+    case URL[i] of
+      'A'..'Z','a'..'z','0'..'9','-':Result:=Result+URL[i];
+      '.':Result:=Result+'_';
+    end;
+    inc(i);
+   end;
 end;
 
 function VarArrFirst(const v:Variant):Variant;

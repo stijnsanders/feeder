@@ -135,25 +135,6 @@ begin
   //FPostItem.Pattern:= see Determine
 end;
 
-function URLToFileName(const URL:string):string;
-var
-  i,l:integer;
-begin
-  i:=1;
-  l:=Length(URL);
-  //skip 'http://'
-  while (i<=l) and (URL[i]<>'/') do inc(i);
-  while (i<=l) and (URL[i]='/') do inc(i);
-  while (i<=l) and (URL[i]<>'/') do
-   begin
-    case URL[i] of
-      'A'..'Z','a'..'z','0'..'9','-':Result:=Result+URL[i];
-      '.':Result:=Result+'_';
-    end;
-    inc(i);
-   end;
-end;
-
 function THTMLFeedProcessor2.Determine(Store: IFeedStore;
   const FeedURL: WideString; var FeedData: WideString;
   const FeedDataType: WideString): boolean;

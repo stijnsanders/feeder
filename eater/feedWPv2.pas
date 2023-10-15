@@ -6,6 +6,8 @@ uses eaterReg;
 
 type
   TWPv2FeedProcessor=class(TFeedProcessor)
+  private
+    FKnownCategoriesFile,FCatURL:string;
   public
     function Determine(Store:IFeedStore;const FeedURL:WideString;
       var FeedData:WideString;const FeedDataType:WideString):boolean; override;
@@ -20,9 +22,10 @@ uses SysUtils, eaterSanitize, jsonDoc, Variants, eaterUtils, MSXML2_TLB;
 { TWPv2FeedProcessor }
 
 function TWPv2FeedProcessor.Determine(Store:IFeedStore;const FeedURL:WideString;
-      var FeedData:WideString;const FeedDataType:WideString):boolean;
+  var FeedData:WideString;const FeedDataType:WideString):boolean;
 var
   i,l:integer;
+  fn:string;
 begin
   Result:=false;//default
   if (FeedDataType='application/json') and (Pos(WideString('/wp/v2/'),FeedURL)<>0) then
@@ -33,26 +36,44 @@ begin
     Result:=(i<=l) and (FeedData[i]='[');
     //'[{"id":'?
    end;
+
+  if Result then
+   begin
+    fn:='feeds/'+URLToFileName(string(FeedURL))+'@wpc.json';
+    if FileExists(fn) then
+     begin
+      FKnownCategoriesFile:=fn;
+      FCatURL:=Copy(FeedURL,1,Pos(WideString('/wp/v2/'),FeedURL)+6)+'categories/';
+     end
+    else FKnownCategoriesFile:='';
+   end;
 end;
 
 procedure TWPv2FeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jnodes,jmedia,jl1:IJSONDocArray;
-  jdoc,jn0,jn1:IJSONDocument;
-  node_i,n:integer;
-  itemid,itemurl,mediaurl,h1,h2:string;
+  jdoc,jn0,jn1,jcats:IJSONDocument;
+  node_i,n,i:integer;
+  itemid,itemurl,mediaurl,h1,h2,c1:string;
   title,content,md:WideString;
-  v:Variant;
+  v,cats:Variant;
   pubDate:TDateTime;
   r:ServerXMLHTTP60;
+  newcats:boolean;
 begin
   //TODO: if rw='[]' and '/wp/v2/posts' switch to '/wp/v2/articles'? episodes? media?
   jnodes:=JSONDocArray;
   jmedia:=JSONDocArray;
   jdoc:=JSON(['items',jnodes]);
   jdoc.Parse('{"items":'+FeedData+'}');
-  jn0:=JSON(['_links',JSON(['wp:featuredmedia',jmedia,'wp:attachment',jmedia  ])]);
+  jn0:=JSON(['_links',JSON(['wp:featuredmedia',jmedia,'wp:attachment',jmedia])]);
+  if FKnownCategoriesFile<>'' then
+   begin
+    jcats:=JSON;
+    LoadJSON(jcats,FKnownCategoriesFile);
+   end;
+  newcats:=false;//default
   r:=nil;
   for node_i:=0 to jnodes.Count-1 do
    begin
@@ -117,9 +138,41 @@ begin
          end;
        end;
 
+      v:=jn0['categories'];
+      if (FKnownCategoriesFile<>'') and VarIsArray(v) then
+       begin
+        //assert VarArrayLowBound(v,1)=0
+        n:=VarArrayHighBound(v,1);
+        cats:=VarArrayCreate([0,n],varOleStr);
+        for i:=0 to n do
+         begin
+          c1:=VarToStr(v[i]);
+          if VarIsNull(jcats[c1]) then
+           begin
+            if r=nil then r:=CoServerXMLHTTP60.Create;
+            r.open('GET',FCatURL+c1,false,EmptyParam,EmptyParam);
+            r.send(EmptyParam);
+            if r.status=200 then
+             begin
+              jn1:=JSON(r.responseText);
+              cats[i]:=jn1['name'];
+              jcats[c1]:=jn1['name'];
+              newcats:=true;
+             end
+            else
+              cats[i]:=c1;//raise?
+           end
+          else
+            cats[i]:=jcats[c1];
+         end;
+        Handler.PostTags('category',cats);
+       end;
+
       Handler.RegisterPost(title,content);
      end;
    end;
+  if newcats then
+    SaveUTF16(FKnownCategoriesFile,jcats.AsString);
   Handler.ReportSuccess('WPv2');
 end;
 
