@@ -93,6 +93,7 @@ begin
         if handler.CheckNewPost(itemid,itemurl,pubDate) then
          begin
           title:=SanitizeTitle(dPost['title']);
+          //title:=title+' | '+dPost['tghpwipArticleLabel'];?
           content:=dPost['excerpt'];
 
           dImg:=JSON(dPost['featuredImage']);

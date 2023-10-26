@@ -60,8 +60,7 @@ begin
       ,'data',JSON(
         ['heroHome',jcontent
         ,'defaultFeedItems',jcontent
-        //,'birthdays',?
-        //series,episodes?
+        //birthdays,series,episodes,popuplarCategories?
         ,'highlightedContent',jcontent])
       ,'pageData',JSON(['zones',jzones])
       ,'entry',jn0

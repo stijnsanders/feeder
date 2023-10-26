@@ -13,6 +13,7 @@ function HTMLStartsWithImg(const Value:string):boolean;
 
 function ConvDate1(const x:string):TDateTime;
 function ConvDate2(const x:string):TDateTime;
+function ConvDate3(const x:string):TDateTime;
 function UtcNow:TDateTime;
 
 function HTMLEncode(const x:string):string;
@@ -533,6 +534,91 @@ begin
       EncodeTime(th,tm,ts,tz)+
       b1*((b div 100)/24.0+(b mod 100)/1440.0);
    end;
+end;
+
+function ConvDate3(const x:string):TDateTime;
+var
+  dy,dm,dd,th,tm,ts,tz,b:word;
+  i,j,k,l,b1:integer;
+  procedure nx(var xx:word;yy:integer);
+  var
+    ii:integer;
+  begin
+    xx:=0;
+    for ii:=0 to yy-1 do
+      if (i<=l) and (AnsiChar(x[i]) in ['0'..'9']) then
+       begin
+        xx:=xx*10+(byte(x[i]) and $F);
+        inc(i);
+       end;
+  end;
+begin
+  l:=Length(x);
+  i:=1;
+  //month
+  dm:=0;//default
+  if l>3 then
+    case x[1] of
+      'J':
+        case x[2] of
+          'a':dm:=1;//January
+          'u':
+            case x[3] of
+              'n':dm:=6;//June
+              'l':dm:=7;//July
+            end;
+        end;
+      'F':dm:=2;//February
+      'M':
+        case x[3] of
+          'r':dm:=3;//March
+          'y':dm:=5;//May
+        end;
+      'A':
+        case x[2] of
+          'p':dm:=4;//April
+          'u':dm:=8;//August
+        end;
+      'S':dm:=9;//September
+      'O':dm:=10;//October
+      'N':dm:=11;//Novemner
+      'D':dm:=12;//December
+    end;
+  while (i<=l) and (x[i]<>' ') do inc(i);
+  inc(i);//' '
+  nx(dd,2);
+  inc(i);//','
+  inc(i);//' '
+  nx(dy,4);
+  inc(i);//' '
+  nx(th,2);
+  inc(i);//':'
+  nx(tm,2);
+  ts:=0;
+  tz:=0;
+  inc(i);//' '
+  //TimeZone
+  b:=0;//default
+  b1:=0;//default
+  j:=0;
+  while j<>TimeZoneCodeCount do
+   begin
+    k:=0;
+    while (byte(TimeZoneCode[j][1+k])>64) and
+      (x[i+k]=TimeZoneCode[j][1+k]) do inc(k);
+    if byte(TimeZoneCode[j][1+k])<64 then
+     begin
+      if TimeZoneCode[j][1+k]='-' then b1:=+1 else b1:=-1;
+      b:=StrToInt(Copy(TimeZoneCode[j],2+k,4));
+      j:=TimeZoneCodeCount;
+     end
+    else
+      inc(j);
+   end;
+  Result:=
+    EncodeDate(dy,dm,dd)+
+    EncodeTime(th,tm,ts,tz)+
+    b1*((b div 100)/24.0+(b mod 100)/1440.0);
 end;
 
 function UtcNow:TDateTime;

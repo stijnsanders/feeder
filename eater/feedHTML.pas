@@ -36,6 +36,38 @@ implementation
 
 uses SysUtils, Classes, Variants, eaterUtils, eaterSanitize, MSXML2_TLB;
 
+function URLDecode(const x:UTF8String):UTF8String;
+var
+  i,j,l:integer;
+  b,b1,b2:byte;
+begin
+  i:=1;
+  l:=Length(x);
+  j:=0;
+  SetLength(Result,l);
+  while i<=l do
+   begin
+    if (x[i]='%') and (i+2<=l) then
+     begin
+      inc(i);//'%';
+      b1:=byte(x[i]);
+      inc(i);
+      b2:=byte(x[i]);
+      if (b1 and $F0)=$30 then b:=(b1 and $F) shl 4 else b:=((b1 and $F)+9) shl 4;
+      if (b2 and $F0)=$30 then b:=b or (b2 and $F) else b:=b or ((b2 and $F)+9);
+      inc(j);
+      Result[j]:=AnsiChar(b);
+     end
+    else
+     begin
+      inc(j);
+      Result[j]:=x[i];
+     end;
+    inc(i);
+   end;
+  SetLength(Result,j);
+end;
+
 { THTMLFeedProcessor1 }
 
 procedure THTMLFeedProcessor1.AfterConstruction;
@@ -167,8 +199,6 @@ begin
       FFeedData:=c0(FeedData);
       Result:=FPostItem.Test(FFeedData);
       if not(Result) then FFeedData:='';
-
-
      end;
    end;
 end;
@@ -243,6 +273,7 @@ begin
 
           if p['parse']='1' then d:=ConvDate1(s) else
           if p['parse']='2' then d:=ConvDate2(s) else
+          if p['parse']='3' then d:=ConvDate3(s) else
           if p['parse']='sloppy' then
            begin
 
@@ -317,6 +348,11 @@ begin
               if p['prefix']<>false //"<>false" because of variant
                 and not(StartsWith(LowerCase(s),LowerCase(FURL)))
                 then s:=FURL+s;
+
+              //'https%253A%252F%252F'
+              while (Length(s)>6) and ((s[5]='%') or (s[6]='%')) do
+                s:=URLDecode(s);
+
               content:='<img class="postthumb" referrerpolicy="no-referrer'+
                 '" src="'+HTMLEncodeQ(s)+
                 //'" alt="'+???

@@ -83,7 +83,9 @@ case Context['x'].AsInteger of
     <p><input type="submit" value="Add Feed" /></p>
     </form>
     <script>document.getElementById("f1").focus();</script>
-    <p><a href="Feeds.xxm">back</a></p>>
+    <p><a href="Feeds.xxm">back</a>,
+    <a href="OPML.xxm?x=1">OPML import...</a>
+    </p>>
    end;
   1://add new
    begin
