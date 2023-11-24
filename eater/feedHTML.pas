@@ -351,7 +351,7 @@ begin
 
               //'https%253A%252F%252F'
               while (Length(s)>6) and ((s[5]='%') or (s[6]='%')) do
-                s:=URLDecode(s);
+                s:=UTF8ToWideString(URLDecode(UTF8Encode(s)));
 
               content:='<img class="postthumb" referrerpolicy="no-referrer'+
                 '" src="'+HTMLEncodeQ(s)+
@@ -416,6 +416,9 @@ begin
         if urls.IndexOf(url)=-1 then
          begin
           urls.Add(url);
+
+          if not(VarIsNull(FFeedParams['urlPrefix'])) then
+            url:=FFeedParams['urlPrefix']+url;
 
           r.open('GET',url,false,EmptyParam,EmptyParam);
           r.send(EmptyParam);

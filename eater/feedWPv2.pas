@@ -96,7 +96,7 @@ begin
 
       SanitizeWPImgData(content);
 
-      if jmedia.Count<>0 then
+      if (jmedia.Count<>0) and not(HTMLStartsWithImg(content)) then
        begin
         jn1:=JSON;
         jmedia.LoadItem(0,jn1);

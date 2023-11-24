@@ -108,6 +108,12 @@ begin
        end;
       xl1:=nil;
 
+      //prepend any <dc:creator> element
+      x1:=x.selectSingleNode('dc:creator');
+      if x1<>nil then
+        content:='<div class="postcreator" style="padding:0.5em;float:right;color:silver;">'+
+          HTMLEncode(x1.text)+'</div>'#13#10+content;
+
       if hasFoaf then //and rhImgFoaf.Test(content) then
         SanitizeFoafImg(content);
 

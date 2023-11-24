@@ -24,11 +24,12 @@ function FixNBSP(doc:DOMDocument60;var FeedData:WideString):boolean;
 
 procedure SanitizeYoutubeURL(var URL:string);
 
+procedure LoadJSON(data:IJSONDocument;const FilePath:string);
 procedure PerformReplace(data:IJSONDocument;var subject:WideString);
 
 implementation
 
-uses VBScript_RegExp_55_TLB, Variants, eaterUtils;
+uses VBScript_RegExp_55_TLB, Variants, eaterUtils, Classes;
 
 var
   rh0,rh1,rh2,rh3,rh4,rh5,rh6,rh7,rhUTM,rhCID,rhLFs,rhTrim,
@@ -284,10 +285,12 @@ end;
 
 procedure SanitizeYoutubeURL(var URL:string);
 const
-  YoutubePrefix0='https://www.youtube.com/@';
-  YoutubePrefix1='https://www.youtube.com/channel/';
-  YoutubePrefix2='https://www.youtube.com/feeds/videos.xml?channel_id=';
-  YoutubePrefix3='https://www.youtube.com/feeds/videos.xml?user=';
+  YoutubePrefix1a='https://www.youtube.com/@';
+  YoutubePrefix1f='https://www.youtube.com/feeds/videos.xml?channel_id=';
+  YoutubePrefix2a='https://www.youtube.com/channel/';
+  YoutubePrefix2f='https://www.youtube.com/feeds/videos.xml?user=';
+  YoutubePrefix3a='https://www.youtube.com/playlist?list=';
+  YoutubePrefix3f='https://www.youtube.com/feeds/videos.xml?playlist_id=';
 var
   d:ServerXMLHTTP60;
   r:RegExp;
@@ -295,12 +298,12 @@ var
   mm:Match;
   s:string;
 begin
-  if StartsWith(URL,YoutubePrefix0) then
+  if StartsWith(URL,YoutubePrefix1a) then
    begin
     d:=CoServerXMLHTTP60.Create;
     d.open('GET',URL,false,EmptyParam,EmptyParam);
     d.setRequestHeader('User-Agent','FeedEater/1.1');
-    d.setRequestHeader('Cookie','CONSENT=YES+EN.us+V9+BX');
+    d.setRequestHeader('Cookie','CONSENT=YES+US.en+V9+BX');
     d.send(EmptyParam);
     //assert d.status=200
     r:=CoRegExp.Create;
@@ -309,11 +312,14 @@ begin
     if m.Count=0 then
       raise Exception.Create('YouTube: unable to get channel ID from channel name');
     mm:=m.Item[0] as Match;
-    URL:=YoutubePrefix2+(mm.SubMatches as SubMatches).Item[0];
+    URL:=YoutubePrefix1f+(mm.SubMatches as SubMatches).Item[0];
    end
   else
-  if StartsWithX(URL,YoutubePrefix1,s) then
-    URL:=YoutubePrefix2+s
+  if StartsWithX(URL,YoutubePrefix2a,s) then
+    URL:=YoutubePrefix2f+s
+  else
+  if StartsWithX(URL,YoutubePrefix3a,s) then
+    URL:=YoutubePrefix3f+s
   else
    begin
     r:=CoRegExp.Create;
@@ -322,9 +328,62 @@ begin
     if m.Count=1 then
      begin
       mm:=m.Item[0] as Match;
-      URL:=YoutubePrefix3+(mm.SubMatches as SubMatches).Item[0];
+      URL:=YoutubePrefix2f+(mm.SubMatches as SubMatches).Item[0];
      end;
    end;
+end;
+
+procedure LoadJSON(data:IJSONDocument;const FilePath:string);
+var
+  m:TMemoryStream;
+  i:integer;
+  w:WideString;
+begin
+  m:=TMemoryStream.Create;
+  try
+    {
+    if Copy(FilePath,Length(FilePath)-5,6)='.jsonz' then
+      LoadFromCompressed(m,FilePath)
+    else
+    }
+      m.LoadFromFile(FilePath);
+    if m.Size=0 then
+      w:=''
+    else
+     begin
+      //UTF-16
+      if (PAnsiChar(m.Memory)[0]=#$FF) and
+         (PAnsiChar(m.Memory)[1]=#$FE) then
+       begin
+        i:=m.Size-2;
+        SetLength(w,i div 2);
+        Move(PAnsiChar(m.Memory)[2],w[1],i);
+       end
+      else
+      //UTF-8
+      if (PAnsiChar(m.Memory)[0]=#$EF) and
+         (PAnsiChar(m.Memory)[1]=#$BB) and
+         (PAnsiChar(m.Memory)[2]=#$BF) then
+       begin
+        m.Position:=m.Size;
+        i:=0;
+        m.Write(i,1);
+        w:=UTF8ToWideString(PAnsiChar(@PAnsiChar(m.Memory)[3]));
+       end
+      //ANSI
+      else
+       begin
+        m.Position:=m.Size;
+        i:=0;
+        m.Write(i,1);
+        w:=string(PAnsiChar(m.Memory));
+       end;
+     end;
+  finally
+    m.Free;
+  end;
+  //if (w<>'') and (w[1]='[') then w:='{"":'+w+'}';
+  data.Parse(w);
 end;
 
 procedure PerformReplace(data:IJSONDocument;var subject:WideString);
