@@ -27,6 +27,7 @@ type
     end;
     FPostsTotal,FPostsNew:integer;
     FHasReplaces:boolean;
+    FCookies:TStringList;
     OldPostsCutOff:TDateTime;
     function LoadExternal(const URL,FilePath,LastMod,Accept:string):WideString;
     function ParseExternalHeader(var content:WideString):WideString;
@@ -35,6 +36,8 @@ type
     procedure PerformGlobalReplaces(var data:WideString);
     procedure FeedCombineURL(const url,lbl:string);
     function FindFeedURL(const data:WideString):boolean;
+    procedure CheckCookie(const url:string;var s1,s2:string);
+    procedure SetCookie(const s1,s2:string);
     //IFeedStore
     function CheckLastLoadResultPrefix(const Prefix:string):boolean;
     //IFeedHandler
@@ -136,12 +139,14 @@ begin
   ForceLoadAll:=false;//default
   SaveData:=false;//default
   OnFeedURLUpdate:=nil;
+  FCookies:=TStringList.Create;//TODO: LoadFromFile?
 end;
 
 destructor TFeedEater.Destroy;
 begin
   FDB.Free;
   FDBStats.Free;
+  FCookies.Free;//TODO: SaveToFile?
   inherited;
 end;
 
@@ -247,7 +252,7 @@ var
   ids:array of integer;
   ids_i,ids_l:integer;
   d,oldPostDate:TDateTime;
-  sql1,sql2,ss,html1,html2:string;
+  sql1,sql2,ss,html1,html2,s1,s2:string;
 
   postlast,postavg,f:double;
   newfeed,doreq,loadext,xres:boolean;
@@ -554,18 +559,27 @@ begin
               if doreq then //if (handler_i=RequestProcessors) then
                begin
                 doreq:=false;
-
                 r.open('GET',FFeed.URL,false,EmptyParam,EmptyParam);
-                r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
-                r.setRequestHeader('User-Agent','FeedEater/1.1');
-                r.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
+                CheckCookie(FFeed.URL,s1,s2);
+                if s2='' then
+                 begin
+                  r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
+                  r.setRequestHeader('User-Agent','FeedEater/1.1');
+                  r.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
+                 end
+                else
+                 begin
+                  r.setRequestHeader('Cookie',s2);
+                 end;
                end;
 
               //TODO: ...'/wp/v2/posts' param 'after' last load time?
               if (FFeed.LastMod<>'') and not(ForceLoadAll) then
                 r.setRequestHeader('If-Modified-Since',FFeed.LastMod);
               r.send(EmptyParam);
-              if (r.status=301) or (r.status=302) or (r.status=308) then //moved permanently
+
+              //moved permanently?
+              if (r.status=301) or (r.status=302) or (r.status=308) then
                begin
                 FFeed.URL:=r.getResponseHeader('Location');
                 doreq:=true;
@@ -573,6 +587,14 @@ begin
                 if redirCount=8 then
                   raise Exception.Create('Maximum number of redirects reached');
                end;
+
+              //datadome support
+              if (r.status=401) and (r.getResponseHeader('x-datadome')='protected') then
+               begin
+                SetCookie(s1,r.getResponseHeader('Set-Cookie'));
+                doreq:=true;
+               end;
+
              end;
             if r.status=200 then
              begin
@@ -1480,6 +1502,28 @@ end;
 procedure TFeedEater.RenderGraphs;
 begin
   DoGraphs(FDB);
+end;
+
+procedure TFeedEater.CheckCookie(const url: string; var s1, s2: string);
+var
+  i,l:integer;
+begin
+  l:=Length(url);
+  i:=9;//Length('https://')+1
+  while (i<=l) and (url[i]<>'/') do inc(i);
+  s1:=Copy(url,1,i);
+  s2:=FCookies.Values[s1];
+end;
+
+
+procedure TFeedEater.SetCookie(const s1, s2: string);
+var
+  i,l:integer;
+begin
+  l:=Length(s2);
+  i:=1;
+  while (i<=l) and (s2[i]<>';') do inc(i);
+  FCookies.Values[s1]:=Copy(s2,1,i-1);
 end;
 
 initialization
