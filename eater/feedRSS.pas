@@ -32,7 +32,7 @@ end;
 procedure TRSSFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   Doc: DOMDocument60);
 var
-  hasFoaf:boolean;
+  hasFoaf,startsWithImg:boolean;
   s:string;
   i:integer;
   x,y:IXMLDOMElement;
@@ -40,7 +40,7 @@ var
   x1:IXMLDOMNode;
   itemid,itemurl,h1:string;
   pubDate:TDateTime;
-  title,content:WideString;
+  title,content,t:WideString;
   tags:Variant;
 begin
   tags:=Null;//see <source> below
@@ -88,9 +88,21 @@ begin
       y:=x.selectSingleNode('content:encoded') as IXMLDOMElement;
       if (y=nil) or IsSomeThingEmpty(y.text) then
         y:=x.selectSingleNode('content') as IXMLDOMElement;
-      if y=nil then
-        y:=x.selectSingleNode('description') as IXMLDOMElement;
       if y=nil then content:='' else content:=y.text;
+
+      startsWithImg:=HTMLStartsWithImg(content);
+
+      y:=x.selectSingleNode('description') as IXMLDOMElement;
+      if y<>nil then
+        if content='' then
+          content:=y.text
+        else
+         begin
+          t:=y.text;
+          if Length(t)>Length(content) then //?
+            content:='<div class="postdesc" style="margin-left:1.5em;color:grey;">'
+              +t+'</div>'#13#10+content;
+         end;
 
       xl1:=x.selectNodes('category');
       if xl1.length<>0 then
@@ -111,14 +123,14 @@ begin
       //prepend any <dc:creator> element
       x1:=x.selectSingleNode('dc:creator');
       if x1<>nil then
-        content:='<div class="postcreator" style="padding:0.5em;float:right;color:silver;">'+
+        content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
           HTMLEncode(x1.text)+'</div>'#13#10+content;
 
       if hasFoaf then //and rhImgFoaf.Test(content) then
         SanitizeFoafImg(content);
 
       //postthumb if not already starts with image
-      if not(HTMLStartsWithImg(content))then
+      if not(startsWithImg)then
        begin
         if IsProbablyHTML(content) then
           x1:=nil
