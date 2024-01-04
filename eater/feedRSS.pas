@@ -95,7 +95,10 @@ begin
       y:=x.selectSingleNode('description') as IXMLDOMElement;
       if y<>nil then
         if content='' then
-          content:=y.text
+         begin
+          content:=y.text;
+          startsWithImg:=HTMLStartsWithImg(content);
+         end
         else
          begin
           t:=y.text;
