@@ -89,6 +89,7 @@ begin
            end;
           inc(i);
           if d<>0 then dec(d);
+          SwitchToThread;//don't hog CPU
          end;
       finally
         qr.Free;
@@ -114,6 +115,7 @@ begin
             b.Canvas.Brush.Color:=$0000CC;
             b.Canvas.FillRect(Rect(d*fw,d1-Round(v[i].t2/q1*d1),(d+1)*fw,bh*fh));
            end;
+          SwitchToThread;//don't hog CPU
          end;
         b.Canvas.Font.Name:='Verdana';
         b.Canvas.Font.Height:=-10;

@@ -105,6 +105,8 @@ begin
          begin
           if r=nil then r:=CoServerXMLHTTP60.Create;
           r.open('GET',mediaurl,false,EmptyParam,EmptyParam);
+          r.setRequestHeader('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0');
+          r.setRequestHeader('Accept','application/json');
           r.send(EmptyParam);
           md:=r.responseText;
           if (r.status=200) and (md<>'') then
@@ -167,6 +169,8 @@ begin
          end;
         Handler.PostTags('category',cats);
        end;
+
+      //TODO: jn0['author']
 
       Handler.RegisterPost(title,content);
      end;

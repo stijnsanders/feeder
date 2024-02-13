@@ -122,7 +122,6 @@ begin
   for i:=0 to jnodes.Count-1 do
    begin
     jnodes.LoadItem(i,jn0);
-    jn1:=JSON(jn0['contents']);
     itemid:=VarToStr(jn0['id']);
     itemurl:=VarToStr(jn0['url']);
     try
@@ -150,8 +149,18 @@ begin
       else
         content:=VarToStr(jn0['content_html']);
 
-      //TODO: jn0['tags']
-      //jn0['author']?
+      if not(VarIsNull(jn0['tags'])) then
+        Handler.PostTags('tag',jn0['tags']);
+
+      //TODO: jn0['attachments']
+
+      jn1:=JSON(jn0['author']);
+      if jn1<>nil then
+       begin
+        content:='<div class="postauthot" style="padding:0.2em;float:right;color:silver;">'+
+          HTMLEncode(jn1['name'])+'</div>'#13#10+content;
+        //TODO: jn1['url']? jn1['avatar']?
+       end;
 
       if not VarIsNull(jn0['image']) then
         content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
