@@ -439,6 +439,7 @@ begin
 
             if FindPrefixAndCrop(w,FFeedParams['infoJson']) then
              begin
+              if (w<>'') and (w[1]='[') then w:=Copy(w,2,Length(w)-2);//TODO: IJSONDocArray?
               try
                 p.Parse(w);
               except

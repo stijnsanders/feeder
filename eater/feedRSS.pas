@@ -149,6 +149,7 @@ begin
         if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/jpg"]/@url');
         if x1=nil then x1:=x.selectSingleNode('enclosure[@type="image/png"]/@url');
         if x1=nil then x1:=x.selectSingleNode('media:content/@url');
+        if x1=nil then x1:=x.selectSingleNode('media:thumbnail/@url');
         if x1=nil then x1:=x.selectSingleNode('enclosure/@url');
         if x1=nil then x1:=x.selectSingleNode('image/@url');
         if x1=nil then x1:=x.selectSingleNode('image/@src');
