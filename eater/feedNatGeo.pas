@@ -34,7 +34,7 @@ procedure TNatGeoProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jfrms,jmods,jtiles,jctas:IJSONDocArray;
-  jdoc,jfrm,jmod,jtile,jdata,j1:IJSONDocument;
+  jdoc,jfrm,jmod,jtile,jdata,j0,j1:IJSONDocument;
   itemid,itemurl:string;
   pubDate:TDateTime;
   data,title,content:WideString;
@@ -135,7 +135,10 @@ begin
                 on EJSONDecodeException do
                   ;//ignore "data past end"
               end;
-              j1:=JSON(JSON(JSON(JSON(jdata['page'])['content'])['article'])['meta']);
+              j0:=JSON(JSON(jdata['page'])['content']);
+              j1:=JSON(j0['article']);
+              if j1=nil then j1:=JSON(j0['prismarticle']);
+              j1:=JSON(j1['meta']);
               itemid:=j1['id'];
               try
                 pubDate:=ConvDate1(j1['mdfdDt']);
