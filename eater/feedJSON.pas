@@ -157,7 +157,7 @@ begin
       jn1:=JSON(jn0['author']);
       if jn1<>nil then
        begin
-        content:='<div class="postauthot" style="padding:0.2em;float:right;color:silver;">'+
+        content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
           HTMLEncode(jn1['name'])+'</div>'#13#10+content;
         //TODO: jn1['url']? jn1['avatar']?
        end;

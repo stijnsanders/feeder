@@ -749,6 +749,12 @@ var
 begin
   Result:=#$2039+x+'.....';
   i:=1;
+  if StartsWith(x,'<div class="postcreator"') then
+   begin
+    i:=24;
+    while (i<=Length(x)) and (x[i]<>#13) do inc(i);
+    if (i<=Length(x)) and (x[i]=#10) then inc(i);
+   end;
   r:=1;
   b:=false;
   while (i<=length(x)) and (r<MaxLength) do
