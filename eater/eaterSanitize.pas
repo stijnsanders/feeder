@@ -27,6 +27,8 @@ procedure SanitizeYoutubeURL(var URL:string);
 procedure LoadJSON(data:IJSONDocument;const FilePath:string);
 procedure PerformReplace(data:IJSONDocument;var subject:WideString);
 
+procedure FetchSection(xItem:IXMLDOMElement;const pattern:string);
+
 implementation
 
 uses VBScript_RegExp_55_TLB, Variants, eaterUtils, Classes;
@@ -450,6 +452,33 @@ begin
        end;
       subject:=subject+Copy(base,j+1,Length(base)-j);
      end;
+   end;
+end;
+
+procedure FetchSection(xItem:IXMLDOMElement;const pattern:string);
+var
+  r:ServerXMLHTTP60;
+  c:RegExp;
+  mc:MatchCollection;
+  m:Match;
+  url:string;
+  x:IXMLDOMElement;
+begin
+  c:=CoRegExp.Create;
+  c.Pattern:=pattern;
+  x:=xItem.selectSingleNode('link') as IXMLDOMElement;
+  url:=x.text;
+  r:=CoServerXMLHTTP60.Create;
+  r.open('GET',url,false,EmptyParam,EmptyParam);
+  r.send(EmptyParam);
+  mc:=c.Execute(r.responseText) as MatchCollection;
+  if mc.Count<>0 then
+   begin
+    //TODO: for i:=0 to mc.Count-1 do
+    m:=mc[0] as Match;
+    x:=xItem.ownerDocument.createElement('category');
+    x.text:='section:'+(m.SubMatches as SubMatches).Item[0];
+    xItem.appendChild(x);
    end;
 end;
 

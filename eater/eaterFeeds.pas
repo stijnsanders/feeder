@@ -2,7 +2,7 @@ unit eaterFeeds;
 
 interface
 
-uses Classes, DataLank, eaterReg;
+uses Classes, DataLank, eaterReg, jsonDoc;
 
 type
   TFeedEatResult=record
@@ -28,6 +28,7 @@ type
     FPostsTotal,FPostsNew:integer;
     FHasReplaces:boolean;
     FCookies:TStringList;
+    FConfig:IJSONDocument;
     OldPostsCutOff:TDateTime;
     function LoadExternal(const URL,FilePath,LastMod,Accept:string):WideString;
     function ParseExternalHeader(var content:WideString):WideString;
@@ -44,6 +45,7 @@ type
     function CheckNewPost(const PostID:string;const PostURL:WideString;
       PostPubDate:TDateTime):boolean;
     procedure UpdateFeedName(const NewName:string);
+    function GetConfig(const Key:string):string;
     procedure PostTags(const TagPrefix:string;const Tags:Variant);
     procedure RegisterPost(const PostTitle,PostContent:WideString);
     procedure ReportSuccess(const Lbl:string);
@@ -77,7 +79,7 @@ const
 implementation
 
 uses Windows, SysUtils, Variants, ComObj, eaterUtils, eaterSanitize, MSXML2_TLB,
-  jsonDoc, VBScript_RegExp_55_TLB, eaterGraphs, feedSoundCloud;
+  VBScript_RegExp_55_TLB, eaterGraphs, feedSoundCloud;
 
 const
   FeederIniPath='..\..\feeder.ini';
@@ -635,6 +637,7 @@ begin
         end;
 
         //global replaces
+        FConfig:=nil;
         if FileExists('feeds\'+Format('%.4d',[FFeed.id])+'g.json') then
           PerformGlobalReplaces(FeedData);
 
@@ -1308,9 +1311,8 @@ begin
   finally
     sl.Free;
   end;
-
+  FConfig:=JSON(j['c']);
   rd:=JSON;
-
   for i:=0 to r.Count-1 do
    begin
     r.LoadItem(i,rd);
@@ -1497,6 +1499,11 @@ begin
       FeedCombineURL('/page-data/index/page-data.json','PageDataIndex');
       Result:=true;
      end;
+end;
+
+function TFeedEater.GetConfig(const Key: string): string;
+begin
+  if FConfig=nil then Result:='' else Result:=VarToStr(FConfig[Key]);  
 end;
 
 procedure TFeedEater.RenderGraphs;

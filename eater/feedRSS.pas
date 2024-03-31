@@ -107,6 +107,9 @@ begin
               +t+'</div>'#13#10+content;
          end;
 
+      s:=Handler.GetConfig('GetSection');
+      if s<>'' then FetchSection(x,s);
+
       xl1:=x.selectNodes('category');
       if xl1.length<>0 then
        begin

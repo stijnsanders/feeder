@@ -13,6 +13,7 @@ type
     function CheckNewPost(const PostID:string;const PostURL:WideString;
       PubDate:TDateTime):boolean;
     procedure UpdateFeedName(const NewName:string);
+    function GetConfig(const Key:string):string;
     procedure PostTags(const TagPrefix:string;const Tags:Variant);
     procedure RegisterPost(const PostTitle,PostContent:WideString);
     procedure ReportSuccess(const Lbl:string);
