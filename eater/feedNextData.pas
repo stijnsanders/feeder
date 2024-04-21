@@ -35,8 +35,8 @@ end;
 procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  jdoc,jd1,jd2,jn0,jn1:IJSONDocument;
-  jcontent,jzones,jarticles,jimg,jbody,jcats:IJSONDocArray;
+  jdoc,jd1,jd2,jn0,jn1,jn2:IJSONDocument;
+  jcontent,jzones,jarticles,jcompos,jimg,jbody,jcats:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck:integer;
   itemid,itemurl,p1:string;
@@ -48,6 +48,7 @@ begin
   jcontent:=JSONDocArray;
   jzones:=JSONDocArray;
   jarticles:=JSONDocArray;
+  jcompos:=JSONDocArray;
   jn0:=JSON(
     ['homepageBuilder',jarticles
     //,'heroArticle',jarticles
@@ -61,7 +62,9 @@ begin
         ['heroHome',jcontent
         ,'defaultFeedItems',jcontent
         //birthdays,series,episodes,popuplarCategories?
-        ,'highlightedContent',jcontent])
+        ,'highlightedContent',jcontent
+        ,'compositions',jcompos
+        ])
       ,'pageData',JSON(['zones',jzones])
       ,'entry',jn0
       ,'latestArticles',jarticles
@@ -120,7 +123,6 @@ begin
   //new style
   if jcontent.Count<>0 then
    begin
-
     try
       jn1:=JSON(JSON(JSON(JSON(JSON(
         jdoc['props'])['pageProps'])['seo'])['seomatic'])['metaTitleContainer']);
@@ -285,6 +287,53 @@ begin
        end;
      end;
    end;
+
+  //compositions
+  if jcompos.Count<>0 then
+   begin
+    try
+      jn1:=JSON(JSON(JSON(JSON(JSON(
+        jdoc['props'])['pageProps'])['data'])['pageProperties'])['seo']);
+      Handler.UpdateFeedName(jn1['title']);
+    except
+      //silent
+    end;
+    jcontent.Clear;//assert was already jcontent.Count=0
+    jn0:=JSON(['compositions',jcontent]);
+    //assert jcompos.Count=1
+    jcompos.LoadItem(0,jn0);
+    //assert jn0['type']='list'
+    jn1:=JSON(['metadata',jzones]);
+    for ci:=0 to jcontent.Count-1 do
+     begin
+      jcontent.LoadItem(ci,jn1);
+      jn2:=JSON(jn1['action']);
+      if (jn2<>nil) and (jzones.Count<>0) then
+       begin
+        itemurl:=jn2['uri'];
+        itemid:=itemurl;
+        jzones.LoadItem(0,jn2);
+        pubDate:=int64(jn2['timestamp'])/(SecsPerDay*1000)+UnixDateDelta;
+        if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+         begin
+          content:=HTMLEncode(JSON(jn1['tag'])['text']);//?
+          title:=SanitizeTitle(JSON(jn1['title'])['text']);
+          //TODO: Handler.PostTags(... JSON(jn1['tag'])['text']?
+          jn2:=JSON(jn1['image']);
+          if jn2<>nil then
+            content:=
+              '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+              HTMLEncode(jn2['url'])+
+              //'" alt="'+HTMLEncode(jn2['alt'])+
+              '" /><br />'#13#10+content;
+              //alt=" 'title'? 'credit'?
+          //TODO: 'destinations' Handler.PostTags?
+          Handler.RegisterPost(title,content);
+         end;
+       end;
+     end;
+   end;
+
 
   Handler.ReportSuccess('NextData');
 end;
