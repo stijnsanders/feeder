@@ -159,9 +159,13 @@ begin
         if x1=nil then x1:=x.selectSingleNode('image');
         if x1<>nil then //<a href="?
          begin
-          if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
-          content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-            HTMLEncodeQ(x1.text)+'" />'+h1+content;
+          s:=x1.text;
+          if Copy(s,Length(s)-3,4)<>'.mp3' then
+           begin
+            if Copy(content,1,3)='<p>' then h1:=#13#10 else h1:='<br />'#13#10;
+            content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+              HTMLEncodeQ(s)+'" />'+h1+content;
+           end;
           x1:=nil;
          end;
        end;

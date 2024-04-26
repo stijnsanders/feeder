@@ -9,6 +9,7 @@ type
   private
     FFeedURL:WideString;
     procedure ProcessArticle(Handler:IFeedHandler;jdata:IJSONDocument);
+    procedure ProcessCompositions(Handler:IFeedHandler;jcompos:IJSONDocArray);
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
       var FeedData: WideString; const FeedDataType: WideString): Boolean;
@@ -76,7 +77,6 @@ begin
     on EJSONDecodeException do
       ;//ignore "data past end"
   end;
-  //feedname?
 
   //old style
   je:=JSONEnum(jd1);
@@ -298,40 +298,7 @@ begin
     except
       //silent
     end;
-    jcontent.Clear;//assert was already jcontent.Count=0
-    jn0:=JSON(['compositions',jcontent]);
-    //assert jcompos.Count=1
-    jcompos.LoadItem(0,jn0);
-    //assert jn0['type']='list'
-    jn1:=JSON(['metadata',jzones]);
-    for ci:=0 to jcontent.Count-1 do
-     begin
-      jcontent.LoadItem(ci,jn1);
-      jn2:=JSON(jn1['action']);
-      if (jn2<>nil) and (jzones.Count<>0) then
-       begin
-        itemurl:=jn2['uri'];
-        itemid:=itemurl;
-        jzones.LoadItem(0,jn2);
-        pubDate:=int64(jn2['timestamp'])/(SecsPerDay*1000)+UnixDateDelta;
-        if Handler.CheckNewPost(itemid,itemurl,pubDate) then
-         begin
-          content:=HTMLEncode(JSON(jn1['tag'])['text']);//?
-          title:=SanitizeTitle(JSON(jn1['title'])['text']);
-          //TODO: Handler.PostTags(... JSON(jn1['tag'])['text']?
-          jn2:=JSON(jn1['image']);
-          if jn2<>nil then
-            content:=
-              '<img class="postthumb" referrerpolicy="no-referrer" src="'+
-              HTMLEncode(jn2['url'])+
-              //'" alt="'+HTMLEncode(jn2['alt'])+
-              '" /><br />'#13#10+content;
-              //alt=" 'title'? 'credit'?
-          //TODO: 'destinations' Handler.PostTags?
-          Handler.RegisterPost(title,content);
-         end;
-       end;
-     end;
+    ProcessCompositions(Handler,jcompos);
    end;
 
 
@@ -398,6 +365,73 @@ begin
        end;
 
       Handler.RegisterPost(title,content);
+     end;
+   end;
+end;
+
+procedure TNextDataFeedProcessor.ProcessCompositions(Handler: IFeedHandler;
+  jcompos: IJSONDocArray);
+var
+  ci,ai:integer;
+  jc,jm,jn:IJSONDocArray;
+  jn1,jn2:IJSONDocument;
+  je:IJSONEnumerator;
+  itemid,itemurl:string;
+  pubDate:TDateTime;
+  title,content:WideString;
+  tags,v:Variant;
+begin
+  jm:=JSONDocArray;
+  jc:=JSONDocArray;
+  jn1:=JSON(['metadata',jm,'compositions',jc]);
+  for ci:=0 to jcompos.Count-1 do
+   begin
+    jcompos.LoadItem(ci,jn1);
+    jn2:=JSON(jn1['layouts']);
+    if (jc.Count=0) and (jn2<>nil) then
+     begin
+      je:=JSONEnum(jn2);
+      while je.Next do
+       begin
+        v:=je.Value;
+        if VarIsArray(v) then
+         begin
+          for ai:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+            jc.Add(JSON(v[ai]));
+          ProcessCompositions(Handler,jc);
+         end;
+        //else raise?
+       end;
+     end
+    else
+     begin
+      if jc.Count<>0 then
+        ProcessCompositions(Handler,jc);
+      //else?
+      jn2:=JSON(jn1['action']);
+      if (jn2<>nil) and (jm.Count<>0) then
+       begin
+        itemurl:=jn2['uri'];
+        itemid:=itemurl;
+        jm.LoadItem(0,jn2);
+        pubDate:=int64(jn2['timestamp'])/(SecsPerDay*1000)+UnixDateDelta;
+        if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+         begin
+          content:=HTMLEncode(JSON(jn1['tag'])['text']);//?
+          title:=SanitizeTitle(JSON(jn1['title'])['text']);
+          //TODO: Handler.PostTags(... JSON(jn1['tag'])['text']?
+          jn2:=JSON(jn1['image']);
+          if jn2<>nil then
+            content:=
+              '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+              HTMLEncode(jn2['url'])+
+              //'" alt="'+HTMLEncode(jn2['alt'])+
+              '" /><br />'#13#10+content;
+              //alt=" 'title'? 'credit'?
+          //TODO: 'destinations' Handler.PostTags?
+          Handler.RegisterPost(title,content);
+         end;
+       end;
      end;
    end;
 end;
