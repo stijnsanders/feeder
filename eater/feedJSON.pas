@@ -107,11 +107,15 @@ var
   feedname,itemid,itemurl:string;
   title,content:WideString;
   pubDate:TDateTime;
-  i:integer;
+  i,j,n1,n2:integer;
+  v,v1:Variant;
 begin
   jnodes:=JSONDocArray;
   jdoc:=JSON(['items',jnodes]);
-  jdoc.Parse(FeedData);
+  if (FeedData<>'') and (FeedData[1]='[') then
+    jdoc.Parse('{"items":'+FeedData+'}')
+  else
+    jdoc.Parse(FeedData);
   //if jdoc['version']='https://jsonfeed.org/version/1' then
   if feedname='News' then feedname:=VarToStr(jdoc['description']);//NPR?
   if Length(feedname)>200 then feedname:=Copy(feedname,1,197)+'...';
@@ -124,33 +128,45 @@ begin
     jnodes.LoadItem(i,jn0);
     itemid:=VarToStr(jn0['id']);
     itemurl:=VarToStr(jn0['url']);
+    if itemurl='' then itemurl:=VarToStr(jn0['externalUrl']);
     try
-      pubDate:=ConvDate1(VarToStr(jn0['date_published']));
+      jn1:=JSON(jn0['articleDates']);//'onTimeDate'?
+      if jn1=nil then
+        pubDate:=ConvDate1(VarToStr(jn0['date_published']))
+      else
+        pubDate:=ConvDate1(VarToStr(jn1['publicationDate']));
     except
       pubDate:=UtcNow;
     end;
     if Handler.CheckNewPost(itemid,itemurl,pubDate) then
      begin
       title:=VarToStr(jn0['title']);
-      //TODO: if summary<>content?
-      {
-      if not(VarIsNull(jn0['summary'])) then
-       begin
-        s:=VarToStr(jn0['summary']);
-        if (s<>'') and (s<>title) then
-         begin
-          if Length(s)>200 then s:=Copy(s,1,197)+'...';
-          title:=title+' '#$2014' '+s;
-         end;
-       end;
-      }
       if VarIsNull(jn0['content_html']) then
         content:=HTMLEncode(VarToStr(jn0['content_text']))
       else
         content:=VarToStr(jn0['content_html']);
+      if content='' then
+        content:=HTMLEncode(VarToStr(jn0['content']));
 
-      if not(VarIsNull(jn0['tags'])) then
-        Handler.PostTags('tag',jn0['tags']);
+      v:=jn0['tags'];
+      if VarIsArray(v) and (VarArrayHighBound(v,1)>=VarArrayLowBound(v,1)) then
+        if VarIsStr(v[0]) then
+          Handler.PostTags('tag',jn0['tags'])
+        else
+         begin
+          n1:=VarArrayLowBound(v,1);//0
+          n2:=VarArrayHighBound(v,1);
+          v1:=VarArrayCreate([n1,n2],varOleStr);
+          for j:=n1 to n2 do
+           begin
+            jn1:=JSON(v[j]);
+            v1[j]:=jn1['title'];
+           end;
+          Handler.PostTags('tag',v1);
+         end;
+
+      if not(VarIsNull(jn0['description'])) then
+        content:='<div style="color:#666666;">'+HTMLEncode(jn0['description'])+'</div>'#13#10+content;
 
       //TODO: jn0['attachments']
 
@@ -164,7 +180,12 @@ begin
 
       if not VarIsNull(jn0['image']) then
         content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-          HTMLEncode(jn0['image'])+'" /><br />'#13#10+content;
+          HTMLEncode(jn0['image'])+'" /><br />'#13#10+content
+      else
+      if not VarIsNull(jn0['imageUrls']) then
+        content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+          HTMLEncode('https'+jn0['imageUrls'][0])+'" /><br />'#13#10+content;
+
 
       Handler.RegisterPost(title,content);
      end;

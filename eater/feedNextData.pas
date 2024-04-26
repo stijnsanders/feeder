@@ -36,7 +36,7 @@ end;
 procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  jdoc,jd1,jd2,jn0,jn1,jn2:IJSONDocument;
+  jdoc,jd1,jd2,jn0,jn1:IJSONDocument;
   jcontent,jzones,jarticles,jcompos,jimg,jbody,jcats:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck:integer;
@@ -373,13 +373,13 @@ procedure TNextDataFeedProcessor.ProcessCompositions(Handler: IFeedHandler;
   jcompos: IJSONDocArray);
 var
   ci,ai:integer;
-  jc,jm,jn:IJSONDocArray;
+  jc,jm:IJSONDocArray;
   jn1,jn2:IJSONDocument;
   je:IJSONEnumerator;
   itemid,itemurl:string;
   pubDate:TDateTime;
   title,content:WideString;
-  tags,v:Variant;
+  v:Variant;
 begin
   jm:=JSONDocArray;
   jc:=JSONDocArray;
