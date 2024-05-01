@@ -190,7 +190,7 @@ case Context['x'].AsInteger of
    begin
     s:=Context['url'].Value;
     if (Length(s)<8) or not((Copy(s,1,4)='http')
-      or (Copy(s,1,4)='tag:') or (Copy(s,1,9)='category:') or (Copy(s,1,8)='section:')) then
+      or (Copy(s,1,4)='tag:') or (Copy(s,1,9)='category:') then
       raise Exception.Create('Invalid Block URL prefix');
     db.BeginTrans;
     try

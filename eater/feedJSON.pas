@@ -184,7 +184,7 @@ begin
       else
       if not VarIsNull(jn0['imageUrls']) then
         content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-          HTMLEncode('https'+jn0['imageUrls'][0])+'" /><br />'#13#10+content;
+          HTMLEncode('https:'+jn0['imageUrls'][0])+'" /><br />'#13#10+content;
 
 
       Handler.RegisterPost(title,content);
