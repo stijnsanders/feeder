@@ -658,7 +658,21 @@ begin
         //any new data?
         if FFeed.NotModified then
          begin
-          FFeed.Result:=FFeed.Result+' [HTTP 304]';
+          if (FFeed.Result0<>'') and (FFeed.Result0[1]='[') then
+           begin
+            i:=1;
+            while (i<=Length(FFeed.Result0)) and (FFeed.Result0[i]<>'(') do inc(i);
+            inc(i);//skip '('
+            j:=i;
+            while (j<=Length(FFeed.Result0)) and (FFeed.Result0[j]<>')') do inc(j);
+           end
+          else
+           begin
+            i:=1;
+            j:=1;
+            while (j<=Length(FFeed.Result0)) and (FFeed.Result0[j]<>' ') do inc(j);
+           end;
+          FFeed.Result:=FFeed.Result+' [HTTP 304]('+Copy(FFeed.Result0,i,j-i)+')';
           if not loadext then Writeln(' HTTP 304');
          end
         else
