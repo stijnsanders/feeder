@@ -32,7 +32,7 @@ end;
 procedure TRSSFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   Doc: DOMDocument60);
 var
-  hasFoaf,startsWithImg:boolean;
+  hasFoaf,startsWithImg,contentEmpty:boolean;
   s:string;
   i:integer;
   x,y:IXMLDOMElement;
@@ -126,6 +126,8 @@ begin
        end;
       xl1:=nil;
 
+      contentEmpty:=content='';//see below
+
       //prepend any <dc:creator> element
       x1:=x.selectSingleNode('dc:creator');
       if x1<>nil then
@@ -171,7 +173,7 @@ begin
        end;
 
       //really no content (news.yahoo?) check <source>
-      if content='' then
+      if contentEmpty then
        begin
         x1:=x.selectSingleNode('source');
         if x1<>nil then
