@@ -93,8 +93,8 @@ begin
 end;
 
 var
-  s,t,u,g,feedcolor,autounread:string;
-  id,id1,rw,ur0:integer;
+  s,t,u,g,feedcolor:string;
+  id,id1,rw:integer;
   ur:Variant;
 
 

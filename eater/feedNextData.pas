@@ -30,6 +30,11 @@ function TNextDataFeedProcessor.Determine(Store: IFeedStore;
 begin
   Result:=Store.CheckLastLoadResultPrefix('NextData') and
     FindPrefixAndCrop(FeedData,'<script id="__NEXT_DATA__" type="application/json">');
+  if not(Result) and StartsWith(FeedData,'{"pageProps":') then
+   begin
+    FeedData:='{"props":'+FeedData+'}';
+    Result:=true;
+   end;
   if Result then FFeedURL:=FeedURL;
 end;
 
@@ -77,6 +82,8 @@ begin
     on EJSONDecodeException do
       ;//ignore "data past end"
   end;
+
+  //SaveUTF16('xmls\0000.json',jdoc.AsString);
 
   //old style
   je:=JSONEnum(jd1);
@@ -292,15 +299,21 @@ begin
   if jcompos.Count<>0 then
    begin
     try
-      jn1:=JSON(JSON(JSON(JSON(JSON(
-        jdoc['props'])['pageProps'])['data'])['pageProperties'])['seo']);
-      Handler.UpdateFeedName(jn1['title']);
+      jn0:=JSON(JSON(JSON(JSON(
+        jdoc['props'])['pageProps'])['data'])['pageProperties']);
+      jn1:=JSON(jn0['seo']);
+      if not VarIsNull(jn1['title']) then
+        Handler.UpdateFeedName(jn1['title'])
+      else
+       begin
+        jn1:=JSON(jn0['title']);
+        Handler.UpdateFeedName(jn1['text']);
+       end;
     except
       //silent
     end;
     ProcessCompositions(Handler,jcompos);
    end;
-
 
   Handler.ReportSuccess('NextData');
 end;
@@ -409,7 +422,7 @@ begin
         ProcessCompositions(Handler,jc);
       //else?
       jn2:=JSON(jn1['action']);
-      if (jn2<>nil) and (jm.Count<>0) then
+      if (jn2<>nil) and not(VarIsNull(jn2['uri'])) and (jm.Count<>0) then
        begin
         itemurl:=jn2['uri'];
         itemid:=itemurl;
@@ -417,7 +430,12 @@ begin
         pubDate:=int64(jn2['timestamp'])/(SecsPerDay*1000)+UnixDateDelta;
         if Handler.CheckNewPost(itemid,itemurl,pubDate) then
          begin
-          content:=HTMLEncode(JSON(jn1['tag'])['text']);//?
+          jn2:=JSON(jn1['tag']);
+          if VarIsNull(jn2['text']) then
+            content:=HTMLEncode(VarToStr(jn2['variant']))
+          else
+            content:=HTMLEncode(jn2['text']);//?
+          Handler.PostTags('tag',VarArrayOf([content]));
           title:=SanitizeTitle(JSON(jn1['title'])['text']);
           //TODO: Handler.PostTags(... JSON(jn1['tag'])['text']?
           jn2:=JSON(jn1['image']);

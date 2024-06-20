@@ -124,9 +124,10 @@ case Context['x'].AsInteger of
     else
      begin
       Session.Connection.Execute('insert into "UserPost" (user_id,post_id,subscription_id,pubdate) select $1,P.id,S.id,P.pubdate'
-        +' from "Post"'
+        +' from "Post" P'
         +' inner join "Subscription" S on S.feed_id=P.feed_id and S.user_id=$1'
-        +' where P.feed_id=$2 and P.pubDate>$3',
+        +' left outer join "UserPost" X on X.subscription_id=S.id and X.post_id=P.id and X.user_id=S.user_id'
+        +' where P.feed_id=$2 and P.pubDate>$3 and X.id is null',
         [Session.UserID,id,double(UtcNow-366.0)]);
       <<p>Feed found, listing posts up to one year old as unread.</p>>
      end;

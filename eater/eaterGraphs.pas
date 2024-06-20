@@ -89,7 +89,6 @@ begin
            end;
           inc(i);
           if d<>0 then dec(d);
-          SwitchToThread;//don't hog CPU
          end;
       finally
         qr.Free;

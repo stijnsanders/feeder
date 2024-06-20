@@ -38,7 +38,7 @@ if verb<>'POST' then
         ,'address',Context.ContextString(csRemoteAddress)
         ,'useragent',Context.ContextString(csUserAgent)
         ]);
-      Context.SetCookie('feederAutoLogon',s,60*60*24*365,'','','',false,true);
+      Context.SetCookie('feederAutoLogon',string(s),60*60*24*365,'','','',false,true);
       db.CommitTrans;
     except
       db.RollbackTrans;
