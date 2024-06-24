@@ -42,7 +42,7 @@ procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jdoc,jd1,jd2,jn0,jn1:IJSONDocument;
-  jcontent,jzones,jarticles,jcompos,jimg,jbody,jcats:IJSONDocArray;
+  jcontent,jzones,jarticles,jcompos,jevents,jimg,jbody,jcats:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck:integer;
   itemid,itemurl,p1:string;
@@ -55,6 +55,7 @@ begin
   jzones:=JSONDocArray;
   jarticles:=JSONDocArray;
   jcompos:=JSONDocArray;
+  jevents:=JSONDocArray;
   jn0:=JSON(
     ['homepageBuilder',jarticles
     //,'heroArticle',jarticles
@@ -74,6 +75,8 @@ begin
       ,'pageData',JSON(['zones',jzones])
       ,'entry',jn0
       ,'latestArticles',jarticles
+      ,'events',jevents
+      ,'breakingStories',jevents
       ])
     ])]);
   try
@@ -85,7 +88,7 @@ begin
 
   //SaveUTF16('xmls\0000.json',jdoc.AsString);
 
-  //old style
+  //props.pageProps.contentState
   je:=JSONEnum(jd1);
   while je.Next do
    begin
@@ -127,7 +130,7 @@ begin
      end;
    end;
 
-  //new style
+  //props.pageProps.data.*[]
   if jcontent.Count<>0 then
    begin
     try
@@ -313,6 +316,65 @@ begin
       //silent
     end;
     ProcessCompositions(Handler,jcompos);
+   end;
+
+  //events
+  if jevents.Count<>0 then
+   begin
+    jd1:=JSON(JSON(jdoc['props'])['pageProps']);
+    //Handler.UpdateFeedName(jd1['edition'])?
+    jd2:=JSON(jd1['topStory']);
+    if jd2<>nil then jevents.AddJSON(jd2.AsString);
+    jd2:=JSON(JSON(jd1['storyWidgetInfo'])['article']);
+    if jd2<>nil then jevents.AddJSON(jd2.AsString);
+    jcats:=JSONDocArray;
+    jd1:=JSON(['interests',jcats]);
+    for ci:=0 to jevents.Count-1 do
+     begin
+      jevents.LoadItem(ci,jd1);
+      itemid:=jd1['id'];
+      itemurl:=FFeedURL+'article/'+jd1['slug'];
+      try
+        pubDate:=ConvDate1(jd1['start']);
+      except
+        pubDate:=UtcNow;
+      end;
+      if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+       begin
+        title:=SanitizeTitle(jd1['title']);
+        content:=VarToStr(jd1['summary']);
+        if content='' then //?
+          content:=VarToStr(jd1['description']);
+
+        if content<>'' then content:='<p>'+HTMLEncode(content)+'</p>';        
+
+        //TODO: 'place'
+        //TODO: 'sources'
+
+        jd2:=JSON(jd1['latestMedia']);
+        if jd2=nil then jd2:=JSON(jd1['fallbackMedia']);
+        //if jd2['isVideo']=false? 'nsfw'?
+        if jd2<>nil then
+          content:=
+            '<img class="postthumb" referrerpolicy="no-referrer" src="'+HTMLEncode(jd2['url'])+
+            '" title="'+HTMLEncode(VarToStr(jd2['caption']))+'" /><br />'#13#10+content;
+
+        if jcats.Count<>0 then
+         begin
+          tags:=VarArrayCreate([0,jcats.Count-1],varOleStr);
+          jn1:=JSON;
+          for cj:=0 to jcats.Count-1 do
+           begin
+            jcats.LoadItem(cj,jn1);
+            //TODO: jn1['type']='topic'? 'person'? 'place'?
+            tags[cj]:=jn1['name'];
+           end;
+          Handler.PostTags('category',tags);
+         end;
+
+        Handler.RegisterPost(title,content);
+       end;
+     end;
    end;
 
   Handler.ReportSuccess('NextData');
