@@ -333,11 +333,9 @@ begin
      begin
       jevents.LoadItem(ci,jd1);
       //itemid:=jd1['id'];
-
       itemid:=VarToStr(jd1['title']);
       if itemid='' then itemid:=jd1['id'] else
         itemid:=UTF8ToString(base64encode(SHA3_256(UTF8Encode(itemid))));
-
       if VarIsNull(jd1['slug']) then
         itemurl:=FFeedURL+'article/'+jd1['id']
       else

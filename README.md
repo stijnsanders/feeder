@@ -85,7 +85,8 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 
 <tr>
 <td>NextData</td>
-<td>Posts are loaded from <code>&lt;script id="__NEXT_DATA__" type="application/json"&gt;</code> JSON.</td>
+<td>Posts are loaded from <code>&lt;script id="__NEXT_DATA__" type="application/json"&gt;</code> JSON.
+(Attention: apparently websites have some freedom in how the data itself is structured, and items may not get picked up correctly.)</td>
 </tr>
 
 <tr>
@@ -99,8 +100,13 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 </tr>
 
 <tr>
+<td>Apollo</td>
+<td>Posts are loaded from <code>window.__APOLLO_STATE__</code> JSON.</td>
+</tr>
+
+<tr>
 <td>Gatsby</td>
-<td>Posts are laded from <code>/page-data/index/page-data.json</code>.</td>
+<td>Posts are loaded from <code>/page-data/index/page-data.json</code>.</td>
 </tr>
 
 <tr>

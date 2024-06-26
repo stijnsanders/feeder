@@ -25,6 +25,7 @@ begin
   i:=0;
   l:=Length(x);
   d:=@x[1];
+  Result:='';
   while i<l do
    begin
     if i+1=l then
