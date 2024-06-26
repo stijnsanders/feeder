@@ -24,14 +24,16 @@ uses
   feedRSSinJSON in 'feedRSSinJSON.pas',
   feedWPv2 in 'feedWPv2.pas',
   feedGatsby in 'feedGatsby.pas',
+  feedNextData in 'feedNextData.pas',
   feedJSON in 'feedJSON.pas',
   feedTitanium in 'feedTitanium.pas',
   feedFusion in 'feedFusion.pas',
-  feedNextData in 'feedNextData.pas',
+  feedApollo in 'feedApollo.pas',
   eaterRun in 'eaterRun.pas',
   feedHTML in 'feedHTML.pas',
   feedNatGeo in 'feedNatGeo.pas',
-  feedRemix in 'feedRemix.pas';
+  feedRemix in 'feedRemix.pas',
+  sha3 in '..\sha3.pas';
 
 {$R *.res}
 {$APPTYPE CONSOLE}

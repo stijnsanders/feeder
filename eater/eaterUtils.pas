@@ -624,8 +624,8 @@ end;
 
 function ConvDate4(const x:string):TDateTime;
 var
-  dy,dm,dd,th,tm,ts,tz,b:word;
-  i,j,k,l,b1:integer;
+  dy,dm,dd,th,tm,ts,tz:word;
+  i,l:integer;
   procedure nx(var xx:word;yy:integer);
   var
     ii:integer;

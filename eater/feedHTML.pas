@@ -178,7 +178,7 @@ begin
   //Store.CheckLastLoadResultPrefix('HTML:2')?
 
   Result:=false;
-  if (FeedDataType='text/html') then
+  if (FeedDataType='text/html') or (FeedDataType='text/xml') then
    begin
     fn:='feeds/'+URLToFileName(string(FeedURL))+'.json';
     if FileExists(fn) then
@@ -274,6 +274,12 @@ begin
           if p['parse']='1' then d:=ConvDate1(s) else
           if p['parse']='2' then d:=ConvDate2(s) else
           if p['parse']='3' then d:=ConvDate3(s) else
+          if p['parse']='4' then
+           begin
+            if not(VarIsNull(p['ampm'])) then s:=s+' '+sm[p['ampm']-1];
+            d:=ConvDate4(s);
+           end
+          else
           if p['parse']='sloppy' then
            begin
 

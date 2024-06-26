@@ -20,7 +20,7 @@ type
 
 implementation
 
-uses SysUtils, Variants, eaterUtils, eaterSanitize;
+uses SysUtils, Variants, eaterUtils, eaterSanitize, sha3;
 
 { TNextDataFeedProcessor }
 
@@ -332,8 +332,16 @@ begin
     for ci:=0 to jevents.Count-1 do
      begin
       jevents.LoadItem(ci,jd1);
-      itemid:=jd1['id'];
-      itemurl:=FFeedURL+'article/'+jd1['slug'];
+      //itemid:=jd1['id'];
+
+      itemid:=VarToStr(jd1['title']);
+      if itemid='' then itemid:=jd1['id'] else
+        itemid:=UTF8ToString(SHA3_256(UTF8Encode(itemid)));
+
+      if VarIsNull(jd1['slug']) then
+        itemurl:=FFeedURL+'article/'+itemid
+      else
+        itemurl:=FFeedURL+'article/'+jd1['slug'];
       try
         pubDate:=ConvDate1(jd1['start']);
       except
