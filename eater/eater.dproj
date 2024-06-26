@@ -130,6 +130,7 @@
         <DCCReference Include="feedNatGeo.pas"/>
         <DCCReference Include="feedRemix.pas"/>
         <DCCReference Include="..\sha3.pas"/>
+        <DCCReference Include="..\base64.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

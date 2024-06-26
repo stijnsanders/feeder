@@ -20,7 +20,7 @@ type
 
 implementation
 
-uses SysUtils, Variants, eaterUtils, eaterSanitize, sha3;
+uses SysUtils, Variants, eaterUtils, eaterSanitize, sha3, base64;
 
 { TNextDataFeedProcessor }
 
@@ -336,10 +336,10 @@ begin
 
       itemid:=VarToStr(jd1['title']);
       if itemid='' then itemid:=jd1['id'] else
-        itemid:=UTF8ToString(SHA3_256(UTF8Encode(itemid)));
+        itemid:=UTF8ToString(base64encode(SHA3_256(UTF8Encode(itemid))));
 
       if VarIsNull(jd1['slug']) then
-        itemurl:=FFeedURL+'article/'+itemid
+        itemurl:=FFeedURL+'article/'+jd1['id']
       else
         itemurl:=FFeedURL+'article/'+jd1['slug'];
       try
