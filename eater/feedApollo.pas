@@ -93,7 +93,7 @@ begin
           title:=SanitizeTitle(jd1['title']);
           //'badge'?
 
-          content:=HTMLEncode(VarToStr(jd1['deck']));
+          content:=VarToStr(jd1['deck']);
 
           v:=jd1['authors'];
           if not(VarIsNull(v)) then //and VarIsArray(v) then
@@ -115,8 +115,10 @@ begin
            begin
             jd2:=JSON(jdoc[JSON(v)['id']]);
             //if jd2['format']='JPEG'?
+            s:=jd2['src'];
+            if StartsWith(s,'//') then s:='https:'+s; //??!
             content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-              HTMLEncode(jd2['src'])+'" alt="'+
+              HTMLEncode(s)+'" alt="'+
               HTMLEncode(jd2['alt'])+'" /><br />'#13#10+content;
             //width? height?
            end;

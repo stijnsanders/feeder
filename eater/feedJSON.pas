@@ -2,7 +2,7 @@ unit feedJSON;
 
 interface
 
-uses eaterReg;
+uses eaterReg, jsonDoc;
 
 type
   TJsonFeedProcessor=class(TFeedProcessor)
@@ -16,6 +16,8 @@ type
   TJsonDataProcessor=class(TFeedProcessor)
   private
     FURL:string;
+    FParseData:IJSONDocument;
+    function f(d:IJSONDocument;const n:WideString):Variant;
   public
     function Determine(Store:IFeedStore;const FeedURL:WideString;
       var FeedData:WideString;const FeedDataType:WideString):boolean; override;
@@ -25,7 +27,8 @@ type
 
 implementation
 
-uses SysUtils, Variants, ComObj, ActiveX, jsonDoc, eaterUtils, MSXML2_TLB;
+uses SysUtils, Classes, Variants, ComObj, ActiveX, eaterUtils, MSXML2_TLB,
+  eaterSanitize;
 
 { Base64* }
 
@@ -200,17 +203,66 @@ function TJsonDataProcessor.Determine(Store: IFeedStore;
   const FeedDataType: WideString): boolean;
 var
   i:integer;
+  fn:string;
+  sl:TStringList;
 begin
-  Result:=(FeedDataType='application/json') and
-    StartsWith(StripWhiteSpace(FeedData),'{"data":[');
-  if Result then
+  FParseData:=nil;//default
+  Result:=false;//default
+
+  if FeedDataType='application/json' then
    begin
-    FURL:=FeedURL;
-    i:=9;//Length('https://')+1;
-    while (i<=Length(FURL)) and (FURL[i]<>'/') do inc(i);
-    if (i<=Length(FURL)) and (FURL[i]='/') then
-      SetLength(FURL,i-1);
+    fn:='feeds/'+URLToFileName(string(FeedURL))+'.json';
+
+    if FileExists(fn) then
+     begin
+      FParseData:=JSON;
+      sl:=TStringList.Create;
+      try
+        sl.LoadFromFile(fn);
+        FParseData.Parse(sl.Text);
+      finally
+        sl.Free;
+      end;
+      Result:=true;
+     end
+    else
+      Result:=StartsWith(StripWhiteSpace(FeedData),'{"data":[');
+
+    if Result then
+     begin
+      FURL:=FeedURL;
+      i:=9;//Length('https://')+1;
+      while (i<=Length(FURL)) and (FURL[i]<>'/') do inc(i);
+      if (i<=Length(FURL)) and (FURL[i]='/') then
+        SetLength(FURL,i-1);
+     end;
    end;
+end;
+
+function TJsonDataProcessor.f(d:IJSONDocument;const n:WideString):Variant;
+var
+  i,l:integer;
+  v:Variant;
+  p:IJSONDocument;
+begin
+  v:=FParseData[n];
+  //if VarIsNull(v)?
+  if VarIsArray(v) then
+   begin
+    i:=VarArrayLowBound(v,1);
+    l:=VarArrayHighBound(v,1);
+    //assert i<=l
+    Result:=Null;//default
+    p:=nil;
+    while i<=l do
+     begin
+      if p=nil then p:=d else p:=JSON(Result);
+      Result:=p[v[i]];
+      inc(i);
+     end;
+   end
+  else
+    Result:=d[v];
 end;
 
 procedure TJsonDataProcessor.ProcessFeed(Handler: IFeedHandler;
@@ -224,63 +276,113 @@ var
   i:integer;
   r:ServerXMLHTTP60;
 begin
-  jitems:=JSONDocArray;
-  jdoc:=JSON(['data',jitems]);
-  jdoc.Parse(FeedData);
-  //Handler.UpdateFeedName(?
-  j0:=JSON;
-  for i:=0 to jitems.Count-1 do
+  if FParseData=nil then
    begin
-    jitems.LoadItem(i,j0);
-    itemid:=j0['id'];
-    itemurl:=FURL+j0['page_url'];
-    try
-      //s:=j0['public_at']?
-      s:=j0['updated_at'];
-      if s='' then s:=j0['created_at'];
-      pubDate:=StrToInt64(s)/MSecsPerDay+UnixDateDelta;//UTC?
-    except
-      pubDate:=UtcNow;
-    end;
-    if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+
+    //TODO: convert into a parsedata JSON
+
+    jitems:=JSONDocArray;
+    jdoc:=JSON(['data',jitems]);
+    jdoc.Parse(FeedData);
+    //Handler.UpdateFeedName(?
+    j0:=JSON;
+    for i:=0 to jitems.Count-1 do
      begin
-      title:=VarToStr(j0['title']);
-      content:=HTMLEncode(j0['description']);
-      //if j0['breaking'] then title:=':fire:'+title;//?
-
-      j1:=JSON(j0['categories']);
-      if j1<>nil then Handler.PostTags('category',VarArrayOf([j1['name']]));
-
-      j1:=JSON(j0['thumbnails']);
-      if j1<>nil then
+      jitems.LoadItem(i,j0);
+      itemid:=j0['id'];
+      itemurl:=FURL+j0['page_url'];
+      try
+        //s:=j0['public_at']?
+        s:=j0['updated_at'];
+        if s='' then s:=j0['created_at'];
+        pubDate:=StrToInt64(s)/MSecsPerDay+UnixDateDelta;//UTC?
+      except
+        pubDate:=UtcNow;
+      end;
+      if Handler.CheckNewPost(itemid,itemurl,pubDate) then
        begin
-        {
-        content:='<img class="postthumb" referrerpolicy="no-referrer'+
-          '" src="'+HTMLEncodeQ(FURL+j1['middle'])+
-          '" alt="'+HTMLEncodeQ(VarToStr(j1['alt']))+
-          '" /><br />'#13#10+content;
-        }
+        title:=VarToStr(j0['title']);
+        content:=HTMLEncode(j0['description']);
+        //if j0['breaking'] then title:=':fire:'+title;//?
 
-        s:=FURL+j1['middle'];
-        r:=CoServerXMLHTTP60.Create;
-        r.open('GET',s,false,EmptyParam,EmptyParam);
-        r.send(EmptyParam);
-        if r.status=200 then
-          content:=
-            '<img class="postthumb" src="data:image/jpeg;base64,'+
-              UTF8ToWideString(Base64EncodeStream_JPEG(IUnknown(r.responseStream) as IStream))+
-              '" alt="'+HTMLEncodeQ(VarToStr(j1['alt']))+
-              '" /><br />'#13#10+
-            content;
-        //else <img?
+        j1:=JSON(j0['categories']);
+        if j1<>nil then Handler.PostTags('category',VarArrayOf([j1['name']]));
 
-        r:=nil;
+        j1:=JSON(j0['thumbnails']);
+        if j1<>nil then
+         begin
+          {
+          content:='<img class="postthumb" referrerpolicy="no-referrer'+
+            '" src="'+HTMLEncodeQ(FURL+j1['middle'])+
+            '" alt="'+HTMLEncodeQ(VarToStr(j1['alt']))+
+            '" /><br />'#13#10+content;
+          }
 
+          s:=FURL+j1['middle'];
+          r:=CoServerXMLHTTP60.Create;
+          r.open('GET',s,false,EmptyParam,EmptyParam);
+          r.send(EmptyParam);
+          if r.status=200 then
+            content:=
+              '<img class="postthumb" src="data:image/jpeg;base64,'+
+                UTF8ToWideString(Base64EncodeStream_JPEG(IUnknown(r.responseStream) as IStream))+
+                '" alt="'+HTMLEncodeQ(VarToStr(j1['alt']))+
+                '" /><br />'#13#10+
+              content;
+          //else <img?
+
+          r:=nil;
+
+         end;
+
+        //'videos'?
+
+        Handler.RegisterPost(title,content);
        end;
-
-      //'videos'?
-
-      Handler.RegisterPost(title,content);
+     end;
+   end
+  else
+   begin
+    jitems:=JSONDocArray;
+    jdoc:=JSON([FParseData['list'],jitems]);
+    jdoc.Parse(FeedData);
+    if not(VarIsNull(FParseData['feedname'])) then
+      Handler.UpdateFeedName(f(jdoc,'feedname'));
+    j0:=JSON;
+    for i:=0 to jitems.Count-1 do
+     begin
+      jitems.LoadItem(i,j0);
+      itemid:=f(j0,'id');
+      if VarIsNull(FParseData['url']) then
+        itemurl:=FURL+f(j0,'relUrl')
+      else
+        itemurl:=f(j0,'url');
+      try
+        //TODO: more?
+        pubDate:=ConvDate1(f(j0,'pubDate'));
+      except
+        pubDate:=UtcNow;
+      end;
+      if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+       begin
+        title:=SanitizeTitle(f(j0,'title'));
+        content:=f(j0,'content');
+        if FParseData['contentHtmlEncode']=true then
+          content:=HTMLEncode(content);
+        if not(VarIsNull(FParseData['postthumb'])) then
+         begin
+          if VarIsNull(FParseData['postthumbalt']) then
+            s:=''
+          else
+            s:=f(j0,'postthumbalt');
+          content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+            HTMLEncode(f(j0,'postthumb'))+'" alt="'+
+            HTMLEncode(s)+'" /><br />'#13#10+content;
+         end;
+        //TODO: categories
+        //TODO: author
+        Handler.RegisterPost(title,content);
+       end;
      end;
    end;
   Handler.ReportSuccess('JSONdata');
