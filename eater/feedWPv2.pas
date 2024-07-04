@@ -91,9 +91,8 @@ begin
     if Handler.CheckNewPost(itemid,itemurl,pubdate) then
      begin
       title:=VarToStr(JSON(jn0['title'])['rendered']);
-      //'excerpt'?
       content:=VarToStr(JSON(jn0['content'])['rendered']);
-
+      if content='' then VarToStr(JSON(jn0['excerpt'])['rendered']);
       SanitizeWPImgData(content);
 
       if (jmedia.Count<>0) and not(HTMLStartsWithImg(content)) then
