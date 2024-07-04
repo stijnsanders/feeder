@@ -92,7 +92,7 @@ begin
      begin
       title:=VarToStr(JSON(jn0['title'])['rendered']);
       content:=VarToStr(JSON(jn0['content'])['rendered']);
-      if content='' then VarToStr(JSON(jn0['excerpt'])['rendered']);
+      if content='' then content:=VarToStr(JSON(jn0['excerpt'])['rendered']);
       SanitizeWPImgData(content);
 
       if (jmedia.Count<>0) and not(HTMLStartsWithImg(content)) then
