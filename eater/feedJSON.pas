@@ -369,6 +369,7 @@ begin
         content:=f(j0,'content');
         if FParseData['contentHtmlEncode']=true then
           content:=HTMLEncode(content);
+
         if not(VarIsNull(FParseData['postthumb'])) then
          begin
           if VarIsNull(FParseData['postthumbalt']) then
@@ -379,8 +380,13 @@ begin
             HTMLEncode(f(j0,'postthumb'))+'" alt="'+
             HTMLEncode(s)+'" /><br />'#13#10+content;
          end;
+
         //TODO: categories
-        //TODO: author
+
+        if not(VarIsNull(FParseData['author'])) then
+          content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+            HTMLEncode(f(j0,'author'))+'</div>'#13#10+content;
+
         Handler.RegisterPost(title,content);
        end;
      end;

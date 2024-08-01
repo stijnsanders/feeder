@@ -227,6 +227,9 @@ case Context['x'].AsInteger of
       p:=Context['f'];
       while p<>nil do
        begin
+        id:=0;//default
+        id1:=0;//default
+        rw:=0;//default
         pn:=p.Value;
         l:=Length(pn);
         i:=2;//assert pn[1]='?'
@@ -235,7 +238,7 @@ case Context['x'].AsInteger of
           //assert pn[i+1]='='
           j:=i+2;
           while (j<=l) and (pn[j]<>'&') do inc(j);
-          u:=URLDecode(Copy(pn,i+2,j-i-2));
+          u:=URLDecode(AnsiString(Copy(pn,i+2,j-i-2)));
           case pn[i] of
             'l':s:=u;
             'f':id:=StrToInt(u);

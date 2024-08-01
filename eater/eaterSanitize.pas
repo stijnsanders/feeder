@@ -350,7 +350,7 @@ begin
     }
       m.LoadFromFile(FilePath);
     if m.Size=0 then
-      w:=''
+      w:='{}'
     else
      begin
       //UTF-16

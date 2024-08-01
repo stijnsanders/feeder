@@ -1,6 +1,6 @@
 [[@DataLank,xxmSession,fCommon,VBScript_RegExp_55_TLB,Variants]][[!var
 qr:TQueryResult;
-id,i:integer;
+i:integer;
 sql:string;
 rp1,rp2,rp3:IRegExp2;
 c:WideString;
@@ -57,7 +57,7 @@ try
   else
   while qr.Read do
    begin
-    id:=qr.GetInt('id');
+    //id:=qr.GetInt('id');
     d1:=double(qr['pubdate'])+Session.TimeBias;
     <<div style="padding-bottom:4pt;">>
     if UtcNow+Session.TimeBias-d1>180 then
