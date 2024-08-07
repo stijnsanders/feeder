@@ -568,6 +568,8 @@ begin
                   r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
                   r.setRequestHeader('User-Agent','FeedEater/1.1');
                   r.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
+                  if Pos('/microsoft/o365/custom-blog-rss',FFeed.URL)<>0 then //?
+                    r.setRequestHeader('Accept-Language','en,en-US');
                  end
                 else
                  begin
