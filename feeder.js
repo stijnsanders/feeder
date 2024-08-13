@@ -101,10 +101,11 @@ function doScroll1(){
         j++;
     i++;
   }
-  if(outOfView!=""){
+  if(outOfView!=""&&markRead==""){
     scrollNotify=window.setTimeout(function(){
       markRead+=outOfView;
       outOfView="";
+      scrollNotify=0;
       fetch('Read.xxm?'+markRead,{
         credentials:"include",
         cache:"no-cache"
@@ -116,9 +117,12 @@ function doScroll1(){
             var pc=document.getElementById("postcount");
             pc.textContent=xx[2];
             pc.style.backgroundColor="";
+            if(outOfView!="")doScroll1();
           }
         });
       }).catch(function(ee){
+        outOfView+=markRead;
+        markRead="";
         var pc=document.getElementById("postcount");
         pc.title=ee;
         pc.style.backgroundColor="#FF0000";

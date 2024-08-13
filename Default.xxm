@@ -74,7 +74,7 @@ else
       </style>>
      end;
     ]]
-    <script src="feeder.js?v=12"></script>
+    <script src="feeder.js?r=101"></script>
     <div id="black" style="z-index:6;position:fixed;display:none;top:0;left:0;width:100vw;height:100vh;background-color:black;filter:opacity(0.5);user-select:none;" onclick="return doClose();"></div>
     <div id="postbox" class="postbox" style="z-index:8;position:fixed;display:none;top:0.5em;right:1em;user-select:none;">
       <a href="#" onclick="return doExpress();"><img src="img_e.png" width="16" height="16" alt="express" /></a>
