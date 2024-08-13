@@ -78,6 +78,7 @@ finally
   qr.Free;
 end;
 Context.Include('dFoot.xxmi');
+Context.Flush;
 
 db.BeginTrans;
 try

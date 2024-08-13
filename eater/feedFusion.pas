@@ -138,37 +138,46 @@ begin
             for inode:=VarArrayLowBound(vNodes,1) to VarArrayHighBound(vNodes,1) do
              begin
               jn0:=JSON(vNodes[inode]);
-              itemid:=jn0['_id'];
-              title:='';//see below
-              if VarIsNull(jn0['canonical_url']) then
+              if VarIsNull(jn0['_id']) then
                begin
-                jw0:=JSONEnum(jn0['websites']);
-                if jw0.Next then
-                 begin
-                  itemurl:=JSON(jw0.Value)['website_url'];
-                 end
-                else
-                  itemurl:='';//raise?
-                jw0:=nil;
-                if itemurl='' then
-                 begin
-                  itemurl:=VarToStr(JSON(JSON(jn0['taxonomy'])['primary_section'])['_id']);
-                  title:=#$D83D#$DD17#$2009;
-                 end;
-                if itemurl<>'' then itemurl:=FURLPrefix+itemurl;
+                itemid:='';//?
+                itemurl:='';//jn0['canonical_url']
                end
               else
-                itemurl:=FURLPrefix+jn0['canonical_url'];
-              try
-                p1:=VarToStr(jn0['display_date']);
-                if p1='' then p1:=VarToStr(jn0['publish_date']);
-                if p1='' then p1:=VarToStr(jn0['created_date']);
-                if p1='' then pubDate:=UtcNow else pubDate:=ConvDate1(p1);
-              except
-                pubDate:=UtcNow;
-              end;
+               begin
+                itemid:=jn0['_id'];
+                title:='';//see below
+                if VarIsNull(jn0['canonical_url']) then
+                 begin
+                  jw0:=JSONEnum(jn0['websites']);
+                  if jw0.Next then
+                   begin
+                    itemurl:=JSON(jw0.Value)['website_url'];
+                   end
+                  else
+                    itemurl:='';//raise?
+                  jw0:=nil;
+                  if itemurl='' then
+                   begin
+                    itemurl:=VarToStr(JSON(JSON(jn0['taxonomy'])['primary_section'])['_id']);
+                    title:=#$D83D#$DD17#$2009;
+                   end;
+                  if itemurl<>'' then itemurl:=FURLPrefix+itemurl;
+                 end
+                else
+                  itemurl:=FURLPrefix+jn0['canonical_url'];
+                try
+                  p1:=VarToStr(jn0['display_date']);
+                  if p1='' then p1:=VarToStr(jn0['publish_date']);
+                  if p1='' then p1:=VarToStr(jn0['created_date']);
+                  if p1='' then pubDate:=UtcNow else pubDate:=ConvDate1(p1);
+                except
+                  pubDate:=UtcNow;
+                end;
+               end;
 
-              if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+              if not((itemid='') and (itemurl='')) and
+                Handler.CheckNewPost(itemid,itemurl,pubDate) then
                begin
 
                 jn1:=JSON(jn0['headlines']);

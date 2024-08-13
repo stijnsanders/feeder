@@ -2,7 +2,7 @@
 r:ServerXMLHTTP60;
 s:string;
 qr:TQueryResult;
-i,id:integer;
+i:integer;
 c:WideString;
 r1:RegExp;
 mc:MatchCollection;
