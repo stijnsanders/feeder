@@ -42,7 +42,8 @@ procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jdoc,jd1,jd2,jn0,jn1:IJSONDocument;
-  jcontent,jzones,jarticles,jcompos,jevents,jimg,jbody,jcats:IJSONDocArray;
+  jcontent,jzones,jarticles,jcompos,jevents,jitems,
+  jimg,jbody,jcats,jcredits:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck:integer;
   itemid,itemurl,p1:string;
@@ -56,6 +57,7 @@ begin
   jarticles:=JSONDocArray;
   jcompos:=JSONDocArray;
   jevents:=JSONDocArray;
+  jitems:=JSONDocArray;
   jn0:=JSON(
     ['homepageBuilder',jarticles
     //,'heroArticle',jarticles
@@ -77,6 +79,7 @@ begin
       ,'latestArticles',jarticles
       ,'events',jevents
       ,'breakingStories',jevents
+      ,'globalContent',JSON(['items',jitems])
       ])
     ])]);
   try
@@ -377,6 +380,76 @@ begin
            end;
           Handler.PostTags('category',tags);
          end;
+
+        Handler.RegisterPost(title,content);
+       end;
+     end;
+   end;
+
+  //props.pageProps.globalContent.items
+  if jitems.Count<>0 then
+   begin
+    try
+      Handler.UpdateFeedName(JSON(JSON(JSON(JSON(
+        jdoc['props'])['pageProps'])['globalContent'])['site_data'])['site_description']);
+    except
+      //ignore
+    end;
+    jbody:=JSONDocArray;
+    jcredits:=JSONDocArray;
+    jn0:=JSON(['content_elements',jbody,'credits',JSON(['by',jcredits])]);
+    jd2:=JSON;
+    for ci:=0 to jitems.Count-1 do
+     begin
+      jitems.LoadItem(ci,jn0);
+      itemid:=jn0['_id'];
+      itemurl:=jn0['canonical_url'];
+      try
+        p1:=VarToStr(jn0['display_date']);
+        if p1='' then p1:=VarToStr(jn0['publish_date']);
+        if p1='' then p1:=VarToStr(jn0['created_date']);
+        if p1='' then pubDate:=UtcNow else pubDate:=ConvDate1(p1);
+      except
+        pubDate:=UtcNow;
+      end;
+      if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+       begin
+        jn1:=JSON(jn0['headlines']);
+        title:=SanitizeTitle(jn1['basic']);
+
+        content:='';
+        for cj:=0 to jbody.Count-1 do
+         begin
+          jbody.LoadItem(cj,jd2);
+          if jd2['type']='image' then
+           begin
+            content:=content+'<p><img class="postthumb" referrerpolicy="no-referrer" src="'+
+            HTMLEncode(jd2['url'])+
+            '" title="'+HTMLEncode(jd2['caption'])+'" /><br />'#13#10;
+           end
+          else
+          if jd2['type']='text' then
+            content:=content+'<p>'+jd2['content']+'</p>'#13#10
+          else
+            ;//ignore
+         end;
+
+        if jcredits.Count<>0 then
+         begin
+          p1:='';
+          for cj:=0 to jcredits.Count-1 do
+           begin
+            if p1<>'' then p1:=p1+'<br />';
+            p1:=p1+HTMLEncode(JSON(jcredits[cj])['name']);
+           end;
+          content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+            p1+'</div>'#13#10+content;
+         end;
+
+        jn1:=JSON(jn0['description']);
+        content:='<div style="color:#666666;">'+HTMLEncode(jn1['basic'])+'</div>'#13#10+content;
+
+        //TODO: credits.by[].name
 
         Handler.RegisterPost(title,content);
        end;

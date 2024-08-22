@@ -382,6 +382,7 @@ begin
     re.Global:=p['all']=true;
     re.IgnoreCase:=true;
     re.Pattern:=p['p'];
+    re.Multiline:=p['m']=true;
     contentN:=p['n'];
     contentAll:=p['all']=true;
     if VarIsNull(FFeedParams['skipStale']) then skipStale:=1
@@ -432,11 +433,11 @@ begin
           w:=r.responseText;//see below
 
           if VarIsNull(FFeedParams['clip']) then
-            mc1:=re.Execute(r.responseText) as MatchCollection
+            mc1:=re.Execute(w) as MatchCollection
           else
            begin
-            content:=r.responseText;
-            FindPrefixAndCrop(content,FFeedParams['clip']);//if?
+            content:=w;
+            FindPrefixAndCrop(content,FFeedParams['clip']);
             mc1:=re.Execute(content) as MatchCollection;
            end;
 
@@ -478,7 +479,8 @@ begin
               for i:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
                begin
                 p:=JSON(v[i]);
-                if p['@type']='Article' then
+                s:=VarToStr(p['@type']);
+                if (s='Article') or (s='NewsArticle') then
                  begin
                   title:=p['headline'];
                   imgurl:=p['thumbnailUrl'];
@@ -491,7 +493,7 @@ begin
                   //p['author']?
                  end
                 else
-                if p['@type']='WebPage' then
+                if s='WebPage' then
                  begin
                   url:=p['url'];
                   //p['thumbnailUrl']//assert same as above
@@ -500,13 +502,13 @@ begin
                  end
                 {
                 else
-                if p['@type']='ImageObject' then
+                if s='ImageObject' then
                  begin
                   imageurl:=p['url'];
                   //p['caption']?
                  end
                 }
-                //else if p['@type']=''
+                //else if s=''
                end;
              end
             else

@@ -142,6 +142,7 @@ begin
                begin
                 itemid:='';//?
                 itemurl:='';//jn0['canonical_url']
+                pubDate:=0.0;
                end
               else
                begin
@@ -187,6 +188,7 @@ begin
                   title:=title+SanitizeTitle(VarToStr(jn1['basic']));
 
                 jn1:=JSON(jn0['subheadlines']);
+                if jn1=nil then jn1:=JSON(jn0['subheadline']);
                 if jn1=nil then
                   content:=HTMLEncode(VarToStr(jn0['subheadline']))//fallback
                 else

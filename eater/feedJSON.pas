@@ -122,7 +122,7 @@ begin
   //if jdoc['version']='https://jsonfeed.org/version/1' then
   if feedname='News' then feedname:=VarToStr(jdoc['description']);//NPR?
   if Length(feedname)>200 then feedname:=Copy(feedname,1,197)+'...';
-  Handler.UpdateFeedName(feedname);
+  if feedname<>'' then Handler.UpdateFeedName(feedname);
   //jdoc['home_page_url']?
   //jdoc['feed_url']?
   jn0:=JSON;
@@ -273,7 +273,9 @@ var
   itemid,itemurl,s:string;
   title,content:WideString;
   pubDate:TDateTime;
-  i:integer;
+  i,j:integer;
+  he:boolean;
+  v:Variant;
   r:ServerXMLHTTP60;
 begin
   if FParseData=nil then
@@ -344,10 +346,20 @@ begin
   else
    begin
     jitems:=JSONDocArray;
-    jdoc:=JSON([FParseData['list'],jitems]);
-    jdoc.Parse(FeedData);
+    if (FeedData<>'') and (FeedData[1]='[') then
+     begin
+      jdoc:=JSON(['items',jitems]);
+      jdoc.Parse('{"items":'+FeedData+'}');
+     end
+    else
+     begin
+      jdoc:=JSON([FParseData['list'],jitems]);
+      jdoc.Parse(FeedData);
+     end;
     if not(VarIsNull(FParseData['feedname'])) then
       Handler.UpdateFeedName(f(jdoc,'feedname'));
+    if not(VarIsNull(FParseData['urlPrefix'])) then
+      FURL:=FParseData['urlPrefix'];
     j0:=JSON;
     for i:=0 to jitems.Count-1 do
      begin
@@ -366,9 +378,24 @@ begin
       if Handler.CheckNewPost(itemid,itemurl,pubDate) then
        begin
         title:=SanitizeTitle(f(j0,'title'));
-        content:=f(j0,'content');
-        if FParseData['contentHtmlEncode']=true then
-          content:=HTMLEncode(content);
+        he:=FParseData['contentHtmlEncode']=true;
+        v:=f(j0,'content');
+        if VarIsArray(v) then
+         begin
+          content:='';
+          for j:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+            if he then
+              content:=content+'<p>'+HTMLEncode(VarToStr(v[j]))+'</p>'#13#10
+            else
+              content:=content+'<p>'+VarToStr(v[j])+'</p>'#13#10;
+         end
+        else
+         begin
+          if he then
+            content:=VarToStr(v)
+          else
+            content:=HTMLEncode(VarToStr(v));
+         end;
 
         if not(VarIsNull(FParseData['postthumb'])) then
          begin
@@ -381,7 +408,7 @@ begin
             HTMLEncode(s)+'" /><br />'#13#10+content;
          end;
 
-        //TODO: categories
+        //TODO: categories,tags
 
         if not(VarIsNull(FParseData['author'])) then
           content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+

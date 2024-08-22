@@ -194,6 +194,7 @@ else
          begin
           sql3:=' where P.title ilike $2';
           xx[1]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
+          qrTimeout:=300;
          end;
        end
     else
@@ -220,6 +221,7 @@ else
           +' and P.title ilike $3';
         SetLength(xx,3+lx);
         xx[2]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
+        qrTimeout:=300;
        end;
      end
   else 
@@ -253,6 +255,7 @@ else
           +' and P.title ilike $3';
         SetLength(xx,3+lx);
         xx[2]:='%'+StringReplace(Context['title'].Value,' ','%',[rfReplaceAll])+'%';
+        qrTimeout:=300;
        end;
      end;
 

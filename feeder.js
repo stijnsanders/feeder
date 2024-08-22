@@ -133,7 +133,7 @@ function doScroll1(){
     if(!trailer)trailer=document.getElementById("trailer");
     if(trailer.offsetTop<window.scrollY+window.innerHeight*1.5){
       gotMore=true;
-      fetch('?x='+trailer.getAttribute("x")+'&'+document.location.href.split("?")[1],{
+      fetch('?x='+trailer.getAttribute("x")+'&'+(document.location.href.split("?")[1]||""),{
         credentials:"include",
         cache:"no-cache"
       }).then(function(r){

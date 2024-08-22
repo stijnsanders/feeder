@@ -1334,6 +1334,7 @@ begin
     r.LoadItem(i,rd);
     PerformReplace(rd,data);
    end;
+  if FFeed.Result=j['allowResult'] then FFeed.Result:='';  
 end;
 
 function TFeedEater.FeedSkipDisplay(d:TDateTime): string;
