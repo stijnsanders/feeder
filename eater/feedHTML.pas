@@ -482,8 +482,8 @@ begin
                 s:=VarToStr(p['@type']);
                 if (s='Article') or (s='NewsArticle') then
                  begin
-                  title:=p['headline'];
-                  imgurl:=p['thumbnailUrl'];
+                  title:=VarToStr(p['headline']);
+                  imgurl:=VarToStr(p['thumbnailUrl']);
                   try
                     d:=ConvDate1(p['datePublished']);
                   except

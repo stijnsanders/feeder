@@ -1158,14 +1158,12 @@ begin
     //ua:=
    end;
 
-  cl:='wget.exe -nv --no-cache --max-redirect='+IntToStr(mr)+
-    ' --no-http-keep-alive --no-check-certificate';
-
+  cl:='curl.exe -Lksi --max-redirs '+IntToStr(mr)+
+    ' --no-keepalive';
   if not(ForceLoadAll) and (LastMod<>'') then
-    cl:=cl+' --header="If-Modified-Since: '+LastMod+'"';
-
+    cl:=cl+' --header "If-Modified-Since: '+LastMod+'"';
   cl:=cl+
-    ' --save-headers --content-on-error --header="Accept: '+Accept+'"';
+    ' --fail-with-body --header "Accept: '+Accept+'"';
 
   if Copy(URL,Length(URL)-
     Length(GatsbyPageDataSuffix)+1,Length(GatsbyPageDataSuffix))=
@@ -1173,12 +1171,12 @@ begin
    begin
     i:=9;//past 'https://'
     while (i<=Length(URL)) and (URL[i]<>'/') do inc(i);
-    cl:=cl+' --referer="'+Copy(URL,1,i)+'"';
+    cl:=cl+' --referer "'+Copy(URL,1,i)+'"';
    end;
 
   cl:=cl+
-    ' --user-agent="'+ua+'" --compression=auto'+
-    ' -O "'+FilePath+'" "'+URL+'"';
+    ' --user-agent "'+ua+'"'+
+    ' -o "'+FilePath+'" "'+URL+'"';
 
   ZeroMemory(@si,SizeOf(TStartupInfo));
   si.cb:=SizeOf(TStartupInfo);
@@ -1245,7 +1243,9 @@ begin
     if rh.Count<>0 then
      begin
       if StartsWith(rh[0],'HTTP/1.1 304') then FFeed.NotModified:=true else
-      if not StartsWith(rh[0],'HTTP/1.1 200') then
+      if not StartsWith(rh[0],'HTTP/1.1 200') and
+        not StartsWith(rh[0],'HTTP/2 200') and
+        not StartsWith(rh[0],'HTTP/3 200') then
         FFeed.Result:='['+rh[0]+']';
       for j:=1 to rh.Count-1 do
        begin
