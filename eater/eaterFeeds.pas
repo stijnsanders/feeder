@@ -1159,7 +1159,7 @@ begin
    end;
 
   cl:='curl.exe -Lksi --max-redirs '+IntToStr(mr)+
-    ' --no-keepalive';
+    ' --no-keepalive --compressed';
   if not(ForceLoadAll) and (LastMod<>'') then
     cl:=cl+' --header "If-Modified-Since: '+LastMod+'"';
   cl:=cl+
@@ -1253,7 +1253,7 @@ begin
           while (j<=Length(s)) and (s[j]<>' ') do inc(j);
           inc(j);//' ';
           r:=0;
-          while (j<=Length(s)) and (s[j] in ['0'..'9']) do
+          while (j<=Length(s)) and (AnsiChar(s[j]) in ['0'..'9']) do
            begin
             r:=r*10+(byte(s[j]) and $F);
             inc(j);
@@ -1272,6 +1272,9 @@ begin
            end;
           //see also --max-redir
          end
+        else
+        if r=302 then
+          redir:=true
         else
         if r=304 then
           FFeed.NotModified:=true
