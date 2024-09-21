@@ -1226,43 +1226,78 @@ end;
 
 function TFeedEater.ParseExternalHeader(var content: WideString): WideString;
 var
-  i,j:integer;
+  i,j,r:integer;
   rh:TStringList;
   s,t:string;
+  redir:boolean;
 begin
-  i:=1;
-  while (i+4<Length(content)) and not(
-    (content[i]=#13) and (content[i+1]=#10) and
-    (content[i+2]=#13) and (content[i+3]=#10)) do inc(i);
+  repeat
+    i:=1;
+    while (i+4<Length(content)) and not(
+      (content[i]=#13) and (content[i+1]=#10) and
+      (content[i+2]=#13) and (content[i+3]=#10)) do inc(i);
 
-  Result:='';//default;
-  FFeed.LastMod:='';//default
-  rh:=TStringList.Create;
-  try
-    rh.Text:=Copy(content,1,i);
-    if rh.Count<>0 then
-     begin
-      if StartsWith(rh[0],'HTTP/1.1 304') then FFeed.NotModified:=true else
-      if not StartsWith(rh[0],'HTTP/1.1 200') and
-        not StartsWith(rh[0],'HTTP/2 200') and
-        not StartsWith(rh[0],'HTTP/3 200') then
-        FFeed.Result:='['+rh[0]+']';
-      for j:=1 to rh.Count-1 do
+    Result:='';//default;
+    FFeed.LastMod:='';//default
+    redir:=false;//default
+    rh:=TStringList.Create;
+    try
+      rh.Text:=Copy(content,1,i);
+      if rh.Count<>0 then
        begin
-        s:=rh[j];
-        if StartsWithX(s,'Content-Type: ',t) then
-          Result:=t
-        else
-        if StartsWithX(s,'Last-Modified: ',t) then
-          FFeed.LastMod:=t;
-       end;
-     end;
-  finally
-    rh.Free;
-  end;
 
-  inc(i,4);
-  content:=Copy(content,i,Length(content)-i+1);
+        s:=rh[0];
+        if StartsWith(s,'HTTP/') then
+         begin
+          j:=6;
+          while (j<=Length(s)) and (s[j]<>' ') do inc(j);
+          inc(j);//' ';
+          r:=0;
+          while (j<=Length(s)) and (s[j] in ['0'..'9']) do
+           begin
+            r:=r*10+(byte(s[j]) and $F);
+            inc(j);
+           end;
+         end
+        else
+          r:=200;//?
+
+        if r=301 then
+         begin
+          redir:=true;
+          for j:=1 to rh.Count-1 do
+           begin
+            s:=rh[j];
+            if StartsWithX(s,'Location: ',t) then FFeed.URL:=t;
+           end;
+          //see also --max-redir
+         end
+        else
+        if r=304 then
+          FFeed.NotModified:=true
+        else
+        if r=200 then
+         begin
+          for j:=1 to rh.Count-1 do
+           begin
+            s:=rh[j];
+            if StartsWithX(s,'Content-Type: ',t) then
+              Result:=t
+            else
+            if StartsWithX(s,'Last-Modified: ',t) then
+              FFeed.LastMod:=t;
+           end;
+         end
+        else
+          FFeed.Result:='['+rh[0]+']';
+       end;
+    finally
+      rh.Free;
+    end;
+
+    inc(i,4);
+    content:=Copy(content,i,Length(content)-i+1);
+  until not redir;
 end;
 
 procedure TFeedEater.PerformReplaces(var title,content: WideString);
