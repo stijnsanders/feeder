@@ -209,7 +209,7 @@ var
   mc,mc1:MatchCollection;
   m,m1:Match;
   sm,sm1:SubMatches;
-  s:string;
+  s,s1,s2:string;
   mci,i,n,l,contentN,skipStale,skipStale0:integer;
   contentAll:boolean;
   title,id,url,content,w,imgurl,crs1:WideString;
@@ -428,7 +428,11 @@ begin
             url:=FFeedParams['urlPrefix']+url;
 
           r.open('GET',url,false,EmptyParam,EmptyParam);
+          r.setRequestHeader('User-Agent','FeedEater/1.1');
+          Handler.CheckCookie(url,s1,s2);
+          if s2<>'' then r.setRequestHeader('Cookie',s2);
           r.send(EmptyParam);
+
           if r.status=200 then
           w:=r.responseText;//see below
 

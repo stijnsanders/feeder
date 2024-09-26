@@ -14,6 +14,7 @@ type
       PubDate:TDateTime):boolean;
     procedure UpdateFeedName(const NewName:string);
     function GetConfig(const Key:string):string;
+    procedure CheckCookie(const url:string;var s1,s2:string);
     procedure PostTags(const TagPrefix:string;const Tags:Variant);
     procedure RegisterPost(const PostTitle,PostContent:WideString);
     procedure ReportSuccess(const Lbl:string);

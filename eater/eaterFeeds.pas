@@ -541,7 +541,6 @@ begin
               FFeed.LastMod,
               'application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
             FeedDataType:=ParseExternalHeader(FeedData);
-
            end
           else
            begin
@@ -613,6 +612,9 @@ begin
               if SaveData then
                 SaveUTF16('xmls\'+Format('%.4d',[FFeed.id])+'.xml',FeedData);
 
+              s2:=r.getResponseHeader('Set-Cookie');
+              if copy(s2,1,4)='__cf' then SetCookie(s1,s2);
+
              end
             else
             if r.status=304 then
@@ -675,7 +677,7 @@ begin
             while (j<=Length(FFeed.Result0)) and (FFeed.Result0[j]<>' ') do inc(j);
            end;
           FFeed.Result:=FFeed.Result+' [HTTP 304]('+Copy(FFeed.Result0,i,j-i)+')';
-          if not loadext then Writeln(' HTTP 304');
+          Writeln(' HTTP 304');
          end
         else
          begin
@@ -1158,12 +1160,13 @@ begin
     //ua:=
    end;
 
-  cl:='curl.exe -Lksi --max-redirs '+IntToStr(mr)+
-    ' --no-keepalive --compressed';
+  cl:='curl.exe -Lki --max-redirs '+IntToStr(mr)+
+    ' --no-progress-meter --no-keepalive --compressed'+
+    ' --fail-with-body --connect-timeout 300';
   if not(ForceLoadAll) and (LastMod<>'') then
     cl:=cl+' --header "If-Modified-Since: '+LastMod+'"';
-  cl:=cl+
-    ' --fail-with-body --header "Accept: '+Accept+'"';
+  if Pos('/rss',URL)=0 then
+    cl:=cl+' --header "Accept: '+Accept+'"';
 
   if Copy(URL,Length(URL)-
     Length(GatsbyPageDataSuffix)+1,Length(GatsbyPageDataSuffix))=
@@ -1178,11 +1181,22 @@ begin
     ' --user-agent "'+ua+'"'+
     ' -o "'+FilePath+'" "'+URL+'"';
 
+  {
+  f:=TFileStream.Create(ChangeFileExt(FilePath,'_cl.txt'),fmCreate);
+  try
+    w:=$FEFF;
+    f.Write(w,2);
+    f.Write(cl[1],Length(cl)*2);
+  finally
+    f.Free;
+  end;
+  }
+
   ZeroMemory(@si,SizeOf(TStartupInfo));
   si.cb:=SizeOf(TStartupInfo);
   if not CreateProcess(nil,PChar(cl),nil,nil,true,0,nil,nil,si,pi) then RaiseLastOSError;
   CloseHandle(pi.hThread);
-  r:=WaitForSingleObject(pi.hProcess,30000);
+  r:=WaitForSingleObject(pi.hProcess,300000);
   if r<>WAIT_OBJECT_0 then
    begin
     TerminateProcess(pi.hProcess,9);
