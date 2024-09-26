@@ -607,13 +607,14 @@ begin
               //:=r.getAllResponseHeaders;
               FeedDataType:=r.getResponseHeader('Content-Type');
               FFeed.LastMod:=r.getResponseHeader('Last-Modified');
+
+              s2:=r.getResponseHeader('Set-Cookie');
+              if copy(s2,1,4)='__cf' then SetCookie(s1,s2);
+
               r:=nil;
 
               if SaveData then
                 SaveUTF16('xmls\'+Format('%.4d',[FFeed.id])+'.xml',FeedData);
-
-              s2:=r.getResponseHeader('Set-Cookie');
-              if copy(s2,1,4)='__cf' then SetCookie(s1,s2);
 
              end
             else
@@ -1149,7 +1150,7 @@ var
   r,mr:cardinal;
   cl,ua:string;
 begin
-  WriteLn(' ->');
+  Write(':[');
   DeleteFile(PChar(FilePath));//remove any previous file
   ua:='FeedEater/1.0';
   mr:=8;
@@ -1236,6 +1237,7 @@ begin
   finally
     f.Free;
   end;
+  Write(']');
 end;
 
 function TFeedEater.ParseExternalHeader(var content: WideString): WideString;
