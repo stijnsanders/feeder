@@ -42,7 +42,7 @@ procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jdoc,jd1,jd2,jn0,jn1:IJSONDocument;
-  jcontent,jzones,jarticles,jcompos,jevents,jitems,
+  jcontent,jzones,jarticles,jcompos,jevents,jblocks,jitems,
   jimg,jbody,jcats,jcredits:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck:integer;
@@ -58,6 +58,7 @@ begin
   jcompos:=JSONDocArray;
   jevents:=JSONDocArray;
   jitems:=JSONDocArray;
+  jblocks:=JSONDocArray;
   jn0:=JSON(
     ['homepageBuilder',jarticles
     //,'heroArticle',jarticles
@@ -73,6 +74,7 @@ begin
         //birthdays,series,episodes,popuplarCategories?
         ,'highlightedContent',jcontent
         ,'compositions',jcompos
+        ,'blocks',jblocks
         ])
       ,'pageData',JSON(['zones',jzones])
       ,'entry',jn0
@@ -452,6 +454,56 @@ begin
         //TODO: credits.by[].name
 
         Handler.RegisterPost(title,content);
+       end;
+     end;
+   end;
+
+  //blocks
+  if jblocks.Count<>0 then
+   begin
+    //Handler.UpdateFeedName?
+    jitems:=JSONDocArray;
+    jarticles:=JSONDocArray;
+    jn0:=JSON(['items',jitems]);
+    jn1:=JSON(['items',jarticles]);
+    for ci:=0 to jblocks.Count-1 do
+     begin
+      jblocks.LoadItem(ci,jn0);
+      cj:=0;
+      while cj<jitems.Count do
+       begin
+        jitems.LoadItem(cj,jn1);
+        p1:=jn1['__typename'];
+        if (p1='TopicsCollectionBlock') or (p1='LocationCollectionBlock') then
+         begin
+          for ck:=0 to jarticles.Count-1 do
+           jitems.AddJSON(jarticles.GetJSON(ck));
+         end
+        else
+         begin
+          //if jn1['__typename']='Article'?
+          itemid:=jn1['id'];
+          itemurl:=jn1['url'];
+          pubDate:=int64(jn1['displayDate'])/SecsPerDay+UnixDateDelta;
+          if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+           begin
+            title:=HTMLEncode(jn1['headline']);
+            content:='<p>'+HTMLEncode(jn1['subhead'])+'</p>';
+            //primaryTag?
+            jd1:=JSON(jn1['image']);
+            if jd1<>nil then
+             begin
+              content:=
+                '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                HTMLEncode(jd1['imageUrl'])+
+                '" alt="'+
+                HTMLEncode(VarToStr(jd1['caption']))+
+                '" /><br />'#13#10+content;
+             end;
+            Handler.RegisterPost(title,content);
+           end;
+         end;
+        inc(cj);
        end;
      end;
    end;

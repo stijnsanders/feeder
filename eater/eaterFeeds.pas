@@ -561,11 +561,11 @@ begin
                begin
                 doreq:=false;
                 r.open('GET',FFeed.URL,false,EmptyParam,EmptyParam);
+                r.setRequestHeader('User-Agent','FeedEater/1.1');
                 CheckCookie(FFeed.URL,s1,s2);
                 if s2='' then
                  begin
                   r.setRequestHeader('Accept','application/rss+xml, application/atom+xml, application/xml, application/json, text/xml');
-                  r.setRequestHeader('User-Agent','FeedEater/1.1');
                   r.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
                   if Pos('/microsoft/o365/custom-blog-rss',FFeed.URL)<>0 then //?
                     r.setRequestHeader('Accept-Language','en,en-US');
