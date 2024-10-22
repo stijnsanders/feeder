@@ -52,6 +52,7 @@ begin
     on EJSONDecodeException do
       ;//ignore "data past end"
   end;
+  //SaveUTF16('xmls\0000.json',jdoc.AsString);
 
   itemid:=VarToStr(j1['title']);
   if itemid<>'' then Handler.UpdateFeedName(itemid);
@@ -135,43 +136,47 @@ begin
                 on EJSONDecodeException do
                   ;//ignore "data past end"
               end;
+              //SaveUTF16('xmls\0000.json',jdata.AsString);
               j0:=JSON(JSON(jdata['page'])['content']);
               j1:=JSON(j0['article']);
               if j1=nil then j1:=JSON(j0['prismarticle']);
-              j1:=JSON(j1['meta']);
-              itemid:=j1['id'];
-              try
-                pubDate:=ConvDate1(j1['mdfdDt']);
-              except
-                pubDate:=UtcNow;
-              end;
-              if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+              if j1<>nil then
                begin
-
-                //assert itemurl=j1['cnnicl']
-                title:=SanitizeTitle(j1['ttl']);
-                content:=HTMLEncode(j1['dsc']);
-
-                if not(VarIsNull(j1['sclImg'])) then
-                  content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-                    HTMLEncodeQ(j1['sclImg'])+
-                    '" /><br />'#13#10+
-                    content;
-
-                v:=JSON(j1['pgTxnmy'])['sources'];//'subjects'?
-                if not(VarIsNull(v)) then
+                j1:=JSON(j1['meta']);
+                itemid:=j1['id'];
+                try
+                  pubDate:=ConvDate1(j1['mdfdDt']);
+                except
+                  pubDate:=UtcNow;
+                end;
+                if Handler.CheckNewPost(itemid,itemurl,pubDate) then
                  begin
-                  tags:=VarArrayCreate([VarArrayLowBound(v,1),VarArrayHighBound(v,1)],varOleStr);
-                  for tag_i:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
-                    tags[tag_i]:=VarToStr(v[tag_i]);
-                  Handler.PostTags('tag',tags);
-                 end;
 
-                Handler.RegisterPost(title,content);
+                  //assert itemurl=j1['cnnicl']
+                  title:=SanitizeTitle(j1['ttl']);
+                  content:=HTMLEncode(j1['dsc']);
 
-               end
-              else //!!
-                SkipRemaining:=true;
+                  if not(VarIsNull(j1['sclImg'])) then
+                    content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                      HTMLEncodeQ(j1['sclImg'])+
+                      '" /><br />'#13#10+
+                      content;
+
+                  v:=JSON(j1['pgTxnmy'])['sources'];//'subjects'?
+                  if not(VarIsNull(v)) then
+                   begin
+                    tags:=VarArrayCreate([VarArrayLowBound(v,1),VarArrayHighBound(v,1)],varOleStr);
+                    for tag_i:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+                      tags[tag_i]:=VarToStr(v[tag_i]);
+                    Handler.PostTags('tag',tags);
+                   end;
+
+                  Handler.RegisterPost(title,content);
+
+                 end
+                else //!!
+                  SkipRemaining:=true;
+               end;
              end;
            end;
 

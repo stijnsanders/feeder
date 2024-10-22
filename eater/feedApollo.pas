@@ -64,9 +64,9 @@ begin
 
   je:=JSONEnum(jdoc);
   while je.Next do
-    if StartsWith(je.Key,'$ROOT_QUERY.Article') then
+    if StartsWith(je.Key,'PageLayout:') then
      begin
-      Handler.UpdateFeedName(JSON(je.Value)['title']);
+      Handler.UpdateFeedName(JSON(je.Value)['name']);
      end
     else
     if StartsWith(je.Key,'Article:') then
@@ -85,7 +85,7 @@ begin
         else
           itemurl:=VarToStr(v);//assert StartsWith(itemurl,'http')
 
-        pubDate:=ConvDate1(JSON(jd1['publishedAt'])['json']); //publicPublishedDate? updatedAt?
+        pubDate:=ConvDate1(jd1['publishedAt']); //publicPublishedDate? updatedAt?
 
         if Handler.CheckNewPost(itemid,itemurl,pubDate) then
          begin
@@ -104,7 +104,7 @@ begin
             for i:=0 to l do
              begin
               if s<>'' then s:=s+'<br />'#13#10;
-              s:=s+HTMLEncode(JSON(jdoc[JSON(v[i])['id']])['name']);
+              s:=s+HTMLEncode(JSON(jdoc[JSON(v[i])['__ref']])['name']);
              end;
             content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
               s+'</div>'#13#10+content;
@@ -113,13 +113,13 @@ begin
           v:=jd1['ledeImage'];
           if not(VarIsNull(v)) then
            begin
-            jd2:=JSON(jdoc[JSON(v)['id']]);
+            jd2:=JSON(jdoc[JSON(v)['__ref']]);
             //if jd2['format']='JPEG'?
             s:=jd2['src'];
             if StartsWith(s,'//') then s:='https:'+s; //??!
             content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
               HTMLEncode(s)+'" alt="'+
-              HTMLEncode(jd2['alt'])+'" /><br />'#13#10+content;
+              HTMLEncode(VarToStr(jd2['alt']))+'" /><br />'#13#10+content;
             //width? height?
            end;
           //ledeAltImage?   ledeImageCaption?
@@ -131,7 +131,7 @@ begin
             l:=VarArrayHighBound(v,1);
             tags:=VarArrayCreate([0,l],varOleStr);
             for i:=0 to l do
-              tags[i]:=JSON(jdoc[JSON(v[i])['id']])['label']; //'slug'?
+              tags[i]:=JSON(jdoc[JSON(v[i])['__ref']])['label']; //'slug'?
             Handler.PostTags('tag',tags);
            end;
 

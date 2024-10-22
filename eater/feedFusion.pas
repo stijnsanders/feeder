@@ -49,7 +49,7 @@ var
   jnodes:IJSONDocArray;
   jdoc,jd1,je1,jn0,jn1:IJSONDocument;
   jd0,je0,jw0:IJSONEnumerator;
-  p1,p2,itemid,itemurl:string;
+  p1,itemid,itemurl:string;
   pubDate:TDateTime;
   title,content:WideString;
   v,vNodes:Variant;
@@ -68,11 +68,10 @@ begin
     on EJSONDecodeException do
       ;//ignore "data past end"
   end;
-  Handler.UpdateFeedName(VarToStr(jd1['title']));
-  jn0:=JSON;
-  p1:='';
-  p2:='';
   if jnodes.Count<>0 then
+   begin
+    Handler.UpdateFeedName(VarToStr(jd1['title']));
+    jn0:=JSON;
     for inode:=0 to jnodes.Count-1 do
      begin
       jnodes.LoadItem(inode,jn0);
@@ -100,7 +99,8 @@ begin
 
         Handler.RegisterPost(title,content);
        end;
-     end
+     end;
+   end
   else
    begin
     content:=FeedData;
@@ -117,9 +117,10 @@ begin
       while jd0.Next do
         if jd0.Key='site-service-hierarchy' then
          begin
-          //first of site-service-content?
           jd1:=JSON(jd0.Value);//jd1:=JSON(jdoc['site-service-hierarchy']);
-          if jd1<>nil then jd1:=JSON(jd1['{"hierarchy":"default"}']);
+          //if jd1<>nil then jd1:=JSON(jd1['{"hierarchy":"default"}']);
+          je0:=JSONEnum(jd1);
+          if je0.Next then jd1:=JSON(je0.Value);
           if jd1<>nil then jd1:=JSON(jd1['data']);
           if jd1<>nil then handler.UpdateFeedName(jd1['name']);
          end
@@ -194,7 +195,9 @@ begin
                 else
                   content:=HTMLEncode(VarToStr(jn1['basic']));
 
-                //TODO: labels -> Handler.PostTags()
+                //JSON(jn1['label'])['promo_label']?
+
+                //TODO: sections -> Handler.PostTags()
 
                 jn1:=JSON(jn0['promo_items']);
                 if jn1<>nil then jn1:=JSON(jn1['basic']);
