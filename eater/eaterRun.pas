@@ -59,7 +59,9 @@ begin
     else
     if StartsWithX(s,'/f',t) then SpecificFeedID:=StrToInt(t)
     else
-    if StartsWithX(s,'/g',t) then FeedLike:=t
+    if StartsWithX(s,'/g',t) then SpecificFeedID:=Specific_GroupID-StrToInt(t)
+    else
+    if StartsWithX(s,'/l',t) then FeedLike:=t
     else
     if s='/x' then SpecificFeedID:=Specific_AllFeeds
     else
@@ -230,6 +232,29 @@ begin
                     d:=RunNext;
                     SpecificFeedID:=id;
                     checking:=false;
+                   end;
+                'g'://feeds by group_id
+                  if id=0 then
+                   begin
+                    Writeln(#13'No group id entered  ');
+                   end
+                  else
+                   begin
+                    Writeln(#13'Skip + group_id='+IntToStr(id)+'   ');
+                    d:=RunNext;
+                    SpecificFeedID:=Specific_GroupID-id;
+                    checking:=false;
+                   end;
+                'p'://switch savedata
+                  if SaveData then
+                   begin
+                    SaveData:=false;
+                    Writeln(#13'SaveData off  ');
+                   end
+                  else
+                   begin
+                    SaveData:=true;
+                    Writeln(#13'SaveData on  ');
                    end;
 
                 #13:

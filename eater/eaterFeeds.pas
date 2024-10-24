@@ -65,6 +65,7 @@ type
 const
   Specific_NewFeeds=-111;
   Specific_AllFeeds=-113;
+  Specific_GroupID=-199;
 
 var
   PGVersion:string;
@@ -297,6 +298,10 @@ begin
       if SpecificFeedID=Specific_NewFeeds then
         qr:=TQueryResult.Create(FDB,'select F.id from "Feed" F where F.id>0'+
           ' and F.created>$1 order by F.id',[UtcNow-1.0])
+      else
+      if SpecificFeedID<=Specific_GroupID then
+        qr:=TQueryResult.Create(FDB,'select F.id from "Feed" F where F.id>0'+
+          ' and F.group_id=$1 order by F.id',[Specific_GroupID-SpecificFeedID])
       else if FeedLike<>'' then
         qr:=TQueryResult.Create(FDB,'select F.id from "Feed" F where F.id>0'+
           ' and F.url like $1'+
@@ -596,6 +601,9 @@ begin
                begin
                 SetCookie(s1,r.getResponseHeader('Set-Cookie'));
                 doreq:=true;
+                inc(redirCount);
+                if redirCount=24 then
+                  raise Exception.Create('Maximum number of attempts reached');
                end;
 
              end;
