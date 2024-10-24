@@ -68,7 +68,8 @@ begin
     on EJSONDecodeException do
       ;//ignore "data past end"
   end;
-  if jnodes.Count<>0 then
+  //SaveUTF16('xmls\0000.json',jdoc.AsString);
+  //if jnodes.Count<>0 then
    begin
     Handler.UpdateFeedName(VarToStr(jd1['title']));
     jn0:=JSON;
@@ -100,8 +101,8 @@ begin
         Handler.RegisterPost(title,content);
        end;
      end;
-   end
-  else
+   end;
+  //else
    begin
     content:=FeedData;
     if FindPrefixAndCrop(content,'Fusion.contentCache=') then
@@ -115,7 +116,7 @@ begin
       end;
       jd0:=JSONEnum(jdoc);
       while jd0.Next do
-        if jd0.Key='site-service-hierarchy' then
+        if false then //jd0.Key='site-service-hierarchy' then
          begin
           jd1:=JSON(jd0.Value);//jd1:=JSON(jdoc['site-service-hierarchy']);
           //if jd1<>nil then jd1:=JSON(jd1['{"hierarchy":"default"}']);
@@ -132,30 +133,35 @@ begin
           je0:=JSONEnum(JSON(jd0.Value));
           while je0.Next do
            begin
+            vNodes:=Null;//default
             je1:=JSON(je0.Value);
             if je1<>nil then je1:=JSON(je1['data']);
-            if je1=nil then vNodes:=Null else vNodes:=je1['content_elements'];
+            if je1<>nil then
+              if VarIsNull(je1['content_elements']) then
+               begin
+                je1:=JSON(je1['result']);
+                if je1<>nil then vNodes:=je1['articles'];
+               end
+              else
+                vNodes:=je1['content_elements'];
             if not VarIsNull(vNodes) then
             for inode:=VarArrayLowBound(vNodes,1) to VarArrayHighBound(vNodes,1) do
              begin
               jn0:=JSON(vNodes[inode]);
-              if VarIsNull(jn0['_id']) then
+              itemid:=VarToStr(jn0['id'])+VarToStr(jn0['_id']);
+              if itemid='' then
                begin
-                itemid:='';//?
                 itemurl:='';//jn0['canonical_url']
                 pubDate:=0.0;
                end
               else
                begin
-                itemid:=jn0['_id'];
                 title:='';//see below
                 if VarIsNull(jn0['canonical_url']) then
                  begin
                   jw0:=JSONEnum(jn0['websites']);
                   if jw0.Next then
-                   begin
-                    itemurl:=JSON(jw0.Value)['website_url'];
-                   end
+                    itemurl:=JSON(jw0.Value)['website_url']
                   else
                     itemurl:='';//raise?
                   jw0:=nil;
@@ -172,6 +178,9 @@ begin
                   p1:=VarToStr(jn0['display_date']);
                   if p1='' then p1:=VarToStr(jn0['publish_date']);
                   if p1='' then p1:=VarToStr(jn0['created_date']);
+                  if p1='' then p1:=VarToStr(jn0['display_time']);
+                  if p1='' then p1:=VarToStr(jn0['publish_time']);
+                  if p1='' then p1:=VarToStr(jn0['created_time']);
                   if p1='' then pubDate:=UtcNow else pubDate:=ConvDate1(p1);
                 except
                   pubDate:=UtcNow;
@@ -182,25 +191,40 @@ begin
                 Handler.CheckNewPost(itemid,itemurl,pubDate) then
                begin
 
-                jn1:=JSON(jn0['headlines']);
-                if jn1=nil then
-                  title:=title+SanitizeTitle(VarToStr(jn0['headline']))//fallback
+                if VarIsStr(jn0['title']) then
+                  title:=title+SanitizeTitle(VarToStr(jn0['title']))
                 else
-                  title:=title+SanitizeTitle(VarToStr(jn1['basic']));
+                 begin
+                  jn1:=JSON(jn0['headlines']);
+                  if jn1=nil then
+                    title:=title+SanitizeTitle(VarToStr(jn0['headline']))//fallback
+                  else
+                    title:=title+SanitizeTitle(VarToStr(jn1['basic']));
+                 end;
 
-                jn1:=JSON(jn0['subheadlines']);
-                if jn1=nil then jn1:=JSON(jn0['subheadline']);
-                if jn1=nil then
-                  content:=HTMLEncode(VarToStr(jn0['subheadline']))//fallback
+                if VarIsStr(jn0['description']) then
+                  content:=HTMLEncode(VarToStr(jn0['description']))
                 else
-                  content:=HTMLEncode(VarToStr(jn1['basic']));
+                 begin
+                  jn1:=JSON(jn0['subheadlines']);
+                  if jn1=nil then jn1:=JSON(jn0['subheadline']);
+                  if jn1=nil then jn1:=JSON(jn0['description']);
+                  if jn1=nil then
+                    content:=HTMLEncode(VarToStr(jn0['subheadline']))//fallback
+                  else
+                    content:=HTMLEncode(VarToStr(jn1['basic']));
+                 end;
 
                 //JSON(jn1['label'])['promo_label']?
+
+                //['lead_art']?
+                //['source']['authors']?
 
                 //TODO: sections -> Handler.PostTags()
 
                 jn1:=JSON(jn0['promo_items']);
                 if jn1<>nil then jn1:=JSON(jn1['basic']);
+                if jn1=nil then jn1:=JSON(jn0['thumbnail']);
                 if jn1<>nil then
                   content:='<img class="postthumb" referrerpolicy="no-referrer'+
                     '" src="'+HTMLEncodeQ(jn1['url'])+
