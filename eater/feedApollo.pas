@@ -29,7 +29,7 @@ var
   i,l:integer;
 begin
   Result:=Store.CheckLastLoadResultPrefix('Apollo') and
-    FindPrefixAndCrop(FeedData,'<script>window.__APOLLO_STATE__=');
+    FindPrefixAndCrop(FeedData,'<script>window.__APOLLO_STATE__=','');
   if Result then
    begin
     l:=Length(FeedURL);
@@ -139,6 +139,9 @@ begin
          end;
        end;
      end
+    //else
+    //TODO: if StartsWith(je.Key,'BlogTopicMessage:') then
+
     else
     //ignore
     ;

@@ -29,7 +29,7 @@ constraint FK_Post_Feed foreign key (feed_id) references "Feed" (id)
 );
 
 create index IX_Post on "Post" (feed_id, pubdate desc);
---create index IX_PostGuid on "Post" (guid,feed_id);--//moved to index db kept by eater
+create index IX_Post1 on "Post" (pubdate asc);
 
 create table "User" (
 id serial primary key,
@@ -84,6 +84,8 @@ constraint FK_UserPost_Subscription foreign key (subscription_id) references "Su
 
 create unique index IX_UserPost on "UserPost" (user_id,pubdate) include (subscription_id,post_id);
 
+create index IX_UserPost1 on "UserPost" (post_id);
+
 
 create table "UserBlock" (
 id serial primary key,
@@ -126,6 +128,8 @@ constraint FK_Opinion_Post foreign key (post_id) references "Post" (id)
 );
 
 create unique index IX_Opinion on "Opinion" (user_id,post_id);
+
+create unique index IX_Opinion1 on "Opinion" (post_id);
 
 
 create table "HotList" (

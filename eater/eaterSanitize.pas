@@ -16,7 +16,7 @@ procedure SanitizeFoafImg(var content:WideString);
 function EncodeNonHTMLContent(const title:WideString):WideString;
 function DisplayShortURL(const URL:string):string;
 
-function FindPrefixAndCrop(var data:WideString;const pattern:WideString):boolean;
+function FindPrefixAndCrop(var data:WideString;const pattern,suffix:WideString):boolean;
 function FindMatch(const data:WideString;const pattern:WideString):WideString;
 
 function FixUndeclNSPrefix(doc:DOMDocument60;var FeedData:WideString):boolean;
@@ -212,12 +212,12 @@ begin
   Result:=Copy(s,i,j-i);
 end;
 
-function FindPrefixAndCrop(var data:WideString;const pattern:WideString):boolean;
+function FindPrefixAndCrop(var data:WideString;const pattern,suffix:WideString):boolean;
 var
   r:RegExp;
   m:MatchCollection;
   mm:Match;
-  l:integer;
+  l,i:integer;
 begin
   r:=CoRegExp.Create;
   r.Global:=false;
@@ -230,6 +230,18 @@ begin
     l:=mm.FirstIndex+mm.Length;
     data:=Copy(data,1+l,Length(data)-l);
     Result:=true;
+    if suffix<>'' then
+     begin
+      l:=Length(data)-Length(suffix)+1;
+      i:=1;
+      while (i<=l) and (Copy(data,i,Length(suffix))<>suffix) do inc(i);
+      if (i<=l) then
+       begin
+        inc(i,Length(suffix));
+        data:=Copy(data,i,Length(data)-i+1);
+       end;
+      //else false?
+     end;
    end;
 end;
 

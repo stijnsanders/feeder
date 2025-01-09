@@ -134,7 +134,7 @@ function TRemixContentProcessor.Determine(Store: IFeedStore;
 begin
   FURLPrefix:=FeedURL+'article/';//from data?
   Result:=Store.CheckLastLoadResultPrefix('Remix') and
-    FindPrefixAndCrop(FeedData,'window\.__remixContext = ');
+    FindPrefixAndCrop(FeedData,'window\.__remixContext = ','');
 end;
 
 procedure TRemixContentProcessor.ProcessFeed(Handler: IFeedHandler;

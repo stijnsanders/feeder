@@ -26,7 +26,7 @@ function TNatGeoProcessor.Determine(Store: IFeedStore;
   const FeedDataType: WideString): boolean;
 begin
   Result:=Store.CheckLastLoadResultPrefix('NatGeo') and
-    FindPrefixAndCrop(FeedData,'window\[''__natgeo__''\]=');
+    FindPrefixAndCrop(FeedData,'window\[''__natgeo__''\]=','');
   if Result then FFeedURL:=FeedURL;
 end;
 
@@ -128,7 +128,7 @@ begin
             r.open('GET',itemurl,false,EmptyParam,EmptyParam);
             r.send(EmptyParam);
             if r.status=200 then data:=r.responseText else data:='';
-            if FindPrefixAndCrop(data,'window\[''__natgeo__''\]=') then
+            if FindPrefixAndCrop(data,'window\[''__natgeo__''\]=','') then
              begin
               try
                 jdata.Parse(data);

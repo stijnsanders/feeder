@@ -23,7 +23,7 @@ function TTitaniumFeedProcessor.Determine(Store:IFeedStore;const FeedURL:WideStr
       var FeedData:WideString;const FeedDataType:WideString):boolean;
 begin
   Result:=Store.CheckLastLoadResultPrefix('Titanium') and
-    FindPrefixAndCrop(FeedData,'window\[''titanium-state''\] = ');
+    FindPrefixAndCrop(FeedData,'window\[''titanium-state''\] = ','');
 end;
 
 procedure TTitaniumFeedProcessor.ProcessFeed(Handler: IFeedHandler;

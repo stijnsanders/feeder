@@ -29,7 +29,7 @@ var
   i,l:integer;
 begin
   Result:=Store.CheckLastLoadResultPrefix('Fusion') and
-    FindPrefixAndCrop(FeedData,'Fusion.globalContent=');
+    FindPrefixAndCrop(FeedData,'Fusion.globalContent=','');
   if Result then
    begin
     l:=Length(FeedURL);
@@ -47,13 +47,13 @@ procedure TFusionFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jnodes:IJSONDocArray;
-  jdoc,jd1,je1,jn0,jn1:IJSONDocument;
+  jdoc,jd1,je1,jn0,jn1,jn2:IJSONDocument;
   jd0,je0,jw0:IJSONEnumerator;
   p1,itemid,itemurl:string;
   pubDate:TDateTime;
   title,content:WideString;
-  v,vNodes:Variant;
-  inode:integer;
+  v,vNodes,vSections:Variant;
+  iNode,iSection:integer;
 begin
   jnodes:=JSONDocArray;
   jd1:=JSON;
@@ -73,9 +73,9 @@ begin
    begin
     Handler.UpdateFeedName(VarToStr(jd1['title']));
     jn0:=JSON;
-    for inode:=0 to jnodes.Count-1 do
+    for iNode:=0 to jnodes.Count-1 do
      begin
-      jnodes.LoadItem(inode,jn0);
+      jnodes.LoadItem(iNode,jn0);
 
       itemid:=jn0['id'];
       itemurl:=VarToStr(jn0['canonical_url']);
@@ -105,7 +105,7 @@ begin
   //else
    begin
     content:=FeedData;
-    if FindPrefixAndCrop(content,'Fusion.contentCache=') then
+    if FindPrefixAndCrop(content,'Fusion.contentCache=','') then
      begin
       jdoc:=JSON;
       try
@@ -145,9 +145,9 @@ begin
               else
                 vNodes:=je1['content_elements'];
             if not VarIsNull(vNodes) then
-            for inode:=VarArrayLowBound(vNodes,1) to VarArrayHighBound(vNodes,1) do
+            for iNode:=VarArrayLowBound(vNodes,1) to VarArrayHighBound(vNodes,1) do
              begin
-              jn0:=JSON(vNodes[inode]);
+              jn0:=JSON(vNodes[iNode]);
               itemid:=VarToStr(jn0['id'])+VarToStr(jn0['_id']);
               if itemid='' then
                begin
@@ -221,6 +221,18 @@ begin
                 //['source']['authors']?
 
                 //TODO: sections -> Handler.PostTags()
+                jn1:=JSON(jn0['taxonomy']);
+                if jn1=nil then vSections:=Null else vSections:=jn1['sections'];
+                if VarIsArray(vSections) then
+                 begin
+                  v:=VarArrayCreate([VarArrayLowBound(vSections,1),VarArrayHighBound(vSections,1)],varOleStr);
+                  for iSection:=VarArrayLowBound(vSections,1) to VarArrayHighBound(vSections,1) do
+                   begin
+                    jn2:=JSON(vSections[iSection]);
+                    v[iSection]:=jn2['name'];
+                   end;
+                  Handler.PostTags('category',v);//'section'?
+                 end;
 
                 jn1:=JSON(jn0['promo_items']);
                 if jn1<>nil then jn1:=JSON(jn1['basic']);

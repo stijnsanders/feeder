@@ -211,7 +211,7 @@ var
   sm,sm1:SubMatches;
   s,s1,s2:string;
   mci,i,n,l,contentN,skipStale,skipStale0:integer;
-  contentAll:boolean;
+  contentAll,checkImg:boolean;
   title,id,url,content,w,imgurl,crs1:WideString;
   d:TDateTime;
   p:IJSONDocument;
@@ -385,6 +385,7 @@ begin
     re.Multiline:=p['m']=true;
     contentN:=p['n'];
     contentAll:=p['all']=true;
+    checkImg:=FFeedParams['checkImg']=true;
     if VarIsNull(FFeedParams['skipStale']) then skipStale:=1
       else skipStale:=FFeedParams['skipStale'];
     skipStale0:=skipStale;
@@ -441,14 +442,14 @@ begin
           else
            begin
             content:=w;
-            FindPrefixAndCrop(content,FFeedParams['clip']);
+            FindPrefixAndCrop(content,FFeedParams['clip'],'');
             mc1:=re.Execute(content) as MatchCollection;
            end;
 
           if mc1.Count<>0 then
            begin
 
-            if FindPrefixAndCrop(w,FFeedParams['infoJson']) then
+            if FindPrefixAndCrop(w,FFeedParams['infoJson'],'') then
              begin
               if (w<>'') and (w[1]='[') then w:=Copy(w,2,Length(w)-2);//TODO: IJSONDocArray?
               try
@@ -554,11 +555,16 @@ begin
                   content:=re1.Replace(content,crs1);
                end;
 
+              if (imgurl<>'') and checkImg and HTMLStartsWithImg(content) then imgurl:='';
+
               if imgurl<>'' then
                 content:='<img class="postthumb" referrerpolicy="no-referrer'+
                   '" src="'+HTMLEncodeQ(imgurl)+
                   //'" alt="'+???
                   '" /><br />'#13#10+content;
+
+              if not(VarIsNull(FFeedParams['base'])) then
+                content:='<base href="'+HTMLEncode(FFeedParams['base'])+'" />'#13#10+content;
 
               Handler.RegisterPost(title,content);
               skipStale:=skipStale0;

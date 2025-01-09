@@ -209,33 +209,34 @@ begin
   FParseData:=nil;//default
   Result:=false;//default
 
-  if FeedDataType='application/json' then
+  fn:='feeds/'+URLToFileName(string(FeedURL))+'.json';
+  if FileExists(fn) then
    begin
-    fn:='feeds/'+URLToFileName(string(FeedURL))+'.json';
-
-    if FileExists(fn) then
-     begin
-      FParseData:=JSON;
-      sl:=TStringList.Create;
-      try
-        sl.LoadFromFile(fn);
-        FParseData.Parse(sl.Text);
-      finally
-        sl.Free;
-      end;
-      Result:=true;
-     end
+    FParseData:=JSON;
+    sl:=TStringList.Create;
+    try
+      sl.LoadFromFile(fn);
+      FParseData.Parse(sl.Text);
+    finally
+      sl.Free;
+    end;
+    if FeedDataType='application/json' then
+      Result:=true
     else
+      if not(VarIsNull(FParseData['findAndCrop'])) then
+        Result:=FindPrefixAndCrop(FeedData,FParseData['findAndCrop'],'');
+   end
+  else
+    if FeedDataType='application/json' then
       Result:=StartsWith(StripWhiteSpace(FeedData),'{"data":[');
 
-    if Result then
-     begin
-      FURL:=FeedURL;
-      i:=9;//Length('https://')+1;
-      while (i<=Length(FURL)) and (FURL[i]<>'/') do inc(i);
-      if (i<=Length(FURL)) and (FURL[i]='/') then
-        SetLength(FURL,i-1);
-     end;
+  if Result then
+   begin
+    FURL:=FeedURL;
+    i:=9;//Length('https://')+1;
+    while (i<=Length(FURL)) and (FURL[i]<>'/') do inc(i);
+    if (i<=Length(FURL)) and (FURL[i]='/') then
+      SetLength(FURL,i-1);
    end;
 end;
 
@@ -256,8 +257,13 @@ begin
     p:=nil;
     while i<=l do
      begin
-      if p=nil then p:=d else p:=JSON(Result);
-      Result:=p[v[i]];
+      if VarIsNumeric(v[i]) and VarIsArray(Result) then
+        Result:=Result[v[i]]
+      else
+       begin
+        if p=nil then p:=d else p:=JSON(Result);
+        Result:=p[v[i]];
+       end;
       inc(i);
      end;
    end
@@ -353,8 +359,32 @@ begin
      end
     else
      begin
-      jdoc:=JSON([FParseData['list'],jitems]);
-      jdoc.Parse(FeedData);
+      v:=FParseData['list'];
+      if VarIsArray(v) then
+       begin
+        jdoc:=JSON;
+        i:=VarArrayLowBound(v,1);
+        j:=VarArrayHighBound(v,1);
+        j0:=jdoc;
+        while i<j do
+         begin
+          j1:=JSON;
+          j0[v[i]]:=j1;
+          j0:=j1;
+          inc(i);
+         end;
+        j0[v[i]]:=jitems;
+       end
+      else
+        jdoc:=JSON([v,jitems]);
+      if VarIsNull(FParseData['loadIgnoreErorr']) then
+        jdoc.Parse(FeedData)
+      else
+        try
+          jdoc.Parse(FeedData);
+        except
+          on EJSONDecodeException do ;//ignore
+        end;
      end;
     if not(VarIsNull(FParseData['feedname'])) then
       Handler.UpdateFeedName(f(jdoc,'feedname'));
@@ -392,9 +422,9 @@ begin
         else
          begin
           if he then
-            content:=VarToStr(v)
+            content:=HTMLEncode(VarToStr(v))
           else
-            content:=HTMLEncode(VarToStr(v));
+            content:=VarToStr(v);
          end;
 
         if not(VarIsNull(FParseData['postthumb'])) then
@@ -404,7 +434,8 @@ begin
           else
             s:=f(j0,'postthumbalt');
           content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-            HTMLEncode(f(j0,'postthumb'))+'" alt="'+
+            HTMLEncode(VarToStr(FParseData['postthumburlprefix'])
+              +f(j0,'postthumb'))+'" alt="'+
             HTMLEncode(s)+'" /><br />'#13#10+content;
          end;
 
