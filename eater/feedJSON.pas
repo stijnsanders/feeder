@@ -18,6 +18,7 @@ type
     FURL:string;
     FParseData:IJSONDocument;
     function f(d:IJSONDocument;const n:WideString):Variant;
+    function ff(d:IJSONDocument;const n:string):string;
   public
     function Determine(Store:IFeedStore;const FeedURL:WideString;
       var FeedData:WideString;const FeedDataType:WideString):boolean; override;
@@ -220,7 +221,8 @@ begin
     finally
       sl.Free;
     end;
-    if FeedDataType='application/json' then
+    //if VarIsNull(FParseData['p']) then ? //else see feedHTML.pas
+    if (FeedDataType='application/json') or StartsWith(FeedData,'{"') then
       Result:=true
     else
       if not(VarIsNull(FParseData['findAndCrop'])) then
@@ -269,6 +271,29 @@ begin
    end
   else
     Result:=d[v];
+end;
+
+function TJsonDataProcessor.ff(d: IJSONDocument; const n: string): string;
+var
+  i,j,l:integer;
+begin
+  Result:='';
+  l:=Length(n);
+  i:=1;
+  while i<=l do
+   begin
+    j:=i;
+    while (j<=l) and (n[j]<>'[') do inc(j);
+    Result:=Result+Copy(n,i,j-i);
+    i:=j+1;//skip '['
+    if i<=l then
+     begin
+      j:=i;
+      while (j<=l) and (n[j]<>']') do inc(j);
+      Result:=Result+f(d,Copy(n,i,j-i));
+      i:=j+1;//skip ']'
+     end;
+   end;
 end;
 
 procedure TJsonDataProcessor.ProcessFeed(Handler: IFeedHandler;
@@ -396,7 +421,7 @@ begin
       jitems.LoadItem(i,j0);
       itemid:=f(j0,'id');
       if VarIsNull(FParseData['url']) then
-        itemurl:=FURL+f(j0,'relUrl')
+        itemurl:=ff(j0,FURL)+f(j0,'relUrl')
       else
         itemurl:=f(j0,'url');
       try
@@ -409,22 +434,30 @@ begin
        begin
         title:=SanitizeTitle(f(j0,'title'));
         he:=FParseData['contentHtmlEncode']=true;
-        v:=f(j0,'content');
-        if VarIsArray(v) then
+        if VarIsNull(FParseData['contentFill']) then
          begin
-          content:='';
-          for j:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+          v:=f(j0,'content');
+          if VarIsArray(v) then
+           begin
+            content:='';
+            for j:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+              if he then
+                content:=content+'<p>'+HTMLEncode(VarToStr(v[j]))+'</p>'#13#10
+              else
+                content:=content+'<p>'+VarToStr(v[j])+'</p>'#13#10;
+           end
+          else
+           begin
             if he then
-              content:=content+'<p>'+HTMLEncode(VarToStr(v[j]))+'</p>'#13#10
+              content:=HTMLEncode(VarToStr(v))
             else
-              content:=content+'<p>'+VarToStr(v[j])+'</p>'#13#10;
+              content:=VarToStr(v);
+           end;
          end
         else
          begin
-          if he then
-            content:=HTMLEncode(VarToStr(v))
-          else
-            content:=VarToStr(v);
+          content:=ff(j0,FParseData['contentFill']);
+          if he then content:=HTMLEncode(content);
          end;
 
         if not(VarIsNull(FParseData['postthumb'])) then

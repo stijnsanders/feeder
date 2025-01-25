@@ -56,9 +56,9 @@ begin
    begin
     y:=x.selectSingleNode('atom:id') as IXMLDOMElement;
     if y=nil then itemid:='' else itemid:=y.text;
-    if Copy(itemid,1,4)='http' then
+    {if Copy(itemid,1,4)='http' then
       itemurl:=itemid
-    else
+    else}
      begin
       xl1:=x.selectNodes('atom:link');
       y:=xl1.nextNode as IXMLDOMElement;
