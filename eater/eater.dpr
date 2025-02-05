@@ -33,6 +33,7 @@ uses
   feedHTML in 'feedHTML.pas',
   feedNatGeo in 'feedNatGeo.pas',
   feedRemix in 'feedRemix.pas',
+  feedNextPush in 'feedNextPush.pas',
   sha3 in '..\sha3.pas',
   base64 in '..\base64.pas';
 

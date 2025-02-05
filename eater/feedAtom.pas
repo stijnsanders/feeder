@@ -63,17 +63,21 @@ begin
       xl1:=x.selectNodes('atom:link');
       y:=xl1.nextNode as IXMLDOMElement;
       if y=nil then
-        itemurl:=itemid;
-      while y<>nil do
-       begin
-        //'rel'?
-        if y.getAttribute('type')='text/html' then
+        itemurl:=itemid
+      else
+      if xl1.length=1 then
+        itemurl:=VarToStr(y.getAttribute('href'))
+      else
+        while y<>nil do
          begin
-          itemurl:=VarToStr(y.getAttribute('href'));//default
-          if itemurl='' then itemurl:=y.text;//???!!!
+          //'rel'?
+          if y.getAttribute('type')='text/html' then
+           begin
+            itemurl:=VarToStr(y.getAttribute('href'));//default
+            if itemurl='' then itemurl:=y.text;//???!!!
+           end;
+          y:=xl1.nextNode as IXMLDOMElement;
          end;
-        y:=xl1.nextNode as IXMLDOMElement;
-       end;
       xl1:=nil;
       if itemid='' then itemid:=itemurl;
      end;

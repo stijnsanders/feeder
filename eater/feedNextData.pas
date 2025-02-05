@@ -10,9 +10,6 @@ type
     FFeedURL:WideString;
     procedure ProcessArticle(Handler:IFeedHandler;jdata:IJSONDocument);
     procedure ProcessCompositions(Handler:IFeedHandler;jcompos:IJSONDocArray);
-
-    procedure ProcessApollo(Handler:IFeedHandler;jdata:IJSONDocument);
-
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
       var FeedData: WideString; const FeedDataType: WideString): Boolean;
@@ -510,12 +507,7 @@ begin
        end;
      end;
    end;
-
-  jn0:=JSON(JSON(JSON(jdoc['props'])['pageProps'])['apolloState']);
-  if jn0=nil then
-    Handler.ReportSuccess('NextData')
-  else
-    ProcessApollo(Handler,jn0);
+  Handler.ReportSuccess('NextData');
 end;
 
 procedure TNextDataFeedProcessor.ProcessArticle(Handler: IFeedHandler;
@@ -652,106 +644,6 @@ begin
        end;
      end;
    end;
-end;
-
-procedure TNextDataFeedProcessor.ProcessApollo(Handler: IFeedHandler;
-  jdata: IJSONDocument);
-var
-  jd1,jd2:IJSONDocument;
-  je:IJSONEnumerator;
-  itemid,itemurl,title,content,s:WideString;
-  pubDate:TDateTime;
-  v,tags:Variant;
-  i,l:integer;
-  FURLPrefix:string;
-begin
-
-  l:=Length(FFeedURL);
-  i:=1;
-  while (i<=l) and (FFeedURL[i]<>':') do inc(i);
-  inc(i);//
-  if (i<=l) and (FFeedURL[i]='/') then inc(i);
-  if (i<=l) and (FFeedURL[i]='/') then inc(i);
-  while (i<=l) and (FFeedURL[i]<>'/') do inc(i);
-  FURLPrefix:=Copy(FFeedURL,1,i-1);
-
-  //TODO: move into TApolloFeedProcessor ?
-  je:=JSONEnum(jdata);
-  while je.Next do
-    if StartsWith(je.Key,'BlogTopicMessage:') then
-     begin
-      jd1:=JSON(je.Value);
-      //assert jd1['__typename']='BlogTopicMessage'
-      itemid:=jd1['id'];
-        {
-        v:=jd1['urlFull'];
-        if VarIsNull(v) then
-          itemurl:=FURLPrefix+jd1['url']
-        else
-          itemurl:=VarToStr(v);//assert StartsWith(itemurl,'http')
-
-        pubDate:=ConvDate1(jd1['publishedAt']); //publicPublishedDate? updatedAt?
-
-        if Handler.CheckNewPost(itemid,itemurl,pubDate) then
-         begin
-
-          title:=SanitizeTitle(jd1['title']);
-          //'badge'?
-
-          content:=VarToStr(jd1['deck']);
-
-          v:=jd1['authors'];
-          if not(VarIsNull(v)) then //and VarIsArray(v) then
-           begin
-            s:='';
-            //assert VarArrayLowBound(v,1)=0 (see jsonDoc.pas)
-            l:=VarArrayHighBound(v,1);
-            for i:=0 to l do
-             begin
-              if s<>'' then s:=s+'<br />'#13#10;
-              s:=s+HTMLEncode(JSON(jdoc[JSON(v[i])['__ref']])['name']);
-             end;
-            content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
-              s+'</div>'#13#10+content;
-           end;
-
-          v:=jd1['ledeImage'];
-          if not(VarIsNull(v)) then
-           begin
-            jd2:=JSON(jdoc[JSON(v)['__ref']]);
-            //if jd2['format']='JPEG'?
-            s:=jd2['src'];
-            if StartsWith(s,'//') then s:='https:'+s; //??!
-            content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-              HTMLEncode(s)+'" alt="'+
-              HTMLEncode(VarToStr(jd2['alt']))+'" /><br />'#13#10+content;
-            //width? height?
-           end;
-          //ledeAltImage?   ledeImageCaption?
-
-          v:=jd1['tags'];
-          if not(VarIsNull(v)) then //and VarIsArray(v) then
-           begin
-            //assert VarArrayLowBound(v,1)=0 (see jsonDoc.pas)
-            l:=VarArrayHighBound(v,1);
-            tags:=VarArrayCreate([0,l],varOleStr);
-            for i:=0 to l do
-              tags[i]:=JSON(jdoc[JSON(v[i])['__ref']])['label']; //'slug'?
-            Handler.PostTags('tag',tags);
-           end;
-
-          Handler.RegisterPost(title,content);
-       end;
-      }
-     end
-    //else
-    //TODO: if StartsWith(je.Key,'BlogTopicMessage:') then
-
-    else
-    //ignore
-    ;
-
-  Handler.ReportSuccess('NextData+Apollo');
 end;
 
 initialization
