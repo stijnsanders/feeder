@@ -26,7 +26,7 @@ function TNextPushFeedProcessor.Determine(Store: IFeedStore;
   const FeedURL: WideString; var FeedData: WideString;
   const FeedDataType: WideString): Boolean;
 begin
-  Result:=Store.CheckLastLoadResultPrefix('NextPush') and
+  Result:=//Store.CheckLastLoadResultPrefix('NextPush') and
     (Pos(WideString('<script>self.__next_f.push('),FeedData)<>0);
   if Result then FFeedURL:=FeedURL;
 end;
@@ -62,12 +62,14 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
           if VarIsArray(vx[vi]) then ProcessQuad(vx[vi]);
      end;
     //else?
-    vx:=d['summary'];
+    vx:=d['event'];
+    if VarIsNull(vx) then vx:=d['summary'];
     if VarType(vx)=varUnknown then //if IsJSON(vx) then
      begin
       //ProcessArticle(JSON(vx));
       d:=JSON(vx);
       itemid:=d['id'];
+      if VarIsNull(d['slug']) then d['slug']:=itemid;      
       itemurl:=FFeedURL
         +'article/'//?
         +d['slug'];
@@ -83,8 +85,7 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
          begin
           content:=
             '<img class="postthumb" referrerpolicy="no-referrer" src="'+
-            HTMLEncode(d1['url'])+' alt="'+
-            HTMLEncode(d1['caption'])+
+            HTMLEncode(d1['url'])+'" alt="'+HTMLEncode(d1['caption'])+
             '" /><br />'#13#10+content;
          end;
 

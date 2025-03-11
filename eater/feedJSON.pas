@@ -264,7 +264,7 @@ begin
       else
        begin
         if p=nil then p:=d else p:=JSON(Result);
-        Result:=p[v[i]];
+        if p=nil then Result:=Null else Result:=p[v[i]];
        end;
       inc(i);
      end;
@@ -301,7 +301,7 @@ procedure TJsonDataProcessor.ProcessFeed(Handler: IFeedHandler;
 var
   jitems:IJSONDocArray;
   jdoc,j0,j1:IJSONDocument;
-  itemid,itemurl,s:string;
+  itemid,itemurl,s,t:string;
   title,content:WideString;
   pubDate:TDateTime;
   i,j:integer;
@@ -466,10 +466,11 @@ begin
             s:=''
           else
             s:=f(j0,'postthumbalt');
-          content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-            HTMLEncode(VarToStr(FParseData['postthumburlprefix'])
-              +f(j0,'postthumb'))+'" alt="'+
-            HTMLEncode(s)+'" /><br />'#13#10+content;
+          t:=VarToStr(f(j0,'postthumb'));
+          if t<>'' then
+            content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+              HTMLEncode(VarToStr(FParseData['postthumburlprefix'])+t)+'" alt="'+
+              HTMLEncode(s)+'" /><br />'#13#10+content;
          end;
 
         //TODO: categories,tags

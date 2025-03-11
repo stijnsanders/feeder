@@ -45,6 +45,7 @@ begin
     s:='xmlns:atom="'+doc.namespaces[i]+'"';
    end;
   s:=s+' xmlns:media="http://search.yahoo.com/mrss/"';
+  s:=s+' xmlns:s="http://jadedpixel.com/-/spec/shopify"';
   doc.setProperty('SelectionNamespaces',s);
 
   x:=doc.documentElement.selectSingleNode('atom:title') as IXMLDOMElement;
@@ -123,6 +124,23 @@ begin
           y:=xl1.nextNode as IXMLDOMElement;
          end;
         Handler.PostTags('category',tags);
+       end
+      else
+       begin
+        xl1:=x.selectNodes('s:tag');
+        if xl1.length<>0 then
+         begin
+          tags:=VarArrayCreate([0,xl1.length-1],varOleStr);
+          i:=0;
+          y:=xl1.nextNode as IXMLDOMElement;
+          while y<>nil do
+           begin
+            tags[i]:=y.text;
+            inc(i);
+            y:=xl1.nextNode as IXMLDOMElement;
+           end;
+          Handler.PostTags('category',tags);//('tag'?
+         end;
        end;
       xl1:=nil;
 

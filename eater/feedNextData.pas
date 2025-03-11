@@ -28,7 +28,7 @@ function TNextDataFeedProcessor.Determine(Store: IFeedStore;
   const FeedURL: WideString; var FeedData: WideString;
   const FeedDataType: WideString): Boolean;
 begin
-  Result:=Store.CheckLastLoadResultPrefix('NextData') and
+  Result:=//Store.CheckLastLoadResultPrefix('NextData') and
     FindPrefixAndCrop(FeedData,'<script id="__NEXT_DATA__" type="application/json"','>');
   if not(Result) and StartsWith(FeedData,'{"pageProps":') then
    begin

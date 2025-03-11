@@ -380,7 +380,7 @@ begin
     p:=JSON(FFeedParams['content']);
     re:=CoRegExp.Create;
     re.Global:=p['all']=true;
-    re.IgnoreCase:=true;
+    re.IgnoreCase:=p['i']<>false;
     re.Pattern:=p['p'];
     re.Multiline:=p['m']=true;
     contentN:=p['n'];

@@ -28,13 +28,13 @@ var
   fn:string;
 begin
   Result:=false;//default
-  if (FeedDataType='application/json') and (Pos(WideString('/wp/v2/'),FeedURL)<>0) then
+  if (Pos(WideString('/wp/v2/'),FeedURL)<>0) then
+    //and ((FeedDataType='application/json') or StartsWith(FeedData,'[{"id":')) then
    begin
     i:=1;
     l:=Length(FeedData);
     while (i<=l) and (FeedData[i]<' ') do inc(i);
     Result:=(i<=l) and (FeedData[i]='[');
-    //'[{"id":'?
    end;
 
   if Result then
