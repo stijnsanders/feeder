@@ -317,7 +317,9 @@ begin
     d:=CoServerXMLHTTP60.Create;
     d.open('GET',URL,false,EmptyParam,EmptyParam);
     d.setRequestHeader('User-Agent','FeedEater/1.1');
-    d.setRequestHeader('Cookie','CONSENT=YES+US.en+V9+BX');
+    d.setRequestHeader('Cookie','PREF=tz=Europe.Brussels');
+    d.setRequestHeader('Cookie','GPS=1');
+//    d.setRequestHeader('Cookie','CONSENT=YES+US.en+V9+BX');
     d.send(EmptyParam);
     //assert d.status=200
     r:=CoRegExp.Create;

@@ -205,7 +205,6 @@ function TJsonDataProcessor.Determine(Store: IFeedStore;
 var
   i:integer;
   fn:string;
-  sl:TStringList;
 begin
   FParseData:=nil;//default
   Result:=false;//default
@@ -214,13 +213,7 @@ begin
   if FileExists(fn) then
    begin
     FParseData:=JSON;
-    sl:=TStringList.Create;
-    try
-      sl.LoadFromFile(fn);
-      FParseData.Parse(sl.Text);
-    finally
-      sl.Free;
-    end;
+    LoadJSON(FParseData,fn);
     //if VarIsNull(FParseData['p']) then ? //else see feedHTML.pas
     if (FeedDataType='application/json') or StartsWith(FeedData,'{"') then
       Result:=true
@@ -478,6 +471,15 @@ begin
         if not(VarIsNull(FParseData['author'])) then
           content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
             HTMLEncode(f(j0,'author'))+'</div>'#13#10+content;
+
+        v:=FParseData['prefixTitle'];
+        if VarIsArray(v) then
+          for j:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+           begin
+            j1:=JSON(v[j]);
+            if j0[j1['key']]=j1['value'] then title:=j1['prefix']+title;
+            //more?
+           end;
 
         Handler.RegisterPost(title,content);
        end;

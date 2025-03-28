@@ -75,7 +75,7 @@ var
 
 const
   InstagramIntervalMS=30000;
-  InstagramCoolDown=4.0/24.0;
+  InstagramCoolDown=2.1;//48h +margin
 
 implementation
 
@@ -502,14 +502,12 @@ begin
 
               Write('.   '#8#8#8);
               if newfeed then i:=32 else i:=8;//new?
-              r.open('GET','https://www.instagram.com/graphql/query/?query_hash='
-                +'69cba40317214236af40e7efa697781d&variables=%7B%22id%22%3A%22'
-                +ss+'%22%2C%22first%22%3A'+IntToStr(i)+'%7D'
+              r.open('GET','https://www.instagram.com/graphql/query/?doc_id=7950326061742207'
+                +'&variables=%7B%22id%22%3A%22'+ss+'%22%2C%22first%22%3A'+IntToStr(i)+'%7D'
                 ,false,EmptyParam,EmptyParam);
               r.setRequestHeader('Accept','application/json');
-              //r.setRequestHeader('Referer',FFeed.URL);??
-              r.setRequestHeader('Cookie','csrftoken=r0E0o6p76cxSWJma3DcrEt1EyS40Awdw');//??
-              r.setRequestHeader('X-CSRFToken','r0E0o6p76cxSWJma3DcrEt1EyS40Awdw');
+              r.setRequestHeader('Cookie','csrftoken=r0E0o6p76cxSWJma3DcrEt1EyS40wwdA');
+              r.setRequestHeader('X-CSRFToken','r0E0o6p76cxSWJma3DcrEt1EyS40wwdA');
               //'x-ig-app-id'?
               r.send(EmptyParam);
               if r.status=200 then
@@ -525,6 +523,7 @@ begin
               if r.status=401 then
                begin
                 InstagramFailed:=UtcNow+InstagramCoolDown;
+                //SaveUTF16('xmls\'+Format('%.4d',[FFeed.id])+'.txt',r.getAllResponseHeaders+#13#10#13#10+r.responseText);
                 FFeed.Result:='(Instagram '+IntToStr(Round((InstagramFailed-UtcNow)*1440.0))+'''.)';
                end
               else

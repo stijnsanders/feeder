@@ -172,7 +172,6 @@ function THTMLFeedProcessor2.Determine(Store: IFeedStore;
   const FeedDataType: WideString): boolean;
 var
   fn:string;
-  sl:TStringList;
 begin
   FURL:=FeedURL;
   //Store.CheckLastLoadResultPrefix('HTML:2')?
@@ -184,13 +183,7 @@ begin
     if FileExists(fn) then
      begin
       FFeedParams:=JSON;
-      sl:=TStringList.Create;
-      try
-        sl.LoadFromFile(fn);
-        FFeedParams.Parse(sl.Text);
-      finally
-        sl.Free;
-      end;
+      LoadJSON(FFeedParams,fn);
 
       FPostItem.IgnoreCase:=FFeedParams['i']=true;
       FPostItem.Multiline:=FFeedParams['m']=true;
