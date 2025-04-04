@@ -42,13 +42,13 @@ procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jdoc,jd1,jd2,jn0,jn1:IJSONDocument;
-  jcontent,jzones,jarticles,jcompos,jevents,jblocks,jitems,
+  jcontent,jzones,jarticles,jcompos,jevents,jblocks,jitems,jContArt,
   jimg,jbody,jcats,jcredits:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck:integer;
   itemid,itemurl,p1:string;
   pubDate:TDateTime;
-  title,content:WideString;
+  title,content,p2:WideString;
   tags,v:Variant;
 begin
   jd1:=JSON;
@@ -59,6 +59,7 @@ begin
   jevents:=JSONDocArray;
   jitems:=JSONDocArray;
   jblocks:=JSONDocArray;
+  jContArt:=JSONDocArray;
   jn0:=JSON(
     ['homepageBuilder',jarticles
     //,'heroArticle',jarticles
@@ -82,6 +83,7 @@ begin
       ,'events',jevents
       ,'breakingStories',jevents
       ,'globalContent',JSON(['items',jitems])
+      ,'articles',jContArt
       ])
     ])]);
   try
@@ -507,6 +509,140 @@ begin
        end;
      end;
    end;
+
+  //'content articles'
+  if jContArt.Count<>0 then
+   begin
+    jd1:=JSON(['content',JSON(['content',jContent])]);
+    for ci:=0 to jContArt.Count-1 do
+     begin
+      jContArt.LoadItem(ci,jd1);
+      itemid:=jd1['id'];
+      itemurl:=FFeedURL
+        +'editorial/'//????!!!
+        +jd1['slug'];
+      pubDate:=ConvDate1(jd1['date']);//jd1['articleDate']?
+      if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+       begin
+        title:=SanitizeTitle(jd1['title']);
+        //assert JSON(jd1['content'])['nodeType']='document'
+        content:='';
+        for cj:=0 to jContent.Count-1 do
+         begin
+          jd2:=JSON(['content',jitems]);
+          jContent.LoadItem(cj,jd2);
+          p1:=jd2['nodeType'];
+
+          if p1='embedded-entry-block' then
+           begin
+            //assert jItems.Count=0
+            jd2:=JSON(jd2['data']);
+            jd2:=JSON(jd2['target']);
+            //sys.contentType.sys.type='Link'?
+            jd2:=JSON(jd2['fields']);
+            jn0:=JSON(jd2['image']);
+            if jn0<>nil then
+             begin
+              jn0:=JSON(jn0['fields']);
+              content:=content+
+                //<div class="?
+                '<div style="margin-left:2em;font-size:10pt;">'+
+                '<img src="https:'+JSON(jn0['file'])['url']+
+                ' referrerpolicy="no-referrer" /><br />'+
+                HTMLEncode(VarToStr(jd2['caption']))+'</div>'#13#10;
+             end;
+           end
+          else
+          if p1='hr' then
+            content:=content+'<hr />'#13#10
+          else
+          if p1='paragraph' then
+           begin
+            jn0:=JSON;
+            for ck:=0 to jItems.Count-1 do
+             begin
+              jItems.LoadItem(ck,jn0);
+              p1:=jn0['nodeType'];
+              if p1='text' then
+               begin
+                p2:=jn0['value'];
+                if p2<>'' then
+                  content:=content+'<p>'+HTMLEncode(p2)+'</p>'#13#10;
+               end
+              else
+              if p1='hyperlink' then
+               begin
+                jn1:=JSON(jn0['content'][0]);
+                //Assert jn1['nodeType']='text'
+                content:=content+'<p><a href="'+JSON(jn0['data'])['uri']+'" rel="noreferrer">'
+                  +HTMLEncode(jn1['value'])+'</a></p>'#13#10;
+               end
+              else
+                content:=content+'<i style="color:red;">[?'+p1+']</i>'#13#10;//ignore
+             end;
+           end
+          else
+          if p1='heading-1' then
+           begin
+            jn0:=JSON;
+            for ck:=0 to jItems.Count-1 do
+             begin
+              jItems.LoadItem(ck,jn0);
+              p1:=jn0['nodeType'];
+              if p1='text' then
+               begin
+                p2:=jn0['value'];
+                if p2<>'' then
+                  content:=content+
+                    '<h1 style="text-align:center">'+//? class?
+                    HTMLEncode(p2)+'</h1>'#13#10;
+               end
+              else
+                content:=content+'<i style="color:red;">[?'+p1+']</i>'#13#10;//ignore
+             end;
+           end
+          else
+          if p1='heading-3' then
+           begin
+            jn0:=JSON;
+            for ck:=0 to jItems.Count-1 do
+             begin
+              jItems.LoadItem(ck,jn0);
+              p1:=jn0['nodeType'];
+              if p1='text' then
+               begin
+                p2:=jn0['value'];
+                if p2<>'' then
+                  content:=content+
+                    '<h3 style="text-align:center">'+//? class?
+                    HTMLEncode(p2)+'</h3>'#13#10;
+               end
+              else
+                content:=content+'<i style="color:red;">[?'+p1+']</i>'#13#10;//ignore
+             end;
+           end
+          else
+            content:=content+'<i style="color:red;">[?'+p1+']</i>'#13#10;//ignore?
+         end;
+
+        if not HTMLStartsWithImg(content) then
+         begin
+          jn0:=JSON(jd1['featuredImage']);
+          if jn0<>nil then
+            content:='<img class="postthumb" referrerpolicy="no-referrer" src="https:'+
+              JSON(jn0['file'])['url']+'" /><br />'#13#10+content;
+         end;
+
+        v:=jd1['tags'];
+        if VarIsArray(v) then Handler.PostTags('tag',v);
+
+        Handler.RegisterPost(title,content);
+       end;
+     end;
+
+
+   end;
+
   Handler.ReportSuccess('NextData');
 end;
 
