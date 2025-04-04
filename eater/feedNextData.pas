@@ -45,7 +45,7 @@ var
   jcontent,jzones,jarticles,jcompos,jevents,jblocks,jitems,jContArt,
   jimg,jbody,jcats,jcredits:IJSONDocArray;
   je:IJSONEnumerator;
-  ci,cj,ck:integer;
+  ci,cj,ck,cl:integer;
   itemid,itemurl,p1:string;
   pubDate:TDateTime;
   title,content,p2:WideString;
@@ -548,7 +548,7 @@ begin
                 //<div class="?
                 '<div style="margin-left:2em;font-size:10pt;">'+
                 '<img src="https:'+JSON(jn0['file'])['url']+
-                ' referrerpolicy="no-referrer" /><br />'+
+                '" referrerpolicy="no-referrer" /><br />'+
                 HTMLEncode(VarToStr(jd2['caption']))+'</div>'#13#10;
              end;
            end
@@ -558,28 +558,38 @@ begin
           else
           if p1='paragraph' then
            begin
-            jn0:=JSON;
+            jn0:=JSON(['marks',jzones]);
+            content:=content+'<p>';
             for ck:=0 to jItems.Count-1 do
              begin
               jItems.LoadItem(ck,jn0);
               p1:=jn0['nodeType'];
               if p1='text' then
                begin
-                p2:=jn0['value'];
-                if p2<>'' then
-                  content:=content+'<p>'+HTMLEncode(p2)+'</p>'#13#10;
+                p2:=HTMLEncode(jn0['value']);
+                for cl:=0 to jzones.Count-1 do
+                 begin
+                  p1:=JSON(jzones[cl])['type'];
+                  if p1='italic' then p2:='<i>'+p2+'</i>' else
+                  if p1='bold' then p2:='<b>'+p2+'</b>' else
+                  if p1='underline' then p2:='<u>'+p2+'</u>' else
+                  if p1='code' then p2:='<code>'+p2+'</code>' else
+                    p2:=p2+'<i style="color:red;">[?'+p1+']</i>';
+                 end;
+                content:=content+p2;
                end
               else
               if p1='hyperlink' then
                begin
                 jn1:=JSON(jn0['content'][0]);
                 //Assert jn1['nodeType']='text'
-                content:=content+'<p><a href="'+JSON(jn0['data'])['uri']+'" rel="noreferrer">'
-                  +HTMLEncode(jn1['value'])+'</a></p>'#13#10;
+                content:=content+'<a href="'+JSON(jn0['data'])['uri']+'" rel="noreferrer">'
+                  +HTMLEncode(jn1['value'])+'</a>';
                end
               else
                 content:=content+'<i style="color:red;">[?'+p1+']</i>'#13#10;//ignore
              end;
+            content:=content+'<p>'#13#10;
            end
           else
           if p1='heading-1' then
@@ -594,7 +604,7 @@ begin
                 p2:=jn0['value'];
                 if p2<>'' then
                   content:=content+
-                    '<h1 style="text-align:center">'+//? class?
+                    '<h1>'+//? class?
                     HTMLEncode(p2)+'</h1>'#13#10;
                end
               else
@@ -614,7 +624,7 @@ begin
                 p2:=jn0['value'];
                 if p2<>'' then
                   content:=content+
-                    '<h3 style="text-align:center">'+//? class?
+                    '<h3>'+//? class?
                     HTMLEncode(p2)+'</h3>'#13#10;
                end
               else
