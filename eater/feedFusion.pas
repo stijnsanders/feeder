@@ -220,7 +220,6 @@ begin
                 //['lead_art']?
                 //['source']['authors']?
 
-                //TODO: sections -> Handler.PostTags()
                 jn1:=JSON(jn0['taxonomy']);
                 if jn1=nil then vSections:=Null else vSections:=jn1['sections'];
                 if VarIsArray(vSections) then
@@ -229,7 +228,10 @@ begin
                   for iSection:=VarArrayLowBound(vSections,1) to VarArrayHighBound(vSections,1) do
                    begin
                     jn2:=JSON(vSections[iSection]);
-                    v[iSection]:=jn2['name'];
+                    p1:=VarToStr(jn2['name']);
+                    if p1='' then VarToStr(jn2['type']);
+                    if p1='' then p1:='unknown';
+                    v[iSection]:=p1;
                    end;
                   Handler.PostTags('category',v);//'section'?
                  end;

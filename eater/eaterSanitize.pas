@@ -315,7 +315,7 @@ begin
   if StartsWith(URL,YoutubePrefix1a) then
    begin
     d:=CoServerXMLHTTP60.Create;
-    d.open('GET',URL,false,EmptyParam,EmptyParam);
+    d.open('GET',URL+'?cbrd=1',false,EmptyParam,EmptyParam);
     d.setRequestHeader('User-Agent','FeedEater/1.1');
     d.setRequestHeader('Cookie','PREF=tz=Europe.Brussels');
     d.setRequestHeader('Cookie','GPS=1');

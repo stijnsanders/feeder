@@ -6,7 +6,7 @@ type
   TEaterRunner=class(TObject)
   private
     NewFeedEvent:THandle;
-    StartRun,LastRun,LastDone:TDateTime;
+    StartRun,LastRun,LastDone,LastGraphs:TDateTime;
     LastFeedCount,LastPostCount:integer;
 
     //configuration
@@ -44,6 +44,7 @@ begin
   StartRun:=UtcNow;//?
   LastFeedCount:=0;
   LastPostCount:=0;
+  LastGraphs:=0;
 
   //process command line arguments
   for i:=1 to ParamCount do
@@ -107,7 +108,14 @@ begin
       LastFeedCount:=r.FeedCount;
       LastPostCount:=r.PostCount;
 
-      if n then f.RenderGraphs;
+      if n then
+       begin
+        if LastGraphs<UtcNow-4.0/HoursPerDay then
+         begin
+          f.RenderGraphs;
+          LastGraphs:=UtcNow;
+         end;
+       end;
 
     finally
       IUnknown(f)._Release;//f.Free;

@@ -10,6 +10,7 @@ type
     FFeedURL:WideString;
     procedure ProcessArticle(Handler:IFeedHandler;jdata:IJSONDocument);
     procedure ProcessCompositions(Handler:IFeedHandler;jcompos:IJSONDocArray);
+    procedure ProcessCompArt(Handler:IFeedHandler;jdata:IJSONDocument);
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
       var FeedData: WideString; const FeedDataType: WideString): Boolean;
@@ -42,7 +43,8 @@ procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jdoc,jd1,jd2,jn0,jn1:IJSONDocument;
-  jcontent,jzones,jarticles,jcompos,jevents,jblocks,jitems,jContArt,
+  jcontent,jzones,jarticles,jcompos,jevents,jblocks,jitems,
+  jContArt,jCompArt,
   jimg,jbody,jcats,jcredits:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck,cl:integer;
@@ -60,6 +62,7 @@ begin
   jitems:=JSONDocArray;
   jblocks:=JSONDocArray;
   jContArt:=JSONDocArray;
+  jCompArt:=JSONDocArray;
   jn0:=JSON(
     ['homepageBuilder',jarticles
     //,'heroArticle',jarticles
@@ -84,6 +87,7 @@ begin
       ,'breakingStories',jevents
       ,'globalContent',JSON(['items',jitems])
       ,'articles',jContArt
+      ,'content{','components',jCompArt,'}'
       ])
     ])]);
   try
@@ -649,8 +653,30 @@ begin
         Handler.RegisterPost(title,content);
        end;
      end;
+   end;
 
-
+  //'content articles'
+  if jCompArt.Count<>0 then
+   begin
+    jarticles.Clear;
+    jd1:=JSON(
+      ['articles',jarticles
+      ,'relatedArticles',jarticles
+      ,'secondaryStories',jarticles
+      ,'tertiaryStories',jarticles
+      ]);
+    jd2:=JSON;
+    for ci:=0 to jCompArt.Count-1 do
+     begin
+      jCompArt.LoadItem(ci,jd1);
+      ProcessCompArt(Handler,JSON(jd1['mainArticle']));
+      ProcessCompArt(Handler,JSON(jd1['leadStory']));
+      for cj:=0 to jarticles.Count-1 do
+       begin
+        jarticles.LoadItem(cj,jd2);
+        ProcessCompArt(Handler,jd2);
+       end;
+     end;
    end;
 
   Handler.ReportSuccess('NextData');
@@ -788,6 +814,37 @@ begin
           Handler.RegisterPost(title,content);
          end;
        end;
+     end;
+   end;
+end;
+
+procedure TNextDataFeedProcessor.ProcessCompArt(Handler: IFeedHandler;
+  jdata: IJSONDocument);
+var
+  itemid,itemurl,title,content:string;
+  pubdate:TDateTime;
+  d:IJSONDocument;
+begin
+  if (jdata<>nil) and (jdata['type']='ARTICLE_ITEM') then
+   begin
+    itemid:=jdata['id'];
+    itemurl:=FFeedURL+jdata['url'];
+    pubdate:=ConvDate1(jdata['datePublished']);
+    if Handler.CheckNewPost(itemid,itemurl,pubdate) then
+     begin
+      title:=SanitizeTitle(jdata['headline']);
+      content:=HTMLEncode(jdata['rubric']);
+      if not(VarIsNull(jdata['flyTitle'])) then
+        content:=content+'<br /><div style="color:silver">'+
+          HTMLEncode(jdata['flyTitle'])+'</div>';
+      //jdata['section']
+      d:=JSON(jdata['image']);
+      if d<>nil then
+        content:=
+          '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+          HTMLEncode(d['url'])+
+          '" alt="'+HTMLEncode(VarToStr(d['altText']))+'" /><br />'#13#10+content;
+      Handler.RegisterPost(title,content);
      end;
    end;
 end;
