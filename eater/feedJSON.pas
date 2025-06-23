@@ -412,7 +412,8 @@ begin
     for i:=0 to jitems.Count-1 do
      begin
       jitems.LoadItem(i,j0);
-      itemid:=f(j0,'id');
+      itemid:=VarToStr(f(j0,'id'));
+      if itemid='' then itemid:=VarToStr(f(j0,'id2'));      
       if VarIsNull(FParseData['url']) then
         itemurl:=ff(j0,FURL)+f(j0,'relUrl')
       else
