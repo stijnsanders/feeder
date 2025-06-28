@@ -21,7 +21,7 @@ type
 
 implementation
 
-uses SysUtils, Variants, eaterUtils, eaterSanitize, sha3, base64;
+uses SysUtils, Variants, eaterUtils, eaterSanitize, sha3, base64, whr;
 
 { TNextDataFeedProcessor }
 
@@ -97,7 +97,7 @@ begin
       ;//ignore "data past end"
   end;
 
-  //SaveUTF16('xmls\0000.json',jdoc.AsString);
+  SaveUTF16('xmls\0000.json',jdoc.AsString);
 
   //props.pageProps.contentState
   je:=JSONEnum(jd1);
@@ -749,14 +749,15 @@ end;
 procedure TNextDataFeedProcessor.ProcessCompositions(Handler: IFeedHandler;
   jcompos: IJSONDocArray);
 var
-  ci,ai:integer;
-  jc,jm:IJSONDocArray;
-  jn1,jn2:IJSONDocument;
+  ci,ai,ic2:integer;
+  jc,jm,ac1,ac2,ac3:IJSONDocArray;
+  jn1,jn2,jd1,jd2,jd3:IJSONDocument;
   je:IJSONEnumerator;
   itemid,itemurl:string;
   pubDate:TDateTime;
-  title,content:WideString;
+  title,content,tag,pd:WideString;
   v:Variant;
+  r:TWinHttpRequest;
 begin
   jm:=JSONDocArray;
   jc:=JSONDocArray;
@@ -796,11 +797,64 @@ begin
          begin
           jn2:=JSON(jn1['tag']);
           if VarIsNull(jn2['text']) then
-            content:=HTMLEncode(VarToStr(jn2['variant']))
+            tag:=HTMLEncode(VarToStr(jn2['variant']))
           else
-            content:=HTMLEncode(jn2['text']);//?
-          Handler.PostTags('tag',VarArrayOf([content]));
+            tag:=HTMLEncode(jn2['text']);//?
+          Handler.PostTags('tag',VarArrayOf([tag]));
           title:=SanitizeTitle(JSON(jn1['title'])['text']);
+
+          content:=tag;//default
+          r:=TWinHttpRequest.Create;
+          try
+            r.Open('GET',itemurl);
+            r.Send;
+            if r.StatusCode=200 then
+             begin
+              pd:=UTF8ToWideString(r.ResponseData);
+              if FindPrefixAndCrop(pd,'<script id="__NEXT_DATA__" type="application/json"','>') then
+               begin
+                ac1:=JSONDocArray;
+                jd1:=JSON(['props{','pageProps{','data{','compositions',ac1]);
+                try
+                  jd1.Parse(pd);
+                except
+                  on EJSONDecodeException do ;//ignore
+                end;
+                ac2:=JSONDocArray;
+                ac1.LoadItem(0,JSON(['compositions',ac2]));
+                //assert jd2['type']='articleDetail'
+                ac3:=JSONDocArray;
+                ac2.LoadItem(0,JSON(['compositions',ac3]));
+                //assert jd3['type']='articleMain'
+                content:='';
+                jd2:=JSON;
+                for ic2:=0 to ac3.Count-1 do
+                 begin
+                  ac3.LoadItem(ic2,jd2);
+                  //if jd3['type']?
+                  if not(VarIsNull(jd2['subtitle'])) then
+                    content:=content+'<div style="color:grey">'+JSON(jd2['subtitle'])['html']+'</div>'#13#10
+                  else
+                  if not(VarIsNull(jd2['title'])) then
+                   begin
+                    jd3:=JSON(jd2['title']);
+                    if not(VarIsNull(jd3['html'])) then
+                      content:=content+'<h3>'+jd3['html']+'</h3>'#13#10
+                    else
+                      content:=content+'<h3>'+HTMLEncode(VarToStr(jd3['text']))+'</h3>'#13#10;
+                   end
+                  else
+                  if not(VarIsNull(jd2['text'])) then
+                    content:=content+JSON(jd2['text'])['html']+#13#10
+                  else
+                    ;//?
+                 end;
+               end;
+             end;
+          finally
+            r.Free;
+          end;
+
           //TODO: Handler.PostTags(... JSON(jn1['tag'])['text']?
           jn2:=JSON(jn1['image']);
           if jn2<>nil then
