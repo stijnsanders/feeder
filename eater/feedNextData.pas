@@ -48,11 +48,12 @@ var
   jimg,jbody,jcats,jcredits:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck,cl:integer;
-  itemid,itemurl,p1:string;
+  itemid,itemurl,p1,nt:string;
   pubDate:TDateTime;
   title,content,p2:WideString;
   tags,v:Variant;
 begin
+  nt:='';
   jd1:=JSON;
   jcontent:=JSONDocArray;
   jzones:=JSONDocArray;
@@ -97,7 +98,7 @@ begin
       ;//ignore "data past end"
   end;
 
-  SaveUTF16('xmls\0000.json',jdoc.AsString);
+  //SaveUTF16('xmls\0000.json',jdoc.AsString);
 
   //props.pageProps.contentState
   je:=JSONEnum(jd1);
@@ -111,6 +112,7 @@ begin
      end;
     if (jn0<>nil) and (itemid<>'') and (itemurl<>'') then
      begin
+      nt:=':cs';
       try
         pubDate:=ConvDate1(VarToStr(jn0['display_date']));//publish_date?
       except
@@ -144,6 +146,7 @@ begin
   //props.pageProps.data.*[]
   if jcontent.Count<>0 then
    begin
+    nt:=':pd';
     try
       jn1:=JSON(JSON(JSON(JSON(JSON(
         jdoc['props'])['pageProps'])['seo'])['seomatic'])['metaTitleContainer']);
@@ -217,6 +220,7 @@ begin
   //homepagebuilder
   if jarticles.Count<>0 then
    begin
+    nt:=':ar';
     if (FFeedURL<>'') and (FFeedURL[Length(FFeedURL)]<>'/') then
       FFeedURL:=FFeedURL+'/';
     try
@@ -259,6 +263,7 @@ begin
   //zones
   if jzones.Count<>0 then
    begin
+    nt:=':z';
     if (FFeedURL<>'') and (FFeedURL[Length(FFeedURL)]<>'/') then
       FFeedURL:=FFeedURL+'/';
     try
@@ -312,6 +317,7 @@ begin
   //compositions
   if jcompos.Count<>0 then
    begin
+    nt:=':c';
     try
       jn0:=JSON(JSON(JSON(JSON(
         jdoc['props'])['pageProps'])['data'])['pageProperties']);
@@ -332,6 +338,7 @@ begin
   //events
   if jevents.Count<>0 then
    begin
+    nt:=':ev';
     jd1:=JSON(JSON(jdoc['props'])['pageProps']);
     //Handler.UpdateFeedName(jd1['edition'])?
     jd2:=JSON(jd1['topStory']);
@@ -397,6 +404,7 @@ begin
   //props.pageProps.globalContent.items
   if jitems.Count<>0 then
    begin
+    nt:='gc';
     try
       Handler.UpdateFeedName(JSON(JSON(JSON(JSON(
         jdoc['props'])['pageProps'])['globalContent'])['site_data'])['site_description']);
@@ -468,6 +476,7 @@ begin
   if jblocks.Count<>0 then
    begin
     //Handler.UpdateFeedName?
+    nt:=':bl';
     jitems:=JSONDocArray;
     jarticles:=JSONDocArray;
     jn0:=JSON(['items',jitems]);
@@ -517,6 +526,7 @@ begin
   //'content articles'
   if jContArt.Count<>0 then
    begin
+    nt:=':ca';
     jd1:=JSON(['content',JSON(['content',jContent])]);
     for ci:=0 to jContArt.Count-1 do
      begin
@@ -658,6 +668,7 @@ begin
   //'content articles'
   if jCompArt.Count<>0 then
    begin
+    nt:=':aa';
     jarticles.Clear;
     jd1:=JSON(
       ['articles',jarticles
@@ -679,7 +690,7 @@ begin
      end;
    end;
 
-  Handler.ReportSuccess('NextData');
+  Handler.ReportSuccess('NextData'+nt);
 end;
 
 procedure TNextDataFeedProcessor.ProcessArticle(Handler: IFeedHandler;
@@ -751,11 +762,11 @@ procedure TNextDataFeedProcessor.ProcessCompositions(Handler: IFeedHandler;
 var
   ci,ai,ic2:integer;
   jc,jm,ac1,ac2,ac3:IJSONDocArray;
-  jn1,jn2,jd1,jd2,jd3:IJSONDocument;
+  jn1,jn2,jd1,jd2:IJSONDocument;
   je:IJSONEnumerator;
   itemid,itemurl:string;
   pubDate:TDateTime;
-  title,content,tag,pd:WideString;
+  title,content,tag,pd,tn:WideString;
   v:Variant;
   r:TWinHttpRequest;
 begin
@@ -820,6 +831,7 @@ begin
                 except
                   on EJSONDecodeException do ;//ignore
                 end;
+                //SaveUTF16('xmls\0001.json',jd1.AsString);
                 ac2:=JSONDocArray;
                 ac1.LoadItem(0,JSON(['compositions',ac2]));
                 //assert jd2['type']='articleDetail'
@@ -831,23 +843,29 @@ begin
                 for ic2:=0 to ac3.Count-1 do
                  begin
                   ac3.LoadItem(ic2,jd2);
-                  //if jd3['type']?
-                  if not(VarIsNull(jd2['subtitle'])) then
-                    content:=content+'<div style="color:grey">'+JSON(jd2['subtitle'])['html']+'</div>'#13#10
-                  else
-                  if not(VarIsNull(jd2['title'])) then
+                  tn:=VarToStr(jd2['type']);
+                  if tn='articleHeading' then
                    begin
-                    jd3:=JSON(jd2['title']);
-                    if not(VarIsNull(jd3['html'])) then
-                      content:=content+'<h3>'+jd3['html']+'</h3>'#13#10
-                    else
-                      content:=content+'<h3>'+HTMLEncode(VarToStr(jd3['text']))+'</h3>'#13#10;
+                    //title? see above
+                    content:=content+'<div style="color:grey">'+JSON(jd2['subtitle'])['html']+'</div>'#13#10;
+                    //tag?
+                    //image? (see below)
                    end
                   else
-                  if not(VarIsNull(jd2['text'])) then
+                  if tn='articleText' then
                     content:=content+JSON(jd2['text'])['html']+#13#10
                   else
-                    ;//?
+                  if tn='articleTitle' then
+                    content:=content+'<h3>'+HTMLEncode(JSON(jd2['title'])['text'])+'</h3>'#13#10
+                  else
+                  if tn='articleQuote' then
+                    content:=content+'<div style="text-align:center;">'+HTMLEncode(JSON(jd2['title'])['text'])
+                      +'<br />&mdash;&nbsp;<i>'+HTMLEncode(JSON(jd2['subtitle'])['text'])+'</div>'#13#10
+                  else
+                  if (tn='detailMore') or (tn='articleAudio') then
+                    //ignore
+                  else
+                    content:=content+'<div style="color:silver;">['+HTMLEncode(tn)+'?]</div>'#13#10;//?
                  end;
                end;
              end;
