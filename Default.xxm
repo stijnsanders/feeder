@@ -283,6 +283,7 @@ else
    begin
     d:=Trunc(UtcNow+Session.TimeBias);
     Context.Flush;
+    if Context['t'].Value<>'' then qrTimeout:=Context['t'].AsInteger;
     Session.Connection.Execute('set statement_timeout='+IntToStr(qrTimeout)+'000',[]);
    end;
 

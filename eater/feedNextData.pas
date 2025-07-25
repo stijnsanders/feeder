@@ -42,12 +42,12 @@ end;
 procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  jdoc,jd1,jd2,jn0,jn1:IJSONDocument;
+  jdoc,jd1,jd2,jd3,jd4,jn0,jn1:IJSONDocument;
   jcontent,jzones,jarticles,jcompos,jevents,jblocks,jitems,
-  jContArt,jCompArt,
+  jContArt,jCompArt,jfeeds,
   jimg,jbody,jcats,jcredits:IJSONDocArray;
   je:IJSONEnumerator;
-  ci,cj,ck,cl:integer;
+  ci,cj,ck,cl,cm:integer;
   itemid,itemurl,p1,nt:string;
   pubDate:TDateTime;
   title,content,p2:WideString;
@@ -62,6 +62,7 @@ begin
   jevents:=JSONDocArray;
   jitems:=JSONDocArray;
   jblocks:=JSONDocArray;
+  jfeeds:=JSONDocArray;
   jContArt:=JSONDocArray;
   jCompArt:=JSONDocArray;
   jn0:=JSON(
@@ -80,6 +81,7 @@ begin
         ,'highlightedContent',jcontent
         ,'compositions',jcompos
         ,'blocks',jblocks
+        ,'feedInfo',jfeeds
         ])
       ,'pageData',JSON(['zones',jzones])
       ,'entry',jn0
@@ -404,7 +406,7 @@ begin
   //props.pageProps.globalContent.items
   if jitems.Count<>0 then
    begin
-    nt:='gc';
+    nt:=':gc';
     try
       Handler.UpdateFeedName(JSON(JSON(JSON(JSON(
         jdoc['props'])['pageProps'])['globalContent'])['site_data'])['site_description']);
@@ -519,6 +521,101 @@ begin
            end;
          end;
         inc(cj);
+       end;
+     end;
+   end;
+
+  //feedInfo
+  if jfeeds.Count<>0 then
+   begin
+    nt:=':fi';
+    jitems:=JSONDocArray;
+    jn0:=JSON(['blocks',jitems]);
+    for ci:=0 to jfeeds.Count-1 do
+     begin
+      jfeeds.LoadItem(ci,jn0);
+      if ci=0 then //assert jfeeds.Count=1?
+       begin
+        jn1:=JSON(jn0['metadata']);
+        if jn1<>nil then Handler.UpdateFeedName(jn1['seo_meta_title']);
+       end;
+      jarticles:=JSONDocArray;
+      jn1:=JSON(['feeds',jarticles]);
+      jbody:=JSONDocArray;
+      jd1:=JSON(['resources',jbody]);
+      jimg:=JSONDocArray;
+      jcredits:=JSONDocArray;
+      jd2:=JSON(['media',jimg,'authors',jcredits]);
+      for cj:=0 to jitems.Count-1 do
+       begin
+        jitems.LoadItem(cj,jn1);
+        for ck:=0 to jarticles.Count-1 do
+         begin
+          jarticles.LoadItem(ck,jd1);
+          for cl:=0 to jbody.Count-1 do
+           begin
+            jbody.LoadItem(cl,jd2);
+            if not(VarIsNull(jd2['id'])) and not(VarIsNull(jd2['slug'])) then
+             begin
+              //SaveUTF16('xmls\0002.json',jd2.AsString);
+              itemid:=jd2['id'];
+              itemurl:=FFeedURL;
+              jd3:=JSON(jd2['section']);
+              if jd3<>nil then
+               begin
+                itemurl:=itemurl+jd3['slug']+'/';
+                jd3:=JSON(jd2['subsection']);
+                if jd3<>nil then
+                  itemurl:=itemurl+jd3['slug']+'/';
+               end;
+              itemurl:=itemurl
+                +'a'+VarToStr(jd2['display_id'])+'/'
+                +jd2['slug']+'/';
+              try
+                pubDate:=ConvDate1(jd2['publish_from']);
+              except
+                pubDate:=UtcNow;
+              end;
+              if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+               begin
+                jd3:=JSON(jd2['metadata']);
+                title:=SanitizeTitle(jd3['index_title']);
+                content:=jd3['dek'];
+                //author
+                p1:='';
+                for cm:=0 to jcredits.Count-1 do
+                 begin
+                  jd3:=JSON(JSON(jcredits[cm])['profile']);
+                  if jd3<>nil then p1:=p1+HTMLEncode(jd3['display_name'])+'<br />';
+                 end;
+                if p1<>'' then
+                  content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+                    HTMLEncode(p1)+'</div>'#13#10+content;
+                //media:image
+                if jimg.Count>=3 then
+                 begin
+                  jimg.LoadItem(2,jd3);//0,1 is {"role":?}?
+                  jd4:=JSON(jd3['image_metadata']);
+                  p1:='';
+                  if jd4<>nil then
+                    if not(VarIsNull(jd4['seo_meta_title'])) then
+                      p1:=jd4['seo_meta_title']
+                    else
+                    if not(VarIsNull(jd4['seo_meta_description'])) then
+                      p1:=jd4['seo_meta_description']
+                    ;
+                  content:=
+                    '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                    HTMLEncode(jd3['hips_url'])+
+                    '" alt="'+HTMLEncode(p1)+'" /><br />'#13#10+content;
+                 end;
+                jd3:=JSON(jd2['section']);
+                if jd3<>nil then Handler.PostTags('tag',VarArrayOf([jd3['slug']]));
+                Handler.RegisterPost(title,content);
+               end;
+             end;
+           end;
+         end;
        end;
      end;
    end;

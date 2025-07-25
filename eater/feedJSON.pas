@@ -467,7 +467,27 @@ begin
               HTMLEncode(s)+'" /><br />'#13#10+content;
          end;
 
-        //TODO: categories,tags
+        j1:=JSON(FParseData['tags']);
+        if j1<>nil then
+         begin
+          if not VarIsNull(j1['single']) then
+           begin
+            v:=j0[j1['single']];
+            if VarIsStr(v) then
+              Handler.PostTags(j1['prefix'],VarArrayOf([v]));
+           end
+          else
+          if not VarIsNull(j1['strings']) then
+           begin
+            v:=j0[j1['strings']];
+            if VarIsArray(v) then //if VarType(v)=(varArray or varOleStr)
+              Handler.PostTags(j1['prefix'],v);
+           end
+          else
+           begin
+            //TODO: construct var array of strings from data?
+           end;
+         end;
 
         if not(VarIsNull(FParseData['author'])) then
           content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
