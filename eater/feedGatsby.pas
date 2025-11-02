@@ -152,6 +152,7 @@ var
   v:Variant;
   i:integer;
   itemid,itemurl,imgurl:string;
+  dd:int64;
   pubDate:TDateTime;
   title,content:WideString;
   dImg:IJSONDocument;
@@ -185,7 +186,10 @@ begin
     itemurl:=FFeedURL+itemurl;
     dImg:=JSON(Post['publishDate']);
     if dImg=nil then
-      pubDate:=UnixDateDelta+Post['created']/SecsPerDay
+     begin
+      dd:=Post['created'];
+      pubDate:=UnixDateDelta+dd/SecsPerDay;
+     end
     else
       pubDate:=ConvDate1(dImg['date']);
     if Handler.CheckNewPost(itemid,itemurl,pubDate) then

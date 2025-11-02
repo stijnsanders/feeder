@@ -43,12 +43,13 @@ procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
   jdoc,jd1,jd2,jd3,jd4,jn0,jn1:IJSONDocument;
-  jcontent,jzones,jarticles,jcompos,jevents,jblocks,jitems,
+  jcontent,jzones,jarticles,jcompos,jevents,jFeedInfo,jblocks,jitems,
   jContArt,jCompArt,jfeeds,
   jimg,jbody,jcats,jcredits:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck,cl,cm:integer;
-  itemid,itemurl,p1,nt:string;
+  itemid,itemurl,imgurl,p1,nt:string;
+  dd:int64;
   pubDate:TDateTime;
   title,content,p2:WideString;
   tags,v:Variant;
@@ -61,6 +62,7 @@ begin
   jcompos:=JSONDocArray;
   jevents:=JSONDocArray;
   jitems:=JSONDocArray;
+  jFeedInfo:=JSONDocArray;
   jblocks:=JSONDocArray;
   jfeeds:=JSONDocArray;
   jContArt:=JSONDocArray;
@@ -80,6 +82,7 @@ begin
         //birthdays,series,episodes,popuplarCategories?
         ,'highlightedContent',jcontent
         ,'compositions',jcompos
+        ,'feedInfo',jFeedInfo
         ,'blocks',jblocks
         ,'feedInfo',jfeeds
         ])
@@ -293,7 +296,8 @@ begin
           jarticles.LoadItem(ck,jd1);
           itemid:=jd1['id'];//?
           itemurl:=FFeedURL+jd1['url'];
-          pubDate:=int64(jd1['pubDate'])/SecsPerDay+UnixDateDelta;
+          dd:=jd1['pubDate'];
+          pubDate:=dd/SecsPerDay+UnixDateDelta;
           if Handler.CheckNewPost(itemid,itemurl,pubDate) then
            begin
             title:=SanitizeTitle(jd1['title']);
@@ -474,6 +478,24 @@ begin
      end;
    end;
 
+  //feedInfo
+  if jFeedInfo.Count<>0 then
+   begin
+    jitems:=JSONDocArray;
+    jd1:=JSON(['blocks',jitems]);
+    for ci:=0 to jFeedInfo.Count-1 do
+     begin
+      jFeedInfo.LoadItem(ci,jd1);
+{
+      for cj:=0 to jitems.Count-1 do
+        //jblocks.AddJSON(jitems.GetJSON(cj));
+        xxxxxxx
+        'feeds'
+        'resources'
+}
+     end;
+   end;
+
   //blocks
   if jblocks.Count<>0 then
    begin
@@ -501,7 +523,8 @@ begin
           //if jn1['__typename']='Article'?
           itemid:=jn1['id'];
           itemurl:=jn1['url'];
-          pubDate:=int64(jn1['displayDate'])/SecsPerDay+UnixDateDelta;
+          dd:=jn1['displayDate'];
+          pubDate:=dd/SecsPerDay+UnixDateDelta;
           if Handler.CheckNewPost(itemid,itemurl,pubDate) then
            begin
             title:=HTMLEncode(jn1['headline']);
@@ -561,11 +584,11 @@ begin
               itemid:=jd2['id'];
               itemurl:=FFeedURL;
               jd3:=JSON(jd2['section']);
-              if jd3<>nil then
+              if (jd3<>nil) and not(VarIsNull(jd3['slug'])) then
                begin
                 itemurl:=itemurl+jd3['slug']+'/';
                 jd3:=JSON(jd2['subsection']);
-                if jd3<>nil then
+                if (jd3<>nil) and not(VarIsNull(jd3['slug'])) then
                   itemurl:=itemurl+jd3['slug']+'/';
                end;
               itemurl:=itemurl
@@ -580,7 +603,7 @@ begin
                begin
                 jd3:=JSON(jd2['metadata']);
                 title:=SanitizeTitle(jd3['index_title']);
-                content:=jd3['dek'];
+                content:=VarToStr(jd3['dek']);
                 //author
                 p1:='';
                 for cm:=0 to jcredits.Count-1 do
@@ -590,23 +613,36 @@ begin
                  end;
                 if p1<>'' then
                   content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
-                    HTMLEncode(p1)+'</div>'#13#10+content;
+                    p1+'</div>'#13#10+content;
                 //media:image
                 if jimg.Count>=3 then
                  begin
+                  imgurl:='';//default
+                  p1:='';//default
+                  if jd3=nil then jd3:=JSON;
                   jimg.LoadItem(2,jd3);//0,1 is {"role":?}?
-                  jd4:=JSON(jd3['image_metadata']);
-                  p1:='';
-                  if jd4<>nil then
-                    if not(VarIsNull(jd4['seo_meta_title'])) then
-                      p1:=jd4['seo_meta_title']
-                    else
-                    if not(VarIsNull(jd4['seo_meta_description'])) then
-                      p1:=jd4['seo_meta_description']
-                    ;
-                  content:=
+                  if not(VarIsNull(jd3['hips_url'])) then
+                   begin
+                    imgurl:=jd3['hips_url'];
+                    jd4:=JSON(jd3['image_metadata']);
+                    if jd4<>nil then
+                      if not(VarIsNull(jd4['seo_meta_title'])) then
+                        p1:=jd4['seo_meta_title']
+                      else
+                      if not(VarIsNull(jd4['seo_meta_description'])) then
+                        p1:=jd4['seo_meta_description']
+                      ;
+                   end
+                  else
+                   begin
+                    //JSON(jimg[0])['media_type']='image'
+                    jimg.LoadItem(1,jd3);
+                    imgurl:=VarToStr(jd3['croppedPreviewImage']);
+                    p1:=VarToStr(jd3['title']);
+                   end;
+                  if imgurl<>''  then content:=
                     '<img class="postthumb" referrerpolicy="no-referrer" src="'+
-                    HTMLEncode(jd3['hips_url'])+
+                    HTMLEncode(imgurl)+
                     '" alt="'+HTMLEncode(p1)+'" /><br />'#13#10+content;
                  end;
                 jd3:=JSON(jd2['section']);

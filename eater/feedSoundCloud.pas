@@ -42,7 +42,7 @@ var
   jc:IJSONDocArray;
   i:integer;
   s:string;
-  id,dur:int64;
+  id,dd,dur:int64;
   urn,url,title,content:string;
   pubDate:TDateTime;
 begin
@@ -89,7 +89,8 @@ begin
         //TODO: Handler.PostTags(j1['genre']?)tag_list?
 
         title:=VarToStr(j1['title']);
-        dur:=(int64(j1['duration'])+500) div 1000;//full_duration?
+        dd:=j1['duration'];
+        dur:=(dd+500) div 1000;//full_duration?
         if dur>=3600 then
           s:=Format('%d:%.2d:%.2d',[dur div 3600,(dur div 60) mod 60,dur mod 60])
         else

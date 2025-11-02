@@ -140,6 +140,7 @@ var
   jdoc,jdoc1,jd1,jn0,jn1,jc0,jc1:IJSONDocument;
   i,j:integer;
   itemid,itemurl,s:string;
+  dd:int64;
   pubDate:TDateTime;
   title,content:WideString;
   r1,r2:RegExp;
@@ -189,7 +190,8 @@ begin
     itemid:=VarToStr(jn1['id']);
     if itemid='' then raise Exception.Create('edge node without ID');
     itemurl:='https://www.instagram.com/p/'+VarToStr(jn1['shortcode'])+'/';
-    pubDate:=int64(jn1['taken_at_timestamp'])/SecsPerDay+UnixDateDelta;//is UTC?
+    dd:=jn1['taken_at_timestamp'];
+    pubDate:=dd/SecsPerDay+UnixDateDelta;//is UTC?
 
     if Handler.CheckNewPost(itemid,itemurl,pubdate) then
      begin

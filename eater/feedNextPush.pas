@@ -8,6 +8,7 @@ type
   TNextPushFeedProcessor=class(TFeedProcessor)
   private
     FFeedURL:WideString;
+    procedure ProcessArticles(Handler:IFeedHandler;const vArticles:Variant);
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
       var FeedData: WideString; const FeedDataType: WideString): Boolean;
@@ -113,6 +114,13 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
           Handler.RegisterPost(title,content);
          end;
        end;
+      vx:=d['featuredArticles'];
+      if VarIsArray(vx) then
+        ProcessArticles(Handler,vx);
+      vx:=d['subMenuArticles'];
+      if VarIsArray(vx) then
+        for vi:=VarArrayLowBound(vx,1) to VarArrayHighBound(vx,1) do
+          ProcessArticles(Handler,JSON(vx[vi])['articles']);
      end;
   end;
 
@@ -121,7 +129,7 @@ var
   mc:MatchCollection;
   m:Match;
   mi,wi,vi:integer;
-  d:IJSONDocument;
+  d,d1,d2:IJSONDocument;
   w:WideString;
   v:Variant;
 begin
@@ -140,18 +148,76 @@ begin
     w:=d['_'][1];
     wi:=1;
     while (wi<8) and (wi<Length(w)) and (w[wi]<>':') do inc(wi);
-    if Copy(w,wi,7)=':[["$",' then //?
+    if (Copy(w,wi,7)=':[["$",') then //?
       try
-        d.Parse('{"_":'+Copy(w,wi+1,Length(w)-wi)+'}');
+        d.Parse('{"_"'+Copy(w,wi,Length(w)-wi+1)+'}');
         v:=d['_'];
         for vi:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
           if VarIsArray(v[vi]) then ProcessQuad(v[vi]);
       except
         on EJSONDecodeException do ;//ignore
+      end
+    else
+    if Copy(w,wi,6)=':["$",' then
+     begin
+      try
+        d.Parse('{"_"'+Copy(w,wi,Length(w)-wi+1)+'}');
+        ProcessQuad(d['_']);
+      except
+        on EJSONDecodeException do ;//ignore
+      end;
+      d1:=JSON(JSON(d['_'][3])['data']);
+      if d1<>nil then
+       begin
+        d2:=JSON(d1['topArticles']);
+        if d2<>nil then ProcessArticles(Handler,d2['articles']);
+        d2:=JSON(d1['allArticles']);
+        if d2<>nil then ProcessArticles(Handler,d2['articles']);
+        d2:=JSON(d1['topHeadlines']);
+        if d2<>nil then ProcessArticles(Handler,JSON(d2['data'])['articles']);
+       end;
       end;
    end;
 
   Handler.ReportSuccess('NextPush');
+end;
+
+procedure TNextPushFeedProcessor.ProcessArticles(Handler:IFeedHandler;
+  const vArticles:Variant);
+var
+  iArticle:integer;
+  d:IJSONDocument;
+  dd:int64;
+  itemid,itemurl,title,content:WideString;
+  pubDate:TDateTime;
+begin
+  for iArticle:=VarArrayLowBound(vArticles,1) to VarArrayHighBound(vArticles,1) do
+   begin
+    d:=JSON(vArticles[iArticle]);
+    itemid:=VarToStr(d['id']);//'urlSafeTitle'?
+    itemurl:=FFeedURL+d['url'];
+    dd:=d['publishedAt'];
+    pubDate:=dd/MSecsPerDay+UnixDateDelta;
+    if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+     begin
+      title:=SanitizeTitle(d['title']);
+      content:=HTMLEncode(VarToStr(d['teaser']));
+
+      if d['isMultipleAuthors']=false then
+        content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+          HTMLEncode(VarToStr(d['authorFirstName'])+' '+VarToStr(d['authorLastName']))+'</div>'#13#10+content;
+      //else?
+
+      if not(VarIsNull(d['headlineImagePath'])) then
+        content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+          HTMLEncode(d['headlineImagePath'])+'" alt="'+
+          HTMLEncode(VarToStr(d['headlineImageText']))+'" /><br />'#13#10+content;
+
+      //sectionUrlSafeName for Handler.PostTags()?
+
+      Handler.RegisterPost(title,content);
+     end;
+   end;
 end;
 
 initialization

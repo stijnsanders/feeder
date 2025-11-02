@@ -454,6 +454,10 @@ begin
           if he then content:=HTMLEncode(content);
          end;
 
+        if not(VarIsNull(FParseData['author'])) then
+          content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+            HTMLEncode(f(j0,'author'))+'</div>'#13#10+content;
+
         if not(VarIsNull(FParseData['postthumb'])) then
          begin
           if VarIsNull(FParseData['postthumbalt']) then
@@ -488,10 +492,6 @@ begin
             //TODO: construct var array of strings from data?
            end;
          end;
-
-        if not(VarIsNull(FParseData['author'])) then
-          content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
-            HTMLEncode(f(j0,'author'))+'</div>'#13#10+content;
 
         v:=FParseData['prefixTitle'];
         if VarIsArray(v) then

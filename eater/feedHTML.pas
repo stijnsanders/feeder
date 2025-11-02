@@ -391,6 +391,7 @@ begin
       re1:=CoRegExp.Create;
       re1.Pattern:=p['p'];
       re1.Global:=p['g']=true;
+      re1.Multiline:=p['m']=true;
       re1.IgnoreCase:=p['i']=true;
       crs1:=p['s'];
      end;
@@ -462,6 +463,11 @@ begin
                   //d:=UtcNow;//see above
                 end;
                 //p['keywords']? p['articleSection']?
+
+                v:=p['articleSection'];
+                if VarType(v)=varArray or varOleStr then
+                  Handler.PostTags('category',v);
+
                 if imgurl='' then
                  begin
                   v:=p['image'];
