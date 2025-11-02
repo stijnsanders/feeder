@@ -54,8 +54,8 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
       for vi:=VarArrayLowBound(v,1) to vn-1 do
         ProcessQuad(v[vi])
     else
+    if vn=3 then //VarArrayHighBound(v,1)=3
      begin
-      //assert VarArrayHighBound(v,1)=3
       d:=JSON(v[3]);
       vx:=d['children'];
       if VarIsArray(vx) then

@@ -420,7 +420,10 @@ begin
         itemurl:=f(j0,'url');
       try
         //TODO: more?
-        pubDate:=ConvDate1(f(j0,'pubDate'));
+        if VarIsNull(FParseData['pubSecs']) then
+          pubDate:=ConvDate1(f(j0,'pubDate'))
+        else
+          pubDate:=f(j0,'pubSecs')/SecsPerDay+UnixDateDelta;
       except
         pubDate:=UtcNow;
       end;
