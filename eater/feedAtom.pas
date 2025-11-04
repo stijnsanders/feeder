@@ -34,6 +34,7 @@ var
   pubdate:TDateTime;
   title,content,h1:WideString;
   tags:Variant;
+  startsWithImg:boolean;
 begin
   if doc.namespaces.length=0 then
     s:='xmlns:atom="http://www.w3.org/2005/Atom"'
@@ -111,6 +112,8 @@ begin
       else
         content:=y.text;
 
+      startsWithImg:=HTMLStartsWithImg(content);
+
       xl1:=x.selectNodes('atom:category');
       if xl1.length<>0 then
        begin
@@ -144,7 +147,12 @@ begin
        end;
       xl1:=nil;
 
-      if not(HTMLStartsWithImg(content))then
+      y:=x.selectSingleNode('atom:author') as IXMLDOMElement;
+      if y<>nil then
+        content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+          HTMLEncode(y.text)+'</div>'#13#10+content;
+
+      if not(startsWithImg)then
        begin
         x1:=x.selectSingleNode('atom:link[@rel="enclosure" and @type="image/jpeg"]/@href');
         if x1=nil then x1:=x.selectSingleNode('atom:link[@rel="enclosure" and @type="image/png"]/@href');

@@ -203,7 +203,7 @@ var
   m,m1:Match;
   sm,sm1:SubMatches;
   s,s1,s2:string;
-  mci,i,n,l,contentN,skipStale,skipStale0:integer;
+  mci,i,n,contentN,skipStale,skipStale0:integer;
   contentAll,checkImg:boolean;
   title,id,url,content,w,imgurl,crs1:WideString;
   d:TDateTime;
@@ -275,28 +275,7 @@ begin
           else
           if p['parse']='sloppy' then
            begin
-
-            l:=Length(s);
-            i:=1;
-            while (i<=l) and not(AnsiChar(s[i]) in ['0'..'9']) do inc(i);
-            n:=0;
-            while (i<=l) and (AnsiChar(s[i]) in ['0'..'9']) do
-             begin
-              n:=n*10+(byte(s[i]) and $F);
-              inc(i);
-             end;
-            inc(i);//' '
-            s:=Copy(s,i,l-i+1);
-            if StartsWith(s,'hour ago') then d:=UtcNow-1.0/24.0 else
-            if StartsWith(s,'hours ago') then d:=UtcNow-n/24.0 else
-            if StartsWith(s,'day ago') then d:=UtcNow-1.0 else
-            if StartsWith(s,'days ago') then d:=UtcNow-n else
-            if StartsWith(s,'week ago') then d:=UtcNow-7.0 else
-            if StartsWith(s,'weeks ago') then d:=UtcNow-n*7.0 else
-            if StartsWith(s,'month ago') then d:=UtcNow-30.0 else
-            if StartsWith(s,'months ago') then d:=UtcNow-n*30.0 else
-              raise Exception.Create('Unknown time interval');
-
+            d:=ConvDate5(s);
            end
           else
             raise Exception.Create('Unknown PubDate Parse "'+VarToStr(p['parse'])+'"');

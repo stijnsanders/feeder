@@ -44,7 +44,7 @@ procedure TNextDataFeedProcessor.ProcessFeed(Handler: IFeedHandler;
 var
   jdoc,jd1,jd2,jd3,jd4,jn0,jn1:IJSONDocument;
   jcontent,jzones,jarticles,jcompos,jevents,jFeedInfo,jblocks,jitems,
-  jContArt,jCompArt,jfeeds,
+  jContArt,jCompArt,jfeeds,jHapNow,
   jimg,jbody,jcats,jcredits:IJSONDocArray;
   je:IJSONEnumerator;
   ci,cj,ck,cl,cm:integer;
@@ -67,6 +67,7 @@ begin
   jfeeds:=JSONDocArray;
   jContArt:=JSONDocArray;
   jCompArt:=JSONDocArray;
+  jHapNow:=JSONDocArray;
   jn0:=JSON(
     ['homepageBuilder',jarticles
     //,'heroArticle',jarticles
@@ -85,6 +86,7 @@ begin
         ,'feedInfo',jFeedInfo
         ,'blocks',jblocks
         ,'feedInfo',jfeeds
+        ,'happeningNowArticles',jHapNow
         ])
       ,'pageData',JSON(['zones',jzones])
       ,'entry',jn0
@@ -528,7 +530,7 @@ begin
           if Handler.CheckNewPost(itemid,itemurl,pubDate) then
            begin
             title:=HTMLEncode(jn1['headline']);
-            content:='<p>'+HTMLEncode(jn1['subhead'])+'</p>';
+            content:='<p>'+HTMLEncode(VarToStr(jn1['subhead']))+'</p>';
             //primaryTag?
             jd1:=JSON(jn1['image']);
             if jd1<>nil then
@@ -823,6 +825,36 @@ begin
      end;
    end;
 
+  //'happeningNowArticles'
+  if jHapNow.Count<>0 then
+   begin
+    nt:=':hn';
+    jn0:=JSON(JSON(JSON(
+      jdoc['props'])['pageProps'])['data']);
+    jn1:=JSON(jn0['meta']);
+    Handler.UpdateFeedName(Trim(jn1['title']+' '+jn0['pageEdition']));
+    jd1:=JSON;
+    for ci:=0 to jHapNow.Count-1 do
+     begin
+      jHapNow.LoadItem(ci,jd1);
+      itemid:='';//?
+      itemurl:=jd1['uri'];
+      try
+        pubDate:=ConvDate5(jd1['date']);
+      except
+        pubDate:=UtcNow;
+      end;
+      if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+       begin
+        title:=jd1['title'];//SanitizeTitle?
+        content:=
+          '<img class="postthumb" referrerpolicy="no-referrer" src="'+HTMLEncode(jd1['image'])+
+          '" />';
+        Handler.RegisterPost(title,content);
+       end;
+     end;
+   end;
+
   Handler.ReportSuccess('NextData'+nt);
 end;
 
@@ -898,6 +930,7 @@ var
   jn1,jn2,jd1,jd2:IJSONDocument;
   je:IJSONEnumerator;
   itemid,itemurl:string;
+  dd:int64;
   pubDate:TDateTime;
   title,content,tag,pd,tn:WideString;
   v:Variant;
@@ -931,12 +964,23 @@ begin
         ProcessCompositions(Handler,jc);
       //else?
       jn2:=JSON(jn1['action']);
+      if (jn2=nil) and VarIsArray(jn1['actions']) then
+       begin
+        jn2:=JSON(jn1['actions'][0]);
+        jd1:=JSON(jn1['publication']);
+        if jd1<>nil then jm.Add(jd1);
+       end;
       if (jn2<>nil) and not(VarIsNull(jn2['uri'])) and (jm.Count<>0) then
        begin
         itemurl:=jn2['uri'];
         itemid:=itemurl;
         jm.LoadItem(0,jn2);
-        pubDate:=int64(jn2['timestamp'])/(SecsPerDay*1000)+UnixDateDelta;
+        try
+          dd:=jn2['timestamp'];
+          pubDate:=dd/MSecsPerDay+UnixDateDelta;
+        except
+          pubDate:=UtcNow;
+        end;
         if Handler.CheckNewPost(itemid,itemurl,pubDate) then
          begin
           jn2:=JSON(jn1['tag']);

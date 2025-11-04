@@ -15,6 +15,7 @@ function ConvDate1(const x:string):TDateTime;
 function ConvDate2(const x:string):TDateTime;
 function ConvDate3(const x:string):TDateTime;
 function ConvDate4(const x:string):TDateTime;
+function ConvDate5(const x:string):TDateTime;
 function UtcNow:TDateTime;
 
 function HTMLEncode(const x:string):string;
@@ -696,6 +697,36 @@ begin
   Result:=
     EncodeDate(dy,dm,dd)+
     EncodeTime(th,tm,ts,tz);
+end;
+
+function ConvDate5(const x:string):TDateTime;
+var
+  s:string;
+  i,l,n:integer;
+  d:TDateTime;
+begin
+  s:=x;
+  l:=Length(s);
+  i:=1;
+  while (i<=l) and not(AnsiChar(s[i]) in ['0'..'9']) do inc(i);
+  n:=0;
+  while (i<=l) and (AnsiChar(s[i]) in ['0'..'9']) do
+   begin
+    n:=n*10+(byte(s[i]) and $F);
+    inc(i);
+   end;
+  inc(i);//' '
+  s:=Copy(s,i,l-i+1);
+  if StartsWith(s,'hour ago') then d:=UtcNow-1.0/24.0 else
+  if StartsWith(s,'hours ago') then d:=UtcNow-n/24.0 else
+  if StartsWith(s,'day ago') then d:=UtcNow-1.0 else
+  if StartsWith(s,'days ago') then d:=UtcNow-n else
+  if StartsWith(s,'week ago') then d:=UtcNow-7.0 else
+  if StartsWith(s,'weeks ago') then d:=UtcNow-n*7.0 else
+  if StartsWith(s,'month ago') then d:=UtcNow-30.0 else
+  if StartsWith(s,'months ago') then d:=UtcNow-n*30.0 else
+    raise Exception.Create('Unknown time interval');
+  Result:=d;
 end;
 
 function UtcNow:TDateTime;
