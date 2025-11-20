@@ -147,7 +147,7 @@ begin
        end;
       xl1:=nil;
 
-      y:=x.selectSingleNode('atom:author') as IXMLDOMElement;
+      y:=x.selectSingleNode('atom:author/atom:name') as IXMLDOMElement;
       if y<>nil then
         content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
           HTMLEncode(y.text)+'</div>'#13#10+content;

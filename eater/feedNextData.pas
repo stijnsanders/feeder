@@ -927,7 +927,7 @@ procedure TNextDataFeedProcessor.ProcessCompositions(Handler: IFeedHandler;
 var
   ci,ai,ic2:integer;
   jc,jm,ac1,ac2,ac3:IJSONDocArray;
-  jn1,jn2,jd1,jd2:IJSONDocument;
+  jn1,jn2,jd1,jd2,jd3:IJSONDocument;
   je:IJSONEnumerator;
   itemid,itemurl:string;
   dd:int64;
@@ -1036,8 +1036,23 @@ begin
                     content:=content+'<h3>'+HTMLEncode(JSON(jd2['title'])['text'])+'</h3>'#13#10
                   else
                   if tn='articleQuote' then
-                    content:=content+'<div style="text-align:center;">'+HTMLEncode(JSON(jd2['title'])['text'])
-                      +'<br />&mdash;&nbsp;<i>'+HTMLEncode(JSON(jd2['subtitle'])['text'])+'</div>'#13#10
+                   begin
+                    content:=content+'<div style="text-align:center;">'+HTMLEncode(JSON(jd2['title'])['text']);
+                    jd3:=JSON(jd2['subtitle']);
+                    if (jd3<>nil) and not(VarIsNull(jd3['text'])) then
+                      content:=content+'<br />&mdash;&nbsp;<i>'+HTMLEncode(jd3['text'])+'</i>';
+                    content:=content+'</div>'#13#10
+                   end
+                  else
+                  if tn='articleImage' then
+                   begin
+                    jd2:=JSON(jd2['image']);
+                    content:=content+'<p><img referrerpolicy="no-referrer" src="'+
+                      HTMLEncode(jd2['url'])+'" alt="'+HTMLEncode(jd2['alt'])+'" /></p>'#13#10;
+                   end
+                  else
+                  if tn='articleembed' then
+                    content:=content+VarToStr(jd2['html'])+#13#10//?
                   else
                   if (tn='detailMore') or (tn='articleAudio') then
                     //ignore

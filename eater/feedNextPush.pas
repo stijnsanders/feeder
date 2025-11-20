@@ -8,7 +8,9 @@ type
   TNextPushFeedProcessor=class(TFeedProcessor)
   private
     FFeedURL:WideString;
+    FTagName,FTagHref:string;
     procedure ProcessArticles(Handler:IFeedHandler;const vArticles:Variant);
+    procedure ProcessArtData(Handler:IFeedHandler;const vArticles:Variant);
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
       var FeedData: WideString; const FeedDataType: WideString): Boolean;
@@ -67,7 +69,46 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
         else
           for vi:=0 to vn-1 do
             if VarIsArray(vx[vi]) then ProcessQuad(vx[vi]);
+
+        if not(VarIsNull(d['href'])) and (vn=4) then
+         begin
+          d1:=JSON(vx[3]);
+          if not(VarIsNull(d1['title'])) then
+           begin
+            itemid:='';//?
+            itemurl:=FFeedURL+d['href'];
+            pubDate:=UtcNow;//?
+            if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+             begin
+              //d['aria-title']?
+              title:=HTMLEncode(d1['title']);
+
+              if FTagHref='' then content:='' else
+               begin
+                content:='<p><i><a href="'+HTMLEncode(FFeedURL+FTagHref)+'">'
+                  +HTMLEncode(FTagName)+'</a></i></p>';
+                FTagName:='';
+                FTagHref:='';
+               end;
+
+              content:=
+                '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                HTMLEncode(d1['src'])+'" /><br />'#13#10+content;
+              Handler.RegisterPost(title,content);
+             end;
+           end;
+         end;
+
+       end
+      else
+       begin
+        if not(VarIsNull(d['href'])) and VarIsStr(vx) then
+         begin
+          FTagName:=vx;
+          FTagHref:=d['href'];
+         end;
        end;
+
       //else?
       vx:=d['event'];
       if VarIsNull(vx) then vx:=d['summary'];
@@ -120,7 +161,9 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
       vx:=d['subMenuArticles'];
       if VarIsArray(vx) then
         for vi:=VarArrayLowBound(vx,1) to VarArrayHighBound(vx,1) do
-          ProcessArticles(Handler,JSON(vx[vi])['articles']);
+          ProcessArticles(Handler,JSON(vx[vi]));
+      ProcessArtData(Handler,d['topStories']);
+      ProcessArtData(Handler,d['editorials']);
      end;
   end;
 
@@ -139,6 +182,9 @@ begin
   re1.Global:=true;
   mc:=re1.Execute(FeedData) as MatchCollection;
 
+  FTagName:='';
+  FTagHref:='';
+
   d:=JSON;
   for mi:=0 to mc.Count-1 do
    begin
@@ -146,6 +192,9 @@ begin
     d.Parse('{"_":'+(m.SubMatches as SubMatches).Item[0]+'}');
     //assert d['_'][0]=1
     w:=d['_'][1];
+
+    //SaveUTF16('xmls\0000.json',w);
+
     wi:=1;
     while (wi<8) and (wi<Length(w)) and (w[wi]<>':') do inc(wi);
     if (Copy(w,wi,7)=':[["$",') then //?
@@ -180,6 +229,51 @@ begin
    end;
 
   Handler.ReportSuccess('NextPush');
+end;
+
+procedure TNextPushFeedProcessor.ProcessArtData(Handler: IFeedHandler;
+  const vArticles: Variant);
+var
+  vi:integer;
+  d,d1:IJSONDocument;
+  itemid,itemurl,title,content:WideString;
+  pubDate:TDateTime;
+  v:Variant;
+begin
+  if VarIsArray(vArticles) then
+    for vi:=VarArrayLowBound(vArticles,1) to VarArrayHighBound(vArticles,1) do
+     begin
+      d:=JSON(vArticles[vi]);
+      pubDate:=UtcNow;//?
+      itemid:=d['uuid'];
+      itemurl:=JSON(d['canonicalUrl'])['url'];
+      if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+       begin
+        title:=SanitizeTitle(d['title']);
+        content:=HTMLEncode(d['summary']);//'description'?
+        d1:=JSON(d['author']);//authors?
+        if d1<>nil then
+         begin
+          content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+            HTMLEncode(d1['displayName'])+'</div>'#13#10+content;
+         end;
+        //d['tags']?
+        d1:=JSON(d['thumbnail']);
+        if d1<>nil then
+         begin
+          v:=d1['carmotMysterioImages'];
+          if VarIsArray(v) then
+           begin
+            d1:=JSON(v[0]);
+            content:=
+              '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+              HTMLEncode(d1['url'])+
+              '" /><br />'#13#10+content;
+           end;
+         end;
+        Handler.RegisterPost(title,content);
+       end;
+     end;
 end;
 
 procedure TNextPushFeedProcessor.ProcessArticles(Handler:IFeedHandler;
