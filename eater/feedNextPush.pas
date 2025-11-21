@@ -156,12 +156,9 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
          end;
        end;
       vx:=d['featuredArticles'];
-      if VarIsArray(vx) then
-        ProcessArticles(Handler,vx);
+      if VarIsArray(vx) then ProcessArticles(Handler,vx);
       vx:=d['subMenuArticles'];
-      if VarIsArray(vx) then
-        for vi:=VarArrayLowBound(vx,1) to VarArrayHighBound(vx,1) do
-          ProcessArticles(Handler,JSON(vx[vi]));
+      if VarIsArray(vx) then ProcessArticles(Handler,vx);
       ProcessArtData(Handler,d['topStories']);
       ProcessArtData(Handler,d['editorials']);
      end;
@@ -284,32 +281,39 @@ var
   dd:int64;
   itemid,itemurl,title,content:WideString;
   pubDate:TDateTime;
+  vx:Variant;
 begin
   for iArticle:=VarArrayLowBound(vArticles,1) to VarArrayHighBound(vArticles,1) do
    begin
     d:=JSON(vArticles[iArticle]);
-    itemid:=VarToStr(d['id']);//'urlSafeTitle'?
-    itemurl:=FFeedURL+d['url'];
-    dd:=d['publishedAt'];
-    pubDate:=dd/MSecsPerDay+UnixDateDelta;
-    if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+    vx:=d['articles'];
+    if VarIsArray(vx) then//if not VarIsNull(vx) then
+      ProcessArticles(Handler,vx)
+    else
      begin
-      title:=SanitizeTitle(d['title']);
-      content:=HTMLEncode(VarToStr(d['teaser']));
+      itemid:=VarToStr(d['id']);//'urlSafeTitle'?
+      itemurl:=FFeedURL+d['url'];
+      dd:=d['publishedAt'];
+      pubDate:=dd/MSecsPerDay+UnixDateDelta;
+      if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+       begin
+        title:=SanitizeTitle(d['title']);
+        content:=HTMLEncode(VarToStr(d['teaser']));
 
-      if d['isMultipleAuthors']=false then
-        content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
-          HTMLEncode(VarToStr(d['authorFirstName'])+' '+VarToStr(d['authorLastName']))+'</div>'#13#10+content;
-      //else?
+        if d['isMultipleAuthors']=false then
+          content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+            HTMLEncode(VarToStr(d['authorFirstName'])+' '+VarToStr(d['authorLastName']))+'</div>'#13#10+content;
+        //else?
 
-      if not(VarIsNull(d['headlineImagePath'])) then
-        content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
-          HTMLEncode(d['headlineImagePath'])+'" alt="'+
-          HTMLEncode(VarToStr(d['headlineImageText']))+'" /><br />'#13#10+content;
+        if not(VarIsNull(d['headlineImagePath'])) then
+          content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+            HTMLEncode(d['headlineImagePath'])+'" alt="'+
+            HTMLEncode(VarToStr(d['headlineImageText']))+'" /><br />'#13#10+content;
 
-      //sectionUrlSafeName for Handler.PostTags()?
+        //sectionUrlSafeName for Handler.PostTags()?
 
-      Handler.RegisterPost(title,content);
+        Handler.RegisterPost(title,content);
+       end;
      end;
    end;
 end;
