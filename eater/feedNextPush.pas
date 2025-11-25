@@ -11,6 +11,7 @@ type
     FTagName,FTagHref:string;
     procedure ProcessArticles(Handler:IFeedHandler;const vArticles:Variant);
     procedure ProcessArtData(Handler:IFeedHandler;const vArticles:Variant);
+    procedure ProcessArticle1(Handler:IFeedHandler;const vArticle:Variant);
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
       var FeedData: WideString; const FeedDataType: WideString): Boolean;
@@ -52,7 +53,7 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
     //assert VarIsArray(v)
     //assert VarArrayLowBound(v,1)=0
     vn:=VarArrayHighBound(v,1);
-    if (VarType(v[vn])=varBoolean) and (v[vn]=false) then
+    if (vn>0) and (VarType(v[vn])=varBoolean) and (v[vn]=false) then
       for vi:=VarArrayLowBound(v,1) to vn-1 do
         ProcessQuad(v[vi])
     else
@@ -159,6 +160,8 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
       if VarIsArray(vx) then ProcessArticles(Handler,vx);
       vx:=d['subMenuArticles'];
       if VarIsArray(vx) then ProcessArticles(Handler,vx);
+      vx:=d['article'];
+      if not(VarIsNull(vx)) then ProcessArticle1(Handler,vx);
       ProcessArtData(Handler,d['topStories']);
       ProcessArtData(Handler,d['editorials']);
      end;
@@ -315,6 +318,48 @@ begin
         Handler.RegisterPost(title,content);
        end;
      end;
+   end;
+end;
+
+procedure TNextPushFeedProcessor.ProcessArticle1(Handler: IFeedHandler;
+  const vArticle: Variant);
+var
+  d,d1:IJSONDocument;
+  itemid,itemurl,title,content,s:WideString;
+  pubDate:TDateTime;
+begin
+  d:=JSON(vArticle);
+  itemid:=d['id'];
+  itemurl:=d['url'];//FFeedURL+d['slug'];
+  pubDate:=ConvDate1(d['published_at']);
+  if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+   begin
+    title:=SanitizeTitle(d['title']);//'neta_title'
+    content:=HTMLEncode(d['excerpt']);
+
+    s:=VarToStr(d['meta_description']);
+    if s<>'' then
+      content:='<div class="postdesc" style="margin-left:1.5em;color:grey;">'
+        +HTMLEncode(s)+'</div>'#13#10+content;
+
+    d1:=JSON(d['author']);
+    if d1<>nil then
+      content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+        HTMLEncode(d1['name'])+'</div>'#13#10+content;
+
+    d1:=JSON(d['thumbnails_without_watermark']);
+    if d1=nil then d1:=JSON(d['thumbnails']);
+    if d1<>nil then s:=d1['origin'] else s:=VarToStr(d['image']);
+    if s<>'' then
+      content:=
+        '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+        HTMLEncode(s)+'" alt="'+HTMLEncode(VarToStr(d['caption']))+//'alt_text'?
+        '" /><br />'#13#10+content;
+
+    //d['tags']?
+
+    HTMLEncode(d['meta_description']);
+    Handler.RegisterPost(title,content);
    end;
 end;
 
