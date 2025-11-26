@@ -329,13 +329,24 @@ var
   pubDate:TDateTime;
 begin
   d:=JSON(vArticle);
-  itemid:=d['id'];
-  itemurl:=d['url'];//FFeedURL+d['slug'];
-  pubDate:=ConvDate1(d['published_at']);
+  itemid:=VarToStr(d['id']);
+  if itemid='' then itemid:=VarToStr(d['uuid']);
+  itemurl:=VarToStr(d['url']);//FFeedURL+d['slug'];
+  if (itemurl='') and not(VarIsNull(d['canonicalUrl'])) then
+    itemurl:=JSON(d['canonicalUrl'])['url'];
+  try
+    if not(VarIsNull(d['published_at'])) then
+      pubDate:=ConvDate1(d['published_at'])
+    else
+      pubDate:=UtcNow;
+  except
+    pubDate:=UtcNow;
+  end;
   if Handler.CheckNewPost(itemid,itemurl,pubDate) then
    begin
     title:=SanitizeTitle(d['title']);//'neta_title'
-    content:=HTMLEncode(d['excerpt']);
+    content:=HTMLEncode(VarToStr(d['excerpt']));
+    if content='' then HTMLEncode(VarToStr(d['summary']));
 
     s:=VarToStr(d['meta_description']);
     if s<>'' then
@@ -344,8 +355,13 @@ begin
 
     d1:=JSON(d['author']);
     if d1<>nil then
-      content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
-        HTMLEncode(d1['name'])+'</div>'#13#10+content;
+     begin
+      s:=VarToStr(d1['name']);
+      if s='' then s:=VarToStr(d1['displayName']);
+      if s<>'' then
+        content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+          HTMLEncode(s)+'</div>'#13#10+content;
+     end;
 
     d1:=JSON(d['thumbnails_without_watermark']);
     if d1=nil then d1:=JSON(d['thumbnails']);
@@ -358,7 +374,6 @@ begin
 
     //d['tags']?
 
-    HTMLEncode(d['meta_description']);
     Handler.RegisterPost(title,content);
    end;
 end;
