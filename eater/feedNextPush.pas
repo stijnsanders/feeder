@@ -9,9 +9,11 @@ type
   private
     FFeedURL:WideString;
     FTagName,FTagHref:string;
+    FSection:IJSONDocument;
     procedure ProcessArticles(Handler:IFeedHandler;const vArticles:Variant);
     procedure ProcessArtData(Handler:IFeedHandler;const vArticles:Variant);
     procedure ProcessArticle1(Handler:IFeedHandler;const vArticle:Variant);
+    function GetFromSection(const Path:string):Variant;
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
       var FeedData: WideString; const FeedDataType: WideString): Boolean;
@@ -57,7 +59,7 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
       for vi:=VarArrayLowBound(v,1) to vn-1 do
         ProcessQuad(v[vi])
     else
-    if vn=3 then //VarArrayHighBound(v,1)=3
+    if (vn=3) and (TVarData(v[3]).VType=varUnknown) then //VarArrayHighBound(v,1)=3
      begin
       d:=JSON(v[3]);
       vx:=d['children'];
@@ -173,6 +175,7 @@ var
   m:Match;
   mi,wi,vi:integer;
   d,d1,d2:IJSONDocument;
+  dParsed:boolean;
   w:WideString;
   v:Variant;
 begin
@@ -198,36 +201,51 @@ begin
     wi:=1;
     while (wi<8) and (wi<Length(w)) and (w[wi]<>':') do inc(wi);
     if (Copy(w,wi,7)=':[["$",') then //?
+     begin
+      dParsed:=false;
       try
         d.Parse('{"_"'+Copy(w,wi,Length(w)-wi+1)+'}');
+        dParsed:=true;
+      except
+        on EJSONDecodeException do ;//ignore
+      end;
+      if dParsed then
+       begin
+        FSection:=d;
         v:=d['_'];
         for vi:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
           if VarIsArray(v[vi]) then ProcessQuad(v[vi]);
-      except
-        on EJSONDecodeException do ;//ignore
-      end
+       end;
+     end
     else
     if Copy(w,wi,6)=':["$",' then
      begin
+      dParsed:=false;
       try
         d.Parse('{"_"'+Copy(w,wi,Length(w)-wi+1)+'}');
-        ProcessQuad(d['_']);
+        dParsed:=true;
       except
         on EJSONDecodeException do ;//ignore
       end;
-      d1:=JSON(JSON(d['_'][3])['data']);
-      if d1<>nil then
+      if dParsed then
        begin
-        d2:=JSON(d1['topArticles']);
-        if d2<>nil then ProcessArticles(Handler,d2['articles']);
-        d2:=JSON(d1['allArticles']);
-        if d2<>nil then ProcessArticles(Handler,d2['articles']);
-        d2:=JSON(d1['topHeadlines']);
-        if d2<>nil then ProcessArticles(Handler,JSON(d2['data'])['articles']);
-       end;
-      end;
+        FSection:=d;
+        ProcessQuad(d['_']);
+        d1:=JSON(JSON(d['_'][3])['data']);
+        if d1<>nil then
+         begin
+          d2:=JSON(d1['topArticles']);
+          if d2<>nil then ProcessArticles(Handler,d2['articles']);
+          d2:=JSON(d1['allArticles']);
+          if d2<>nil then ProcessArticles(Handler,d2['articles']);
+          d2:=JSON(d1['topHeadlines']);
+          if d2<>nil then ProcessArticles(Handler,JSON(d2['data'])['articles']);
+         end;
+        end;
+     end;
    end;
 
+  FSection:=nil;
   Handler.ReportSuccess('NextPush');
 end;
 
@@ -327,7 +345,11 @@ var
   d,d1:IJSONDocument;
   itemid,itemurl,title,content,s:WideString;
   pubDate:TDateTime;
+  v:Variant;
 begin
+  if TVarData(vArticle).VType<>varUnknown then
+    Exit;
+
   d:=JSON(vArticle);
   itemid:=VarToStr(d['id']);
   if itemid='' then itemid:=VarToStr(d['uuid']);
@@ -366,6 +388,16 @@ begin
     d1:=JSON(d['thumbnails_without_watermark']);
     if d1=nil then d1:=JSON(d['thumbnails']);
     if d1<>nil then s:=d1['origin'] else s:=VarToStr(d['image']);
+    if (s='') and VarIsStr(d['thumbnail']) then
+     begin
+      d1:=JSON(GetFromSection(d['thumbnail']));
+      v:=d1['carmotMysterioImages'];
+      if VarIsArray(v) then
+       begin
+        d1:=JSON(v[VarArrayHighBound(v,1)]);
+        s:=d1['url'];
+       end;
+     end;
     if s<>'' then
       content:=
         '<img class="postthumb" referrerpolicy="no-referrer" src="'+
@@ -377,6 +409,54 @@ begin
     Handler.RegisterPost(title,content);
    end;
 end;
+
+function TNextPushFeedProcessor.GetFromSection(const Path: string): Variant;
+var
+  i,j,k,l:integer;
+  s:string;
+  procedure Fail(const Msg:string);
+  begin
+    raise Exception.Create(Msg);//+'@'+IntToStr(i)+':'+Path...
+  end;
+begin
+  l:=Length(Path);
+  i:=1;
+  Result:=Null;
+  while (i<=l) do
+   begin
+    j:=i;
+    while (j<=l) and (Path[j]<>':') do inc(j);
+    s:=Copy(Path,i,j-i);
+    if s[1]='$' then
+     begin
+      if FSection=nil then Fail('Section data not available');
+      Result:=FSection['_'];
+     end
+    else
+    if s='props' then
+     begin
+      if not(VarIsArray(Result)) then Fail('quad expected');
+      Result:=Result[3];
+     end
+    else
+    if s='children' then
+      Result:=JSON(Result)['children']
+    else
+    if s='thumbnail' then
+      Result:=JSON(Result)['thumbnail']
+    else
+    if TryStrToInt(s,k) then
+     begin
+      if not(VarIsArray(Result)) then Fail('array expected');
+      Result:=Result[k];
+     end;
+    i:=j+1;//':'
+   end;
+      //TODO d['thumbnail'])
+      //parse string like '$107:props:children:props:children:0:props:children:props:thumbnail'
+
+end;
+
 
 initialization
   RegisterFeedProcessor(TNextPushFeedProcessor.Create);
