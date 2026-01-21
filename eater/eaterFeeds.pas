@@ -80,7 +80,7 @@ const
 implementation
 
 uses Windows, SysUtils, Variants, ComObj, eaterUtils, eaterSanitize, MSXML2_TLB,
-  VBScript_RegExp_55_TLB, eaterGraphs, feedSoundCloud;
+  VBScript_RegExp_55_TLB, eaterGraphs;
 
 const
   FeederIniPath='..\..\feeder.ini';

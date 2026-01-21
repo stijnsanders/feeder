@@ -19,12 +19,44 @@ type
       Request: ServerXMLHTTP60): Boolean; override;
   end;
 
-function SoundCloudClientID:string;
-
 implementation
 
 uses SysUtils, Variants, Classes, jsonDoc, eaterUtils, VBScript_RegExp_55_TLB,
   base64;
+
+var
+  SC_Token:string;
+  SC_Valid:TDateTime;
+
+function SC_AuthToken:string;
+var
+  sl:TStringList;
+  r:ServerXMLHTTP60;
+  j:IJSONDocument;
+begin
+  if SC_Valid<Now then
+   begin
+    r:=CoServerXMLHTTP60.Create;
+    sl:=TStringList.Create;
+    try
+      sl.LoadFromFile('soundcloud.ini');
+
+      r.open('POST','https://secure.soundcloud.com/oauth/token',false,EmptyParam,EmptyParam);
+      r.setRequestHeader('Accept','application/json; charset=utf-8');
+      r.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+      r.setRequestHeader('Authorization','Basic '+string(base64encode(
+        UTF8Encode((sl.Values['client']+':'+sl.Values['secret'])))));
+      r.send('grant_type=client_credentials');
+      j:=JSON(r.responseText);
+      SC_Token:=j['access_token'];
+      SC_Valid:=Now+(j['expires_in']-90)/SecsPerDay;
+      //assert j['token_type']='Bearer'
+    finally
+      sl.Free;
+    end;
+   end;
+  Result:='Bearer '+SC_Token;
+end;
 
 { TSoundCloudProcessor }
 
@@ -38,32 +70,17 @@ end;
 procedure TSoundCloudProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
-  sl:TStringList;
   r:ServerXMLHTTP60;
   j,j1,j2:IJSONDocument;
   jc:IJSONDocArray;
   i:integer;
   s:string;
   id,dd,dur:int64;
-  token,urn,url,title,content:string;
+  urn,url,title,content:string;
   pubDate:TDateTime;
 begin
   inherited;
   r:=CoServerXMLHTTP60.Create;
-  sl:=TStringList.Create;
-  try
-    sl.LoadFromFile('soundcloud.ini');
-
-    r.open('POST','https://secure.soundcloud.com/oauth/token',false,EmptyParam,EmptyParam);
-    r.setRequestHeader('Accept','application/json; charset=utf-8');
-    r.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
-    r.setRequestHeader('Authorization','Basic '+string(base64encode(
-      UTF8Encode((sl.Values['client']+':'+sl.Values['secret'])))));
-    r.send('grant_type=client_credentials');
-    token:='Bearer '+JSON(r.responseText)['access_token'];
-  finally
-    sl.Free;
-  end;
   j:=JSON;
   j.Parse(FeedData);
 
@@ -81,7 +98,8 @@ begin
       +'?access=,playable,preview,blocked&limit=25&linked_partitioning=true'
       ,false,EmptyParam,EmptyParam);
     r.setRequestHeader('Accept','application/json');
-    r.setRequestHeader('Authorization',token);
+    r.setRequestHeader('User-Agent','FeedEater/1.1');
+    r.setRequestHeader('Authorization',SC_AuthToken);
     r.send(EmptyParam);
 
     if r.status<>200 then raise Exception.Create('SoundCloud: can''t get user''s tracks: '+IntToStr(r.status));
@@ -143,64 +161,6 @@ begin
 
   else
     Handler.ReportFailure('SoundCloud: unsupported kind "'+s+'"');
-
-  //r:=CoServerXMLHTTP60.Create;
-  //r.open('GET',
-end;
-
-var
-  SC_TS:TDateTime;
-  SC_ID:string;
-
-procedure GetSoundCloudID;
-var
-  r:ServerXMLHTTP60;
-  e1,e2:RegExp;
-  m1,m2:MatchCollection;
-  url:string;
-  i,ml,mc:integer;
-begin
-  r:=CoServerXMLHTTP60.Create;
-  r.open('GET','https://www.soundcloud.com/',false,EmptyParam,EmptyParam);
-  r.send(EmptyParam);
-
-  e1:=CoRegExp.Create;
-  e1.Pattern:='<script crossorigin src="(https://a-v2.sndcdn.com/assets/.+?.js)"></script>';
-  e1.Global:=true;
-
-  e2:=CoRegExp.Create;
-  e2.Pattern:=',client_id:"([A-Za-z0-9]{32})"';
-
-  m1:=e1.Execute(r.responseText) as MatchCollection;
-  ml:=m1.Count;
-  mc:=(ml div 2);
-
-  i:=0;
-  while i<m1.Count do
-   begin
-    url:=((m1.Item[(mc+i) mod ml] as Match).SubMatches as SubMatches)[0];
-    r.open('GET',url,false,EmptyParam,EmptyParam);
-    r.send(EmptyParam);
-    m2:=e2.Execute(r.responseText) as MatchCollection;
-    if m2.Count=0 then
-     begin
-      inc(i);
-      if i=m1.Count then
-        raise Exception.Create('Unable to obtain SoundCloudClientID');
-     end
-    else
-     begin
-      SC_ID:=((m2.Item[0] as Match).SubMatches as SubMatches)[0];
-      SC_TS:=Now;
-      i:=m1.Count;//end loop
-     end;
-   end;
-end;
-
-function SoundCloudClientID:string;
-begin
-  if (SC_ID='') or (Trunc(SC_TS*4.0)<>Trunc(Now*4.0)) then GetSoundCloudID;
-  Result:=SC_ID;
 end;
 
 { TSoundCloudRequest }
@@ -210,11 +170,11 @@ function TSoundCloudRequest.AlternateOpen(const FeedURL: string;
 begin
   if StartsWith(FeedURL,'https://soundcloud.com/') then
    begin
-    Request.open('GET','https://api-v2.soundcloud.com/resolve?url='+
-      string(URLEncode(FeedURL))+'&client_id='+SoundCloudClientID,
-      false,EmptyParam,EmptyParam);
+    Request.open('GET','https://api.soundcloud.com/resolve?url='+
+      string(URLEncode(FeedURL)),false,EmptyParam,EmptyParam);
     Request.setRequestHeader('Accept','application/json');
     Request.setRequestHeader('User-Agent','FeedEater/1.1');
+    Request.setRequestHeader('Authorization',SC_AuthToken);
     Result:=true;
    end
   else
@@ -222,8 +182,8 @@ begin
 end;
 
 initialization
-  SC_TS:=0.0;
-  SC_ID:='';
+  SC_Token:='';
+  SC_Valid:=0.0;
   RegisterFeedProcessor(TSoundCloudProcessor.Create);
   RegisterRequestProcessors(TSoundCloudRequest.Create);
 end.
