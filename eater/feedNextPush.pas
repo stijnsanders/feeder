@@ -8,7 +8,7 @@ type
   TNextPushFeedProcessor=class(TFeedProcessor)
   private
     FFeedURL:WideString;
-    FTagName,FTagHref:string;
+    FTagName,FTagHref,FTagSrc,FTagAlt:string;
     FSection:IJSONDocument;
     procedure ProcessArticles(Handler:IFeedHandler;const vArticles:Variant);
     procedure ProcessArtData(Handler:IFeedHandler;const vArticles:Variant);
@@ -31,10 +31,18 @@ uses SysUtils, Variants, eaterUtils, eaterSanitize, VBScript_RegExp_55_TLB;
 function TNextPushFeedProcessor.Determine(Store: IFeedStore;
   const FeedURL: WideString; var FeedData: WideString;
   const FeedDataType: WideString): Boolean;
+var
+  i:integer;
 begin
   Result:=//Store.CheckLastLoadResultPrefix('NextPush') and
     (Pos(WideString('<script>self.__next_f.push('),FeedData)<>0);
-  if Result then FFeedURL:=FeedURL;
+  if Result then
+   begin
+    FFeedURL:=FeedURL;
+    i:=Length(FFeedURL);
+    while (i<>0) and (FFeedURL[i]<>'/') do dec(i);
+    SetLength(FFeedURL,i);
+   end;
 end;
 
 procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
@@ -65,6 +73,12 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
       vx:=d['children'];
       if VarIsArray(vx) then
        begin
+        if not(VarIsNull(d['href'])) and (vn=4) then
+         begin
+          FTagSrc:='';
+          FTagAlt:='';
+         end;
+
         //assert VarArrayLowBound(vx,1)=0 //see jsonDoc
         vn:=VarArrayHighBound(vx,1)+1;
         if (vn=4) and VarIsStr(vx[0]) then
@@ -75,28 +89,49 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
 
         if not(VarIsNull(d['href'])) and (vn=4) then
          begin
-          d1:=JSON(vx[3]);
-          if not(VarIsNull(d1['title'])) then
+
+          if VarIsNull(d['title']) then
            begin
-            itemid:='';//?
+            d1:=JSON(vx[3]);
+            if not(VarIsNull(d1['title'])) then
+             begin
+              itemid:='';//?
+              itemurl:=FFeedURL+d['href'];
+              pubDate:=UtcNow;//?
+              if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+               begin
+                //d['aria-title']?
+                title:=HTMLEncode(d1['title']);
+
+                if FTagHref='' then content:='' else
+                 begin
+                  content:='<p><i><a href="'+HTMLEncode(FFeedURL+FTagHref)+'">'
+                    +HTMLEncode(FTagName)+'</a></i></p>';
+                  FTagName:='';
+                  FTagHref:='';
+                 end;
+
+                content:=
+                  '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                  HTMLEncode(d1['src'])+'" /><br />'#13#10+content;
+                Handler.RegisterPost(title,content);
+               end;
+             end;
+           end
+          else
+           begin
+            itemid:='';
             itemurl:=FFeedURL+d['href'];
             pubDate:=UtcNow;//?
             if Handler.CheckNewPost(itemid,itemurl,pubDate) then
              begin
-              //d['aria-title']?
-              title:=HTMLEncode(d1['title']);
-
-              if FTagHref='' then content:='' else
-               begin
-                content:='<p><i><a href="'+HTMLEncode(FFeedURL+FTagHref)+'">'
-                  +HTMLEncode(FTagName)+'</a></i></p>';
-                FTagName:='';
-                FTagHref:='';
-               end;
-
-              content:=
-                '<img class="postthumb" referrerpolicy="no-referrer" src="'+
-                HTMLEncode(d1['src'])+'" /><br />'#13#10+content;
+              title:=HTMLEncode(d['title']);
+              content:='';//?
+              if FTagSrc<>'' then
+                content:=
+                  '<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                  HTMLEncode(FTagSrc)+'" alt="'+
+                  HTMLEncode(FTagAlt)+'" /><br />'#13#10+content;
               Handler.RegisterPost(title,content);
              end;
            end;
@@ -104,12 +139,17 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
 
        end
       else
+      if not(VarIsNull(d['href'])) and VarIsStr(vx) then
        begin
-        if not(VarIsNull(d['href'])) and VarIsStr(vx) then
-         begin
-          FTagName:=vx;
-          FTagHref:=d['href'];
-         end;
+        FTagName:=vx;
+        FTagHref:=d['href'];
+       end
+      else
+      if not(VarIsNull(d['src'])) and VarIsNull(vx) then
+       begin
+        //if FTagSrc<>'' then raise?
+        FTagSrc:=d['src'];
+        FTagAlt:=VarToStr(d['alt']);
        end;
 
       //else?

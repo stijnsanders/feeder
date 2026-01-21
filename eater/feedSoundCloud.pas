@@ -23,7 +23,8 @@ function SoundCloudClientID:string;
 
 implementation
 
-uses SysUtils, Variants, jsonDoc, eaterUtils, VBScript_RegExp_55_TLB;
+uses SysUtils, Variants, Classes, jsonDoc, eaterUtils, VBScript_RegExp_55_TLB,
+  base64;
 
 { TSoundCloudProcessor }
 
@@ -37,16 +38,32 @@ end;
 procedure TSoundCloudProcessor.ProcessFeed(Handler: IFeedHandler;
   const FeedData: WideString);
 var
+  sl:TStringList;
   r:ServerXMLHTTP60;
   j,j1,j2:IJSONDocument;
   jc:IJSONDocArray;
   i:integer;
   s:string;
   id,dd,dur:int64;
-  urn,url,title,content:string;
+  token,urn,url,title,content:string;
   pubDate:TDateTime;
 begin
   inherited;
+  r:=CoServerXMLHTTP60.Create;
+  sl:=TStringList.Create;
+  try
+    sl.LoadFromFile('soundcloud.ini');
+
+    r.open('POST','https://secure.soundcloud.com/oauth/token',false,EmptyParam,EmptyParam);
+    r.setRequestHeader('Accept','application/json; charset=utf-8');
+    r.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+    r.setRequestHeader('Authorization','Basic '+string(base64encode(
+      UTF8Encode((sl.Values['client']+':'+sl.Values['secret'])))));
+    r.send('grant_type=client_credentials');
+    token:='Bearer '+JSON(r.responseText)['access_token'];
+  finally
+    sl.Free;
+  end;
   j:=JSON;
   j.Parse(FeedData);
 
@@ -59,16 +76,14 @@ begin
 
     //TODO: playlists?
 
-    r:=CoServerXMLHTTP60.Create;
-    r.open('GET','https://api-v2.soundcloud.com/users/'+IntToStr(id)+
+    r.open('GET','https://api.soundcloud.com/users/'+IntToStr(id)+
       '/tracks'
-      +'?representation=&client_id='+SoundCloudClientID
-      //+'&limit=20&offset=0&linked_partitioning=1'
-      //+'&app_version=1652085324&app_locale=en'
-      ,
-      false,EmptyParam,EmptyParam);
+      +'?access=,playable,preview,blocked&limit=25&linked_partitioning=true'
+      ,false,EmptyParam,EmptyParam);
     r.setRequestHeader('Accept','application/json');
+    r.setRequestHeader('Authorization',token);
     r.send(EmptyParam);
+
     if r.status<>200 then raise Exception.Create('SoundCloud: can''t get user''s tracks: '+IntToStr(r.status));
     //SaveUTF16('xmls\'+Format('%.4d',[FeedID])+'t.json',r.responseText);
 
@@ -82,7 +97,10 @@ begin
       urn:=j1['urn'];
       url:=j1['permalink_url'];
       //pubDate:=ConvDate1(j1['last_modified']);
-      pubDate:=ConvDate1(j1['display_date']);
+      if not(VarIsNull(j1['display_date'])) then
+        pubDate:=ConvDate1(j1['display_date'])
+      else
+        pubDate:=ConvDate1(j1['created_at']);
       //assert j1['kind']='track'
       if Handler.CheckNewPost(urn,url,pubDate) then
        begin

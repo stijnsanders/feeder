@@ -1099,7 +1099,7 @@ begin
       title:=SanitizeTitle(jdata['headline']);
       content:=HTMLEncode(jdata['rubric']);
       if not(VarIsNull(jdata['flyTitle'])) then
-        content:=content+'<br /><div style="color:silver">'+
+        content:=content+'<br /><div style="border-left:0.2em solid silver;padding-left:0.4em;">'+
           HTMLEncode(jdata['flyTitle'])+'</div>';
       //jdata['section']
       d:=JSON(jdata['image']);

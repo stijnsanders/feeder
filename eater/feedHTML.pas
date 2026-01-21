@@ -210,7 +210,7 @@ var
   p:IJSONDocument;
   re,re1:RegExp;
   r:ServerXMLHTTP60;
-  v:Variant;
+  v,vTags:Variant;
   urls:TStringList;
   bias:double;
 begin
@@ -231,6 +231,7 @@ begin
      end;
     re:=nil;
    end;
+
   mc:=FPostItem.Execute(FFeedData) as MatchCollection;
   if not(VarIsNull(FFeedParams['pubDate'])) then
    begin
@@ -243,8 +244,10 @@ begin
       re1:=CoRegExp.Create;
       re1.Pattern:=p['p'];
       re1.IgnoreCase:=p['i']=true;
-      //re1.Multiline:=
+      re1.Multiline:=p['m']=true;
      end;
+    if VarIsStr(FFeedParams['urlPrefix']) then
+      FURL:=FFeedParams['urlPrefix'];
 
     for mci:=0 to mc.Count-1 do
      begin
@@ -315,6 +318,15 @@ begin
             //TODO: absorb THTMLFeedProcessor1 here:
             //TODO: series of replaces
 
+           end;
+
+          p:=JSON(FFeedParams['author']);
+          if p<>nil then
+           begin
+            s:=sm[p['n']-1];
+            if s<>'' then
+              content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+                HTMLEncode(s)+'</div>'#13#10+content;
            end;
 
           p:=JSON(FFeedParams['postThumb']);
@@ -392,6 +404,7 @@ begin
         title:='';
         content:='';
         imgurl:='';
+        vTags:=Null;
 
         url:=sm[n-1];
         if urls.IndexOf(url)=-1 then
@@ -441,11 +454,11 @@ begin
                 except
                   //d:=UtcNow;//see above
                 end;
-                //p['keywords']? p['articleSection']?
 
+                //p['keywords']?
                 v:=p['articleSection'];
                 if VarType(v)=varArray or varOleStr then
-                  Handler.PostTags('category',v);
+                  vTags:=v;//Handler.PostTags('category',v);//moved past CheckPost!
 
                 if imgurl='' then
                  begin
@@ -499,6 +512,10 @@ begin
 
             if Handler.CheckNewPost(url,url,d) then
              begin
+
+              if not(VarIsNull(vTags)) then
+                Handler.PostTags('category',vTags);
+
               if contentAll then
                begin
                 content:='';

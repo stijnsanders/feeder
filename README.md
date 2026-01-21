@@ -86,7 +86,13 @@ _feeder_ for the moment, in an attempt to avoid including a full account managem
 <tr>
 <td>NextData</td>
 <td>Posts are loaded from <code>&lt;script id="__NEXT_DATA__" type="application/json"&gt;</code> JSON.
-(Attention: apparently websites have some freedom in how the data itself is structured, and items may not get picked up correctly.)</td>
+<br />(Attention: apparently websites have some freedom in how the data itself is structured, and items may not get picked up correctly.)</td>
+</tr>
+
+<tr>
+<td>NextPush</td>
+<td>Posts are loaded from <code>&lt;script&gt;self.__next_f.push(</code> calls.
+<br />(Attention: apparently websites have some freedom in how the data itself is structured, and items may not get picked up correctly.)</td>
 </tr>
 
 <tr>

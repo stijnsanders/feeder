@@ -102,7 +102,7 @@ begin
          begin
           content:=VarToStr(jn1['firstWords']);
           if content<>'' then
-            content:=content+'<span style="color:silver;">...</span>';
+            content:=content+'<span style="border-left:0.2em solid silver;padding-left:0.4em;">...</span>';
          end;
 
         //jn1['media']
