@@ -9,10 +9,11 @@ type
   private
     FFeedURL:WideString;
     FTagName,FTagHref,FTagSrc,FTagAlt:string;
-    FSection:IJSONDocument;
+    FSection,FSections:IJSONDocument;
     procedure ProcessArticles(Handler:IFeedHandler;const vArticles:Variant);
     procedure ProcessArtData(Handler:IFeedHandler;const vArticles:Variant);
     procedure ProcessArticle1(Handler:IFeedHandler;const vArticle:Variant);
+    procedure ProcessStateQry(Handler:IFeedHandler;const vState:Variant);
     function GetFromSection(const Path:string):Variant;
   public
     function Determine(Store: IFeedStore; const FeedURL: WideString;
@@ -150,7 +151,10 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
         //if FTagSrc<>'' then raise?
         FTagSrc:=d['src'];
         FTagAlt:=VarToStr(d['alt']);
-       end;
+       end
+      else
+      if not(VarIsNull(d['state'])) then
+        ProcessStateQry(Handler,d['state']);
 
       //else?
       vx:=d['event'];
@@ -227,6 +231,7 @@ begin
 
   FTagName:='';
   FTagHref:='';
+  FSections:=JSON;
 
   d:=JSON;
   for mi:=0 to mc.Count-1 do
@@ -252,6 +257,7 @@ begin
       if dParsed then
        begin
         FSection:=d;
+        FSections[Copy(w,1,wi-1)]:=d['_'];
         v:=d['_'];
         for vi:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
           if VarIsArray(v[vi]) then ProcessQuad(v[vi]);
@@ -270,6 +276,7 @@ begin
       if dParsed then
        begin
         FSection:=d;
+        FSections[Copy(w,1,wi-1)]:=d['_'];
         ProcessQuad(d['_']);
         d1:=JSON(JSON(d['_'][3])['data']);
         if d1<>nil then
@@ -286,7 +293,78 @@ begin
    end;
 
   FSection:=nil;
+  FSections:=nil;
   Handler.ReportSuccess('NextPush');
+end;
+
+procedure TNextPushFeedProcessor.ProcessStateQry(Handler:IFeedHandler;const vState:Variant);
+var
+  d,d1:IJSONDocument;
+  vQueries,vPages,vPosts:Variant;
+  iQueries,iPages,iPosts:integer;
+
+  itemid,itemurl,n:string;
+  pubDate:TDateTime;
+  title,content:WideString;
+
+begin
+  try
+    vQueries:=JSON(vState)['queries'];
+    for iQueries:=VarArrayLowBound(vQueries,1) to VarArrayHighBound(vQueries,1) do
+     begin
+      vPages:=JSON(JSON(JSON(vQueries[iQueries])['state'])['data'])['pages'];
+      if not(VarIsNull(vPages)) then      
+      for iPages:=VarArrayLowBound(vPages,1) to VarArrayHighBound(vPages,1) do
+       begin
+        vPosts:=JSON(JSON(vPages[iPages])['posts'])['edges'];
+        for iPosts:=VarArrayLowBound(vPosts,1) to VarArrayHighBound(vPosts,1) do
+         begin
+          d:=JSON(JSON(vPosts[iPosts])['node']);
+          itemid:=d['_id'];
+          itemurl:=FFeedURL+StringReplace(itemid,'-','/',[])+'/'+d['slug'];//?!
+          pubDate:=ConvDate1(d['createdDate']);
+          if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+           begin
+            title:=SanitizeTitle(d['title']);
+
+            d1:=JSON(d['externalContent']);
+            if d1=nil then
+             begin
+              content:=HTMLEncode(VarToStr(d['text']));
+              if content='' then content:=HTMLEncode(VarToStr(d['textpreview']));
+             end
+            else
+             begin
+              n:=VarToStr(d1['headline']);
+              if n='' then n:=d1['url'];
+              content:='<a href="'+HTMLEncode(d1['url'])+'" rel="noreferrer">'
+                +HTMLEncode(n)+'</a><br />'#13#10
+                +HTMLEncode(VarToStr(d1['subHeadline']))
+                +#13#10;
+              if not(VarIsNull(d1['imageUrl'])) then
+                content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                  HTMLEncode(d1['imageUrl'])+'" /><br />'#13#10+content;
+             end;
+
+            d1:=JSON(d['author']);
+            if d1<>nil then
+              content:='<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+                HTMLEncode(d1['username'])+'</div>'#13#10+content;
+            //d['contextCards']?d['community']?
+            //pm content?
+            //nsfw?
+
+            Handler.RegisterPost(title,content);
+           end;
+         end;
+       end;
+     end;
+  except
+    //ignore
+
+    Writeln(itemid);
+
+  end;
 end;
 
 procedure TNextPushFeedProcessor.ProcessArtData(Handler: IFeedHandler;
@@ -469,8 +547,11 @@ begin
     s:=Copy(Path,i,j-i);
     if s[1]='$' then
      begin
+      {
       if FSection=nil then Fail('Section data not available');
       Result:=FSection['_'];
+      }
+      Result:=FSections[Copy(s,2,Length(s)-1)];
      end
     else
     if s='props' then
