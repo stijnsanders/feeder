@@ -1,0 +1,10 @@
+{
+	"p":"href=\"([^\"]+?/news/\\d+?/)\"",
+	"feedname":{"p":"<title>\\s+(.+?)\\s+</title>","n":1},
+	"fetchItems":1,
+	"infoJson":"<script type=\"application/ld\\+json\"[^>]*?>",
+	"content":{
+		"p":"<article[^>]*?>\\s*([\\u0000-\\uFFFF]+?)</article>",
+		"n":1
+	}
+}

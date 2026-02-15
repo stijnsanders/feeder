@@ -1,0 +1,10 @@
+{"list":"products"
+,"id":["variants",0,"sku"]
+,"pubDate":"published_at"
+,"title":"title"
+,"content":"body_html"
+,"contentHtmlEncode":false
+,"urlPrefix":"https://nijisanji-store.com/products/"
+,"relUrl":"handle"
+,"postthumb":["images",0,"src"]
+}

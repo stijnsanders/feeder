@@ -1,0 +1,13 @@
+{
+"feedname":{"p":"<title>\\s*(.+?)\\s*</title>","n":1},
+"urlPrefix":"https://vtuberrepublic.com",
+"p":"<li id=\"blog_entry.+?<a href=\"(/blog/entry.+?)\".+?<img .*?src=\"(.+?)\".+?<div class=\"blog_title\">(.+?)</div>.+?<span class=\"blog_date\">(.+?)</span>.+?<span class=\"blog_author\">\\s+(.+?)\\s+<img src=\"(.+?)\"",
+"i":false,
+"m":false,
+"pubDate":{"n":4,"parse":1,"bias":-18,"//":"!!"},
+"url":{"n":1},
+"title":{"n":3},
+"author":{"n":5},
+"postThumb":{"n":2}
+
+}

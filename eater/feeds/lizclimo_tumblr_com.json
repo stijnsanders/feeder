@@ -1,0 +1,8 @@
+{
+"feedname":{"p":"<title>(.+?)</title>","n":1},
+"p":"<div class=\"date\">\\s+(.+?)\\s*?</div>.*?(<img class=\"post_media_photo[^\"]*\"[^>]+?>).+?<a href=\"([^>]+?)\" class=\"time\">(.+?)</a>",
+"pubDate":{"n":1,"parse":4,"ampm":4,"bias":-6},
+"url":{"n":3},
+"title":{"n":1},
+"content":{"n":2}
+}

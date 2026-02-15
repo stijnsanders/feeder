@@ -1,0 +1,14 @@
+{
+	"p":"href=\"([^\"]+?/article/[^\"]+?)\"",
+	"fetchItems":1,
+	"feedname":{"p":"<meta property=\"og:title\" content=\"([^\"]+?)\">","n":1},
+	"infoJson":"<script type=\"application/ld\\+json\" id=\"link-ld-json\"[^>]*?>",
+	"clip":"<div class=\"RichTextStoryBody RichTextBody\">",
+	"content":{
+		"p":"<(p|h2)>.+?</\\1>",
+		"n":0,
+		"all":true
+	},
+	"separator":"\r\n\r\n",
+	"skipStale":8
+}

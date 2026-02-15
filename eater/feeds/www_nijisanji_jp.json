@@ -1,0 +1,9 @@
+{
+"urlPrefix":"https://www.nijisanji.jp/en/news/",
+"pubDate":"publishedAtForUser",
+"id":"id",
+"relUrl":"id",
+"title":"title",
+"postthumb":["thumbnail","url"],
+"content":"nijisanjiTags"
+}

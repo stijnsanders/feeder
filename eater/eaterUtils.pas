@@ -8,6 +8,7 @@ procedure Out0(const x:string);
 procedure SaveUTF16(const fn:string;const Data:WideString);
 
 function StartsWith(const Value,Prefix:string):boolean;
+function StartsWithCI(const Value,Prefix:string):boolean;
 function StartsWithX(const Value,Prefix:string;var Suffix:string):boolean;
 function HTMLStartsWithImg(const Value:string):boolean;
 
@@ -68,6 +69,11 @@ end;
 function StartsWith(const Value,Prefix:string):boolean; inline;
 begin
   Result:=Copy(Value,1,Length(Prefix))=Prefix;
+end;
+
+function StartsWithCI(const Value,Prefix:string):boolean; inline;
+begin
+  Result:=LowerCase(Copy(Value,1,Length(Prefix)))=LowerCase(Prefix);
 end;
 
 function StartsWithX(const Value,Prefix:string;var Suffix:string):boolean;

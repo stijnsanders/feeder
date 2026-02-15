@@ -1,0 +1,10 @@
+{
+	"feedname":{"p":"<title>(.+?)</title>","n":1},
+	"p":"<div.*?>.*?<a href=\"([^\"]*?)\">.*?<img .*?src=\"([^\"]*?)\".*?>.*?</a>.*?</div>.*?<([^ >]+?).*?>.*?<a href=\"\\1\".*?>(.*?)</a>.*?</\\3>.*?<([^ >]+?).*?>(.*?)</\\5>.*?</div>",
+	"i":false,
+	"url":{"n":1},
+	"title":{"n":4,"trim":true},
+	"content":null,
+	"postThumb":{"n":2},
+	"pubDate":{"n":6,"parse":"sloppy"}
+}

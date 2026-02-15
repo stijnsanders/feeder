@@ -1,0 +1,10 @@
+{
+	"feedname":{"p":"<meta name=\"application-name\" content=\"([^\"]+)\">","n":1},
+	"p":"<div class=\"article-block__inner\"><div class=\"article-block__image\"><a[^>]+?><img[^>]+?src=\"https://www.ft.com/__origami/service/image/v2/images/raw/([^\"]+?)\\?[^\"]*?\"[\\s\\S]+?<div class=\"article-block__content\">[\\s\\S]+?<h2><a href=\"(.*?)\"[^>]*?><span[^>]*?>(.+?)</span></a></h2>[\\s\\S]+?<time[^>]*?>(.+?)</time>",
+	"i":false,
+	"postThumb":{"n":1,"prefix":false},
+	"pubDate":{"n":4,"parse":3},
+	"url":{"n":2,"prefix":true},
+	"title":{"n":3,"trim":true},
+	"content":null
+}

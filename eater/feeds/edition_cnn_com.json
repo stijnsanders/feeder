@@ -1,0 +1,22 @@
+{
+"p":"<a href=\"(/\\d{4}/\\d\\d/\\d\\d/[^\"]+?)\"[^>]*?data-link-type=\"article\"[^>]*?>",
+"feedname":{"p":"<meta property=\"og:title\" content=\"([^\"]+?)\">","n":1},
+"fetchItems":1,
+"base":"https://edition.cnn.com/",
+"urlPrefix":"https://edition.cnn.com",
+"infoJson":"<script type=\"application/ld\\+json\"[^>]*?>",
+"clip":"<main class=\"article__main\">",
+"content":{
+  "p":"^([\\s\\S]+?)</main>",
+  "n":1,
+  "all":false,
+  "r":{
+    "p":"<div [^>]*?class=\"action-bar\"[\\s\\S]+?<div class=\"action-bar__buttons\">[\\s\\S]+?</svg>\\s*?</button>\\s*?</div>\\s*?</div>",
+    "s":"",
+    "g":true
+  }
+},
+"skipStale":12,
+"checkImg":true,
+"separator":"\r\n\r\n"
+}

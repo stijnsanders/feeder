@@ -1,0 +1,14 @@
+{
+	"p":"<a href=([^ ]+?) class=[^>]+?>",
+	"feedname":{"p":"<meta property=\"og:title\" content=\"([^\"]+?)\"[^>]*?>","n":1},
+	"fetchItems":1,
+	"urlPrefix":"https://www.jaxon.gg",
+	"infoJson":"<script type=([\"'])?application/ld\\+json\\1[^>]*?>",
+	"base":"https://www.jaxon.gg/",
+	"checkImg":true,
+	"content":{
+		"p":"<div class=[A-Z][a-z]>([\\u0000-\\uFFFF]+?)<[^>]+?>Read Also",
+		"n":1
+	},
+	"skipStale":7
+}

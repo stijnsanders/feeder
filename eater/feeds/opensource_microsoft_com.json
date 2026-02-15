@@ -1,0 +1,11 @@
+{
+	"list":"data",
+	"id":"path",
+	"urlPrefix":"https://opensource.microsoft.com",
+	"relUrl":"path",
+	"pubSecs":"lastModified",
+	"title":"title",
+	"content":"description",
+	"author":"author",
+	"postthumb":"image"
+}

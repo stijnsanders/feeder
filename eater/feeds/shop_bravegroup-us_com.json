@@ -1,0 +1,12 @@
+{"list":"products"
+,"urlPrefix":"https://shop.bravegroup-us.com/products/"
+,"id":["variants",0,"sku"]
+,"id2":"id"
+,"pubDate":"published_at"
+,"title":"title"
+,"content":"body_html"
+,"contentHtmlEncode":false
+,"relUrl":"handle"
+,"::postthumb":["variants",0,"featured_image","src"]
+,"postthumb":["images",0,"src"]
+}

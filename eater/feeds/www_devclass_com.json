@@ -1,0 +1,11 @@
+{
+	"feedname":{"p":"<title>\\s+(.+?)\\s+</title>","n":1},
+	"p":"<article data-element-guid=\"([^\"]+?)\".+?<a itemprop=\"url\" .*?href=\"([^\"]*?)\".+?<source srcset=\"([^\"]+?)\"[^>]*?type=\"image/jpeg\">.*?<h2 itemprop=\"headline\"[^>]*?>(.*?)</h2>(.*?)</a>\\s*?<time itemprop=\"datePublished\" datetime=\"([^\"]*?)\"></time>.*?</article>",
+	"m":false,
+	"id":{"n":1},
+	"url":{"n":2},
+	"pubDate":{"n":6,"parse":1},
+	"title":{"n":4,"trim":true},
+	"content":{"n":5},
+	"postThumb":{"n":3,"prefix":false,"html":true}
+}

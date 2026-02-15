@@ -294,11 +294,16 @@ begin
 
         p:=JSON(FFeedParams['url']);
         url:=HTMLDecode(sm[p['n']-1]);
-        id:=url;//?
         //TODO: CombineURL!
         if (p['prefix']<>false) //"<>false" because of variant
-          and not(StartsWith(LowerCase(url),LowerCase(FURL)))
+          and not(StartsWithCI(url,FURL))
           then url:=FURL+url;
+
+        p:=JSON(FFeedParams['id']);
+        if p=nil then
+          id:=url
+        else
+          id:=sm[p['n']-1];
 
         if Handler.CheckNewPost(id,url,d) then
          begin
@@ -336,12 +341,16 @@ begin
             if s<>'' then
              begin
               if p['prefix']<>false //"<>false" because of variant
-                and not(StartsWith(LowerCase(s),LowerCase(FURL)))
+                and not(StartsWithCI(s,FURL))
                 then s:=FURL+s;
 
               //'https%253A%252F%252F'
               while (Length(s)>6) and ((s[5]='%') or (s[6]='%')) do
                 s:=UTF8ToWideString(URLDecode(UTF8Encode(s)));
+
+              if p['html']=true then //=true since variant
+                //s:=HTMLDecode(s);
+                s:=StringReplace(s,'&amp;','&',[rfReplaceAll]);
 
               content:='<img class="postthumb" referrerpolicy="no-referrer'+
                 '" src="'+HTMLEncodeQ(s)+
