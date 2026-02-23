@@ -432,6 +432,8 @@ begin
           if r.status=200 then
           w:=r.responseText;//see below
 
+          //SaveUTF16('xmls\0000.html',w);
+
           if VarIsNull(FFeedParams['clip']) then
             mc1:=re.Execute(w) as MatchCollection
           else
@@ -456,7 +458,7 @@ begin
               if VarIsNull(v) then
                begin
                 //p['@type']='NewsArticle'
-                title:=p['headline'];
+                title:=VarToStr(p['headline']);
                 imgurl:=VarToStr(p['thumbnailUrl']);
                 try
                   d:=ConvDate1(p['datePublished']);

@@ -300,7 +300,7 @@ end;
 procedure TNextPushFeedProcessor.ProcessStateQry(Handler:IFeedHandler;const vState:Variant);
 var
   d,d1:IJSONDocument;
-  vQueries,vPages,vPosts:Variant;
+  vQueries,vPages,vPosts,vAtt:Variant;
   iQueries,iPages,iPosts:integer;
 
   itemid,itemurl,n:string;
@@ -332,6 +332,19 @@ begin
              begin
               content:=HTMLEncode(VarToStr(d['text']));
               if content='' then content:=HTMLEncode(VarToStr(d['textpreview']));
+
+              vAtt:=d['attachments'];
+              if VarIsArray(vAtt) and (VarArrayHighBound(vAtt,1)>=0) then
+               begin
+                d1:=JSON(vAtt[0]);//TODO: for?
+                if d1['__typename']='Image' then
+                 begin
+                  content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+                    HTMLEncode(d1['url'])+'" alt="'+
+                    HTMLEncode(VarToStr(d1['alt']))+'" /><br />'#13#10+content;
+                 end;
+               end;
+
              end
             else
              begin
