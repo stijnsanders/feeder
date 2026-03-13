@@ -105,7 +105,8 @@ begin
       ;//ignore "data past end"
   end;
 
-  //SaveUTF16('xmls\0000.json',jdoc.AsString);
+  if DebugSaveData then
+    SaveUTF16('xmls\0000.json',jdoc.AsString);
 
   //props.pageProps.contentState
   je:=JSONEnum(jd1);
@@ -582,7 +583,8 @@ begin
             jbody.LoadItem(cl,jd2);
             if not(VarIsNull(jd2['id'])) and not(VarIsNull(jd2['slug'])) then
              begin
-              //SaveUTF16('xmls\0002.json',jd2.AsString);
+              if DebugSaveData then
+                SaveUTF16('xmls\0002.json',jd2.AsString);
               itemid:=jd2['id'];
               itemurl:=FFeedURL;
               jd3:=JSON(jd2['section']);
@@ -788,8 +790,13 @@ begin
          begin
           jn0:=JSON(jd1['featuredImage']);
           if jn0<>nil then
-            content:='<img class="postthumb" referrerpolicy="no-referrer" src="https:'+
-              JSON(jn0['file'])['url']+'" /><br />'#13#10+content;
+           begin
+            jn1:=JSON(jn0['file']);
+            if jn1=nil then jn1:=JSON(jn0['asset']);
+            if jn1<>nil then
+              content:='<img class="postthumb" referrerpolicy="no-referrer" src="https:'+
+                jn1['url']+'" /><br />'#13#10+content;
+           end;
          end;
 
         v:=jd1['tags'];
@@ -1008,7 +1015,8 @@ begin
                 except
                   on EJSONDecodeException do ;//ignore
                 end;
-                //SaveUTF16('xmls\0001.json',jd1.AsString);
+                if DebugSaveData then                
+                  SaveUTF16('xmls\0001.json',jd1.AsString);
                 ac2:=JSONDocArray;
                 ac1.LoadItem(0,JSON(['compositions',ac2]));
                 //assert jd2['type']='articleDetail'
@@ -1097,7 +1105,7 @@ begin
     if Handler.CheckNewPost(itemid,itemurl,pubdate) then
      begin
       title:=SanitizeTitle(jdata['headline']);
-      content:=HTMLEncode(jdata['rubric']);
+      content:=HTMLEncode(VarToStr(jdata['rubric']));
       if not(VarIsNull(jdata['flyTitle'])) then
         content:=content+'<br /><div style="border-left:0.2em solid silver;padding-left:0.4em;">'+
           HTMLEncode(jdata['flyTitle'])+'</div>';

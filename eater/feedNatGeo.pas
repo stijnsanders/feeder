@@ -52,7 +52,8 @@ begin
     on EJSONDecodeException do
       ;//ignore "data past end"
   end;
-  //SaveUTF16('xmls\0000.json',jdoc.AsString);
+  if DebugSaveData then
+    SaveUTF16('xmls\0000.json',jdoc.AsString);
 
   itemid:=VarToStr(j1['title']);
   if itemid<>'' then Handler.UpdateFeedName(itemid);
@@ -136,7 +137,8 @@ begin
                 on EJSONDecodeException do
                   ;//ignore "data past end"
               end;
-              //SaveUTF16('xmls\0000.json',jdata.AsString);
+              if DebugSaveData then
+                SaveUTF16('xmls\0000.json',jdata.AsString);
               j0:=JSON(JSON(jdata['page'])['content']);
               j1:=JSON(j0['article']);
               if j1=nil then j1:=JSON(j0['prismarticle']);

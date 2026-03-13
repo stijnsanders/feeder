@@ -241,7 +241,8 @@ begin
     //assert d['_'][0]=1
     w:=d['_'][1];
 
-    //SaveUTF16('xmls\0000.json',w);
+    if DebugSaveData then
+      SaveUTF16('xmls\0000.json',w);
 
     wi:=1;
     while (wi<8) and (wi<Length(w)) and (w[wi]<>':') do inc(wi);

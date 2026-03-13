@@ -25,7 +25,7 @@ interface
 {$D-}
 {$L-}
 
-{xxxxx$DEFINE LIBPQDATA_TRANSFORMQM}
+{x$DEFINE LIBPQDATA_TRANSFORMQM}
 
 uses SysUtils, LibPQ;
 
@@ -289,8 +289,8 @@ begin
 end;
 {$IFEND}
 
-{$IFDEF LIBPQDATA_TRANSFORMQM}
 function PrepSQL(const SQL: UTF8String): PAnsiChar;
+{$IFDEF LIBPQDATA_TRANSFORMQM}
 var
   s:UTF8String;
   i,j,k,l:integer;
@@ -302,44 +302,59 @@ begin
   SetLength(s,l*2);
   while (i<=l) do
    begin
-    while (i<=l) and (SQL[i]<>'?') do
+    while (i<=l) and (SQL[i]<>'?') and (SQL[i]<>'''') do
      begin
       s[j]:=SQL[i];
       inc(i);
       inc(j);
      end;
     if i<=l then
-     begin
-      s[j]:='$';
-      inc(i);
-      inc(j);
-      inc(k);
-      if k<10 then
+      if SQL[i]='''' then
        begin
-        s[j]:=AnsiChar(k or $30);
+        s[j]:=SQL[i];//''''
+        inc(i);
+        inc(j);
+        while (i<=l) and (SQL[i]<>'''') do
+         begin
+          s[j]:=SQL[i];
+          inc(i);
+          inc(j);
+         end;
+        s[j]:=SQL[i];//''''
+        inc(i);
         inc(j);
        end
       else
-      if k<100 then
        begin
-        s[j]:=AnsiChar((k div 10) or $30);
+        //SQL[i]='?'
+        s[j]:='$';
+        inc(i);
         inc(j);
-        s[j]:=AnsiChar((k mod 10) or $30);
-        inc(j);
-       end
-      else
-        raise EPostgres.Create('Maximum number of question marks exceeded');
-     end;
+        inc(k);
+        if k<10 then
+         begin
+          s[j]:=AnsiChar(k or $30);
+          inc(j);
+         end
+        else
+        if k<100 then
+         begin
+          s[j]:=AnsiChar((k div 10) or $30);
+          inc(j);
+          s[j]:=AnsiChar((k mod 10) or $30);
+          inc(j);
+         end
+        else
+          raise EPostgres.Create('Maximum number of question marks exceeded');
+       end;
    end;
   SetLength(s,j-1);
   Result:=@s[1];
-end;
 {$ELSE}
-function PrepSQL(const SQL: UTF8String): PAnsiChar; inline;
 begin
   Result:=@SQL[1];
-end;
 {$ENDIF}
+end;
 
 procedure SendQuery(DB: PGConn; const SQL: UTF8String;
   const Values: array of Variant);
@@ -372,6 +387,15 @@ begin
 
     if PQsendQueryParams(DB,PrepSQL(SQL),pn,@pt[0],@pv[0],@pl[0],@pf[0],0)=0 then
       raise EPostgres.Create(UTF8ToWideString(PQerrorMessage(DB)));
+   end;
+end;
+
+procedure PQclearAll(conn: PGConn; var res: PGResult); //inline?
+begin
+  while res.Handle<>nil do
+   begin
+    PQclear(res);
+    res:=PQgetResult(conn);
    end;
 end;
 
@@ -414,7 +438,7 @@ begin
     if e<>'' then
       raise EPostgres.Create(UTF8ToWideString(e));
   finally
-    PQclear(r);
+    PQclearAll(FDB,r);
   end;
 end;
 
@@ -457,7 +481,9 @@ begin
      begin
       s:=PQcmdTuples(r);
       if s<>'' then
-        if TryStrToInt(string(s),i) then inc(Result,i) else
+        if TryStrToInt(string(s),i) then
+		      inc(Result,i)
+        else
           raise EPostgres.Create('Unexpected Tuples Response: "'+
             UTF8ToWideString(s)+'"');
       PQclear(r);
@@ -466,18 +492,16 @@ begin
        begin
         e:=PQresultErrorMessage(r);
         if e<>'' then
+         begin
+          PQclearAll(FDB,r);
           raise EPostgres.Create(UTF8ToWideString(e));
+         end;
        end;
      end;
   except
     on e:Exception do
      begin
-      r:=PQgetResult(FDB);
-      while r.Handle<>nil do
-       begin
-        PQclear(r);
-        r:=PQgetResult(FDB);
-       end;
+      PQclearAll(FDB,r);
       raise;
      end;
   end;
@@ -553,11 +577,7 @@ begin
     if e='' then Result:=-1 else Result:=StrToInt64(string(e));
    end;
 
-  while r.Handle<>nil do
-   begin
-    PQclear(r);
-    r:=PQgetResult(FDB);
-   end;
+  PQclearAll(FDB,r);
 end;
 
 procedure TPostgresConnection.Update(const TableName: UTF8String; const Values: array of Variant);
@@ -613,11 +633,7 @@ begin
     e:=PQresultErrorMessage(r);
   if e<>'' then
     raise EPostgres.Create(UTF8ToWideString(e));
-  while r.Handle<>nil do
-   begin
-    PQclear(r);
-    r:=PQgetResult(FDB);
-   end;
+  PQclearAll(FDB,r);
 end;
 
 { TPostgresCommand }
@@ -626,7 +642,6 @@ constructor TPostgresCommand.Create(Connection: TPostgresConnection;
   const SQL: WideString; const Values: array of Variant);
 var
   e:UTF8String;
-  r:PGResult;
 begin
   inherited Create;
   //TODO: check PQisbusy?
@@ -644,43 +659,27 @@ begin
       raise EPostgres.Create(UTF8ToWideString(e));
     FFirstRead:=true;
   except
-    if FRecordSet.Handle<>nil then
-      PQclear(FRecordSet);
-    r:=PQgetResult(FDB);
-    while r.Handle<>nil do
-     begin
-      PQclear(r);
-      r:=PQgetResult(FDB);
-     end;
+    PQclearAll(FDB,FRecordSet);
     raise;
   end;
 end;
 
 destructor TPostgresCommand.Destroy;
 begin
-  while FRecordSet.Handle<>nil do
-   begin
-    PQclear(FRecordSet);
-    FRecordSet:=PQgetResult(FDB);
-   end;
+  PQclearAll(FDB,FRecordSet);
   inherited;
 end;
 
 function TPostgresCommand.Read: boolean;
 begin
-  if (FRecordSet.Handle=nil) or (PQntuples(FRecordSet)=FTuple) then Result:=false else
+  if (FRecordSet.Handle=nil) or (PQntuples(FRecordSet)=FTuple) then
+    Result:=false
+  else
    begin
-    if FFirstRead then FFirstRead:=false else
-     begin
-      {if streaming then
-       begin
-        if FRecordSet<>nil then PQclear(FRecordSet);
-        FRecordSet:=PQgetResult(FRecordSet);
-       end
-      else
-      }
+    if FFirstRead then
+      FFirstRead:=false
+    else
       inc(FTuple);
-     end;
     Result:=not((FRecordSet.Handle=nil) or (PQntuples(FRecordSet)=FTuple));
    end;
 end;
@@ -697,7 +696,9 @@ var
   s:UTF8String;
 begin
   if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
-  if VarIsNumeric(Idx) then i:=Idx else
+  if VarIsNumeric(Idx) then
+    i:=Idx
+  else
    begin
     s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
@@ -716,7 +717,9 @@ var
   s:UTF8String;
 begin
   if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
-  if VarIsNumeric(Idx) then i:=Idx else
+  if VarIsNumeric(Idx) then
+    i:=Idx
+  else
    begin
     s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
@@ -745,7 +748,9 @@ var
   end;
 begin
   if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
-  if VarIsNumeric(Idx) then i:=Idx else
+  if VarIsNumeric(Idx) then
+    i:=Idx
+  else
    begin
     s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
@@ -803,7 +808,9 @@ var
   end;
 begin
   if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
-  if VarIsNumeric(Idx) then i:=Idx else
+  if VarIsNumeric(Idx) then
+    i:=Idx
+  else
    begin
     s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
@@ -868,7 +875,9 @@ var
 begin
   if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
   rds:=@{$IF Declared(FormatSettings)}FormatSettings.{$IFEND}DecimalSeparator;
-  if VarIsNumeric(Idx) then i:=Idx else
+  if VarIsNumeric(Idx) then
+    i:=Idx
+  else
    begin
     s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);
@@ -937,7 +946,9 @@ var
   s:UTF8String;
 begin
   if IsEOF then raise EQueryResultError.Create('Reading past EOF.');
-  if VarIsNumeric(Idx) then i:=Idx else
+  if VarIsNumeric(Idx) then
+    i:=Idx
+  else
    begin
     s:=UTF8String(VarToStr(Idx));
     i:=PQfnumber(FRecordSet,@s[1]);

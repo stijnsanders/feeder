@@ -32,6 +32,9 @@ function URLToFileName(const URL:string):string;
 function VarArrFirst(const v:Variant):Variant;
 function VarArrLast(const v:Variant):Variant;
 
+var
+  DebugSaveData:boolean;
+
 implementation
 
 uses Windows, SysUtils, Variants, Classes;
@@ -998,5 +1001,8 @@ begin
   else
     Result:=Null;
 end;
+
+initialization
+  DebugSaveData:=false;
 
 end.

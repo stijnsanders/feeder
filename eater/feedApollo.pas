@@ -60,7 +60,8 @@ begin
     on EJSONDecodeException do
       ;//ignore "data past end"
   end;
-  //SaveUTF16('xmls\0000.json',jdoc.AsString);
+  if DebugSaveData then
+    SaveUTF16('xmls\0000.json',jdoc.AsString);
 
   je:=JSONEnum(jdoc);
   while je.Next do

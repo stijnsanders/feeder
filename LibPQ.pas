@@ -46,7 +46,6 @@ const
   PG_COPYRES_TUPLES		    = $2;	// Implies PG_COPYRES_ATTRS
   PG_COPYRES_EVENTS		    = $4;
   PG_COPYRES_NOTICEHOOKS  = $8;
-
 type
   ConnStatusType = (
 	  CONNECTION_OK,
@@ -59,7 +58,6 @@ type
  	  CONNECTION_SSL_STARTUP,
  	  CONNECTION_NEEDED
   );
-
   PostgresPollingStatusType = (
 	  PGRES_POLLING_FAILED,
  	  PGRES_POLLING_READING,
@@ -67,7 +65,6 @@ type
  	  PGRES_POLLING_OK,
  	  PGRES_POLLING_ACTIVE
   );
-
   ExecStatusType = (
     PGRES_EMPTY_QUERY,
     PGRES_COMMAND_OK,
@@ -80,7 +77,6 @@ type
     PGRES_COPY_BOTH,
     PGRES_SINGLE_TUPLE
   );
-
   PGTransactionStatusType = (
     PQTRANS_IDLE,
     PQTRANS_ACTIVE,
@@ -88,27 +84,24 @@ type
     PQTRANS_INERROR,
     PQTRANS_UNKNOWN
   );
-
   PGVerbosity = (
     PQERRORS_TERSE,
     PQERRORS_DEFAULT,
     PQERRORS_VERBOSE
   );
-
   PGPing = (
     PQPING_OK,
     PQPING_REJECT,
     PQPING_NO_RESPONSE,
     PQPING_NO_ATTEMPT
   );
-
 type
   PGConn = record
     Handle:pointer;//opaque
   end;
-
   PGResult = record
-    Handle:pointer;//opaque
+
+    Handle:pointer;//opaque
   end;
 
   PGCancel = record
@@ -117,11 +110,10 @@ type
 
   PpgNotify = ^pgNotify;
 
-  PGnotify = record
+  pgNotify = record
     relname: PAnsiChar;
     pe_pid: integer;
     extra: PAnsiChar;
-    next: PpgNotify;
   end;
 
   PQnoticeReceiver = procedure(arg:pointer;res:PGResult); cdecl;
@@ -161,25 +153,20 @@ type
   end;
   PGresAttDesc = ^_PGresAttDesc;
 
-
 function PQconnectStart(conninfo: PAnsiChar): PGconn; cdecl;
 function PQconnectStartParams(keywords, values: PPAnsiChar; expand_dbname: integer): PGconn; cdecl;
 function PQconnectPoll(conn: PGconn): PostgresPollingStatusType; cdecl;
-
 function PQconnectdb(conninfo: PAnsiChar): PGconn; cdecl;
 function PQconnectdbParams(keywords, values: PPAnsiChar; expand_dbname: integer): PGconn; cdecl;
 function PQsetdbLogin(pghost, pgport, pgoptions, pgtty, dbName, login, pwd: PAnsiChar): PGconn; cdecl;
-
 //#define
 //  PQsetdb(M_PGHOST,M_PGPORT,M_PGOPT,M_PGTTY,M_DBNAME)
 //	PQsetdbLogin(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME, NULL, NULL)
-
 procedure PQfinish(conn: PGconn); cdecl;
 function PQconndefaults: PQconninfoOption; cdecl;
 function PQconninfoParse(conninfo: PAnsiChar; var errmsg: PAnsiChar): PQconninfoOption; cdecl;
 function PQconninfo(conn: PGconn): PQconninfoOption; cdecl;
 procedure PQconninfoFree(connOptions: PQconninfoOption); cdecl;
-
 function PQresetStart(conn: PGconn): integer; cdecl;
 function PQresetPoll(conn: PGconn): PostgresPollingStatusType; cdecl;
 procedure PQreset(conn: PGconn); cdecl;
@@ -187,7 +174,6 @@ function PQgetCancel(conn: PGconn): PGcancel; cdecl;
 procedure PQfreeCancel(cancel: PGcancel); cdecl;
 function PQcancel(cancel: PGcancel; errbuf: PAnsiChar; errbufsize: integer): integer; cdecl;
 function PQrequestCancel(conn: PGconn): integer; cdecl;//deprecated
-
 function PQdb(conn: PGconn): PAnsichar; cdecl;
 function PQuser(conn: PGconn): PAnsichar; cdecl;
 function PQpass(conn: PGconn): PAnsichar; cdecl;
@@ -207,29 +193,20 @@ function PQconnectionNeedsPassword(conn: PGconn): integer; cdecl;
 function PQconnectionUsedPassword(conn: PGconn): integer; cdecl;
 function PQclientEncoding(conn: PGconn): integer; cdecl;
 function PQsetClientEncoding(conn: PGconn; encoding: PAnsiChar): integer; cdecl;
-
 function PQsslInUse(conn: PGconn): integer; cdecl;
 function PQsslStruct(conn: PGconn; struct_name: PAnsiChar): pointer; cdecl;
 function PQsslAttribute(conn: PGconn; attribute_name: PAnsiChar): PAnsiChar; cdecl;
 function PQsslAttributeNames(conn: PGconn): PPAnsiChar; cdecl;
-
 function PQgetssl(conn: PGconn): pointer; cdecl;
-
 procedure PQinitSSL(do_init: integer);
 procedure PQinitOpenSSL(do_ssl, do_crypto: integer);
-
 function PQsetErrorVerbosity(conn: PGconn; verbosity: PGVerbosity): PGVerbosity; cdecl;
-
 procedure PQtrace(conn: PGconn; debug_port: pointer {*FILE}); cdecl;
 procedure PQuntrace(conn: PGconn); cdecl;
-
 function PQsetNoticeReceiver(conn: PGconn; proc: PQnoticeReceiver; arg: pointer): PQnoticeReceiver; cdecl;
 function PQsetNoticeProcessor(conn: PGconn; proc: PQnoticeProcessor; arg: pointer): PQnoticeProcessor; cdecl;
-
 type pgthreadlock_t = type pointer; //typedef void (*pgthreadlock_t) (int acquire);
-
 function PQregisterThreadLock(newhandler: pgthreadlock_t): pgthreadlock_t; cdecl;
-
 //---
 function PQexec(conn: PGconn; query: PAnsiChar): PGresult; cdecl;
 function PQexecParams(conn: PGconn; command: PAnsiChar; nParams: integer;
@@ -240,7 +217,6 @@ function PQprepare(conn: PGconn; stmtName: PAnsiChar;
 function PQexecPrepared(conn: PGconn; stmtName: PAnsiChar; nParams: integer;
 			   paramValues: PPAnsiChar; paramLengths: PInteger;
          paramFormats: PInteger; resultFormat: integer): PGresult; cdecl;
-
 function PQsendQuery(conn: PGconn; query: PAnsiChar): integer; cdecl;
 function PQsendQueryParams(conn: PGconn; command: PAnsiChar; nParams: integer;
 				  paramTypes: POid; paramValues: PPAnsiChar; paramLengths: PInteger;
@@ -253,27 +229,20 @@ function PQsendQueryPrepared(conn: PGconn; stmtName: PAnsiChar; nParams: integer
         paramFormats: PInteger; resultFormat: integer): integer; cdecl;
 function PQsetSingleRowMode(conn: PGconn): integer; cdecl;
 function PQgetResult(conn: PGconn): PGresult; cdecl;
-
 function PQisBusy(conn: PGconn): integer; cdecl;
 function PQconsumeInput(conn: PGconn): integer; cdecl;
-
-function PQnotifies(conn: PGconn): PGnotify; cdecl;
-
+function PQnotifies(conn: PGconn): PpgNotify; cdecl;
 function PQputCopyData(conn: PGconn; buffer: PAnsiChar; nbytes: integer): integer; cdecl;
 function PQputCopyEnd(conn: PGconn; errormsg: PAnsiChar): integer; cdecl;
 function PQgetCopyData(conn: PGconn; buffer: PPAnsiChar; async: integer): integer; cdecl;
-
 function PQsetnonblocking(conn: PGconn; arg: integer): integer; cdecl;
 function PQisnonblocking(conn: PGconn): integer; cdecl;
 function PQisthreadsafe: integer; cdecl;
 function PQping(conninfo: PAnsiChar): PGPing; cdecl;
 function PQpingParams(keywords: PPAnsiChar; values: PPAnsiChar; expand_dbname: integer): PGPing; cdecl;
-
 function PQflush(conn: PGconn): integer; cdecl;
-
 function PQfn(conn: PGconn; fnid: integer; result_buf: PInteger; result_len: PInteger; result_is_int: integer;
 	 args: PQArgBlock; nargs: integer): PGresult; cdecl;
-
 function PQresultStatus(res: PGResult): ExecStatusType; cdecl;
 function PQresStatus(status: ExecStatusType): PAnsiChar; cdecl;
 function PQresultErrorMessage(res: PGResult): PAnsiChar; cdecl;
@@ -297,34 +266,26 @@ function PQgetlength(res: PGResult; tup_num: integer; field_num: integer): integ
 function PQgetisnull(res: PGResult; tup_num: integer; field_num: integer): integer; cdecl;
 function PQnparams(res: PGResult): integer; cdecl;
 function PQparamtype(res: PGResult; param_num: integer): Oid; cdecl;
-
 function PQdescribePrepared(conn: PGconn; stmt: PAnsiChar): PGresult; cdecl;
 function PQdescribePortal(conn: PGconn; portal: PAnsiChar): PGresult; cdecl;
 function PQsendDescribePrepared(conn: PGconn; stmt: PAnsiChar): integer; cdecl;
 function PQsendDescribePortal(conn: PGconn; portal: PAnsiChar): integer; cdecl;
-
 procedure PQclear(res: PGResult); cdecl;
-
 procedure PQfreemem(ptr: pointer); cdecl;
-
 type
   size_t= cardinal;
-
 function PQmakeEmptyPGresult(conn: PGconn; status: ExecStatusType): PGresult; cdecl;
 function PQcopyResult(src: PGresult; flags: integer): PGresult; cdecl;
 function PQsetResultAttrs(res: PGresult; numAttributes: integer; attDescs: PGresAttDesc): integer; cdecl;
 function PQresultAlloc(res: PGresult; nBytes: size_t): pointer; cdecl;
 function PQsetvalue(res: PGresult; tup_num: integer; field_num: integer; value: PAnsiChar; len: integer): integer; cdecl;
-
 function PQescapeStringConn(conn: PGconn; to_: PAnsiChar; from: PAnsiChar; length: size_t; error: PInteger): size_t; cdecl;
 function PQescapeLiteral(conn: PGconn; str: PAnsiChar; len: size_t): PAnsiChar; cdecl;
 function PQescapeIdentifier(conn: PGconn; str: PAnsiChar; len: size_t): PAnsiChar; cdecl;
 function PQescapeByteaConn(conn: PGconn; from: PByte; from_length: size_t; var to_length: size_t): PByte; cdecl;
 function PQunescapeBytea(strtext: PByte; var retbuflen: size_t): PByte; cdecl;
 
-
 procedure PQprint(fout: pointer{*FILE}; res: PGResult; ps: PQprintOpt); cdecl;
-
 {
 extern int	lo_open(conn: PGconn, Oid lobjId, int mode): integer; cdecl;
 extern int	lo_close(conn: PGconn, int fd): integer; cdecl;
@@ -343,21 +304,14 @@ extern Oid	lo_import(conn: PGconn, const char *filename);
 extern Oid	lo_import_with_oid(conn: PGconn, const char *filename, Oid lobjId);
 extern int	lo_export(conn: PGconn, Oid lobjId, const char *filename): integer; cdecl;
 }
-
 function PQlibVersion: integer; cdecl;
-
 function PQmblen(s:PAnsiChar; encoding: integer): integer; cdecl;
-
 function PQdsplen(s:PAnsiChar; encoding: integer): integer; cdecl;
-
 function PQenv2encoding: integer; cdecl;
-
 function PQencryptPassword(passwd: PAnsiChar; user: PAnsiChar): PAnsiChar; cdecl;
-
 function pg_char_to_encoding(name: PAnsiChar): integer; cdecl;
 function pg_encoding_to_char(encoding: integer): PAnsiChar; cdecl;
 function pg_valid_server_encoding_id(encoding: integer): integer; cdecl;
-
 implementation
 
 function PQconnectStart; external 'libpq.dll';

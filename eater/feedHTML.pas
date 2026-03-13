@@ -432,7 +432,8 @@ begin
           if r.status=200 then
           w:=r.responseText;//see below
 
-          //SaveUTF16('xmls\0000.html',w);
+          if DebugSaveData then
+            SaveUTF16('xmls\0000.html',w);
 
           if VarIsNull(FFeedParams['clip']) then
             mc1:=re.Execute(w) as MatchCollection

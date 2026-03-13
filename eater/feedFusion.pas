@@ -68,7 +68,8 @@ begin
     on EJSONDecodeException do
       ;//ignore "data past end"
   end;
-  //SaveUTF16('xmls\0000.json',jdoc.AsString);
+  if DebugSaveData then  
+    SaveUTF16('xmls\0000.json',jdoc.AsString);
   //if jnodes.Count<>0 then
    begin
     Handler.UpdateFeedName(VarToStr(jd1['title']));
