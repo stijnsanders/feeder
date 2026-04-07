@@ -210,7 +210,6 @@ type
   ['{4A534F4E-0001-000B-C000-00000000000B}']
     procedure ClearBank(MemBank: IJSONMemBank); stdcall;
     procedure LoadBank(Bank: IUnknown; Index: integer); stdcall;
-    procedure CloneBank(var MemBank: IJSONMemBank; var Index: integer); stdcall;
     procedure Build(Builder: pointer; TabIndex: integer); stdcall;
   end;
 
@@ -470,7 +469,6 @@ type
 
     procedure ClearBank(MemBank: IJSONMemBank); stdcall;
     procedure LoadBank(Bank: IUnknown; Index: integer); stdcall;
-    procedure CloneBank(var MemBank: IJSONMemBank; var Index: Integer); stdcall;
     procedure Build(Builder: pointer; TabIndex: integer); stdcall;
   public
     procedure AfterConstruction; override;
@@ -640,7 +638,6 @@ type
     //IJSONMemBankLoadable
     procedure ClearBank(MemBank: IJSONMemBank); stdcall;
     procedure LoadBank(Bank: IUnknown; Index: integer); stdcall;
-    procedure CloneBank(var MemBank: IJSONMemBank; var Index: Integer); stdcall;
     procedure Build(Builder: pointer; TabIndex: integer); stdcall;
   public
     constructor Create;
@@ -1463,7 +1460,11 @@ begin
   case m.F1 and jfk_Mask of
     jfkNoEsc,
     jfkLoose:
-      Result:=Copy(json.Data,ki,kl);
+     begin
+      //Result:=Copy(json.Data,ki,kl);
+      SetLength(Result,kl);
+      Move(json.Data[ki],Result[1],kl*w2);
+     end;
     jfkWithEsc,
     jfkPascalString:
       Result:=GetStringValue(ki,kl);
@@ -1986,11 +1987,13 @@ var
   ods:char;
   bi,ai,an:integer;
   at,vt:TVarType;
+  m:PJSONMemNode;
   IsDocArray:boolean;
 begin
   //assert caller does FLock
   b:=FMemBank.Bank as TJSONMemBank;
-  case b.FNodes[n].F1 and jfd_Mask of
+  m:=@b.FNodes[n];
+  case m.F1 and jfd_Mask of
     jfdObject:
      begin
 {
@@ -2013,7 +2016,7 @@ begin
       an:=0;
       at:=varEmpty;//as initial value, see below
       IsDocArray:=true;//default, see below
-      bi:=b.FNodes[n].Child;
+      bi:=m.Child;
       while bi<>0 do
        begin
         case b.FNodes[bi].F1 and jfd_Mask of
@@ -2124,7 +2127,7 @@ begin
        begin
         Result:=VarArrayCreate([0,an-1],at);
         ai:=0;
-        bi:=b.FNodes[n].Child;
+        bi:=m.Child;
         while bi<>0 do
          begin
           Result[ai]:=v1(bi);
@@ -2140,19 +2143,19 @@ begin
     jfdBoolTrue:Result:=true;
     jfdBoolFalse:Result:=false;
     jfdStringNoEsc:
-      Result:=Copy(b.json.Data,b.FNodes[n].ValueIndex,b.FNodes[n].ValueLength);
+      Result:=Copy(b.json.Data,m.ValueIndex,m.ValueLength);
     jfdStringWithEsc,jfdStringPascal://TODO: split into GetEscStr,GetPascalStr
-      Result:=b.GetStringValue(b.FNodes[n].ValueIndex,b.FNodes[n].ValueLength);
+      Result:=b.GetStringValue(m.ValueIndex,m.ValueLength);
     jfdInt8:
-      Result:=SmallInt(b.FNodes[n].ValueLength);
+      Result:=SmallInt(m.ValueLength);
     jfdInt16:
-      Result:=word(b.FNodes[n].ValueLength);
+      Result:=word(m.ValueLength);
     jfdInt32:
-      Result:=integer(b.FNodes[n].ValueLength);
+      Result:=integer(m.ValueLength);
     jfdInt64:
      begin
-      v64p.v64hi:=b.FNodes[n].ValueIndex;
-      v64p.v64lo:=b.FNodes[n].ValueLength;
+      v64p.v64hi:=m.ValueIndex;
+      v64p.v64lo:=m.ValueLength;
       Result:=v64;
      end;
     jfdFloat:
@@ -2169,7 +2172,7 @@ begin
         {$else}
         DecimalSeparator:='.';
         {$ifend}
-        Result:=StrToFloat(Copy(b.json.Data,b.FNodes[n].ValueIndex,b.FNodes[n].ValueLength));
+        Result:=StrToFloat(Copy(b.json.Data,m.ValueIndex,m.ValueLength));
       finally
         {$if CompilerVersion >= 24}
         FormatSettings.DecimalSeparator:=ods;
@@ -2321,16 +2324,6 @@ begin
     LeaveCriticalSection(FLock);
   end;
   {$ENDIF}
-end;
-
-procedure TJSONDocument.CloneBank(var MemBank: IJSONMemBank; var Index: Integer);
-begin
-  MemBank:=FMemBank;
-  Index:=0;//FBaseIndex
-  inc(FLoadIndex);
-  if FLoadIndex=0 then inc(FLoadIndex);
-  FFirst:=nil;
-  FLast:=nil;
 end;
 
 procedure TJSONBuilder.EncodeStr(const x:WideString);
@@ -3815,26 +3808,16 @@ end;
 
 function TJSONDocArray.Add(const Doc: IJSONDocument): integer;
 var
+  w:WideString;
   b:TJSONMemBank;
-  bi:integer;
-  l:IJSONMemBankLoadable;
 begin
+  w:=Doc.AsString;
+
   {$IFDEF JSONDOC_THREADSAFE}
   EnterCriticalSection(FLock);
   try
   {$ENDIF}
 
-    if (FMemBank=nil) and (Doc<>nil) and
-      (Doc.QueryInterface(IID_IJSONMemBankLoadable,l)=S_OK) then
-     begin
-      l.CloneBank(FMemBank,bi);
-      l:=nil;
-      if FMemBank<>nil then
-       begin
-        b:=FMemBank.Bank as TJSONMemBank;
-        FBaseIndex:=b.StartArray;
-       end;
-     end;
     if FMemBank=nil then
      begin
       b:=TJSONMemBank.Create;
@@ -3844,7 +3827,10 @@ begin
     else
       b:=FMemBank.Bank as TJSONMemBank;
 
-    Result:=b.Add(FBaseIndex,'',Doc);
+    //TODO: preserve structure when present instead of AsString
+    //'CloneBank'?
+
+    Result:=b.Add(FBaseIndex,w,nil);
 
   {$IFDEF JSONDOC_THREADSAFE}
   finally
@@ -3974,7 +3960,9 @@ begin
         raise EJSONException.Create('Unexpected node type in document array');
     end;
     }
-    Result:=Copy(b.json.Data,m.ValueIndex,m.ValueLength);
+    //Result:=Copy(b.json.Data,m.ValueIndex,m.ValueLength);
+    SetLength(Result,m.ValueLength);
+    Move(b.json.Data[m.ValueIndex],Result[1],m.ValueLength*w2);
 
   {$IFDEF JSONDOC_THREADSAFE}
   finally
@@ -4066,7 +4054,9 @@ begin
           w.Append('null')
         else
          begin
-          z:=Copy(b.json.Data,m.ValueIndex,m.ValueLength);
+          //z:=Copy(b.json.Data,m.ValueIndex,m.ValueLength);
+          SetLength(z,m.ValueLength);
+          Move(b.json.Data[m.ValueIndex],z[1],m.ValueLength*w2);
           {$IFDEF JSONDOC_STOREINDENTING}
           wr(w,z,#13#10,Copy(tabs,1,TabIndex+3));
           {$ELSE}
@@ -4158,12 +4148,6 @@ begin
     LeaveCriticalSection(FLock);
   end;
   {$ENDIF}
-end;
-
-procedure TJSONDocArray.CloneBank(var MemBank: IJSONMemBank; var Index: Integer);
-begin
-  MemBank:=FMemBank;
-  Index:=FBaseIndex;
 end;
 
 { TJSONDocArrayEnumerator }

@@ -52,8 +52,8 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   procedure ProcessQuad(const v:Variant);
   var
     d,d1:IJSONDocument;
-    vx:Variant;
-    vi,vn:integer;
+    vx,vy,vz:Variant;
+    vi,vj,vk,vn:integer;
 
     itemid,itemurl:string;
     pubDate:TDateTime;
@@ -82,6 +82,20 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
 
         //assert VarArrayLowBound(vx,1)=0 //see jsonDoc
         vn:=VarArrayHighBound(vx,1)+1;
+        if v[1]='section' then//??
+          for vi:=0 to vn-1 do
+           begin
+            vy:=vx[vi];
+            if VarIsArray(vy) then
+              for vj:=VarArrayLowBound(vy,1) to VarArrayHighBound(vy,1) do
+               begin
+                vz:=vy[vj];
+                if VarIsArray(vz) then
+                  for vk:=VarArrayLowBound(vz,1) to VarArrayHighBound(vz,1) do
+                    if VarIsArray(vz[vk]) then ProcessQuad(vz[vk]);
+               end;
+           end
+        else
         if (vn=4) and VarIsStr(vx[0]) then
           ProcessQuad(vx)
         else
@@ -246,7 +260,7 @@ begin
 
     wi:=1;
     while (wi<8) and (wi<Length(w)) and (w[wi]<>':') do inc(wi);
-    if (Copy(w,wi,7)=':[["$",') then //?
+    if (Copy(w,wi,7)=':[["$",') or (Copy(w,wi,9)=':[[false,') then //?
      begin
       dParsed:=false;
       try
@@ -291,6 +305,7 @@ begin
          end;
         end;
      end;
+
    end;
 
   FSection:=nil;
@@ -488,9 +503,18 @@ begin
   itemurl:=VarToStr(d['url']);//FFeedURL+d['slug'];
   if (itemurl='') and not(VarIsNull(d['canonicalUrl'])) then
     itemurl:=JSON(d['canonicalUrl'])['url'];
+  title:=SanitizeTitle(VarToStr(d['title']));
+  if (itemurl='') and not(VarIsNull(d['contentAttributes'])) then
+   begin
+    d:=JSON(d['contentAttributes']);
+    itemurl:=VarToStr(d['canonicalUrl']);
+   end;
   try
     if not(VarIsNull(d['published_at'])) then
       pubDate:=ConvDate1(d['published_at'])
+    else
+    if not(VarIsNull(d['displayTime'])) then
+      pubDate:=ConvDate1(d['displayTime'])
     else
       pubDate:=UtcNow;
   except
@@ -498,9 +522,9 @@ begin
   end;
   if Handler.CheckNewPost(itemid,itemurl,pubDate) then
    begin
-    title:=SanitizeTitle(d['title']);//'neta_title'
+    if title='' then title:=SanitizeTitle(d['title']);
     content:=HTMLEncode(VarToStr(d['excerpt']));
-    if content='' then HTMLEncode(VarToStr(d['summary']));
+    if content='' then content:=HTMLEncode(VarToStr(d['summary']));
 
     s:=VarToStr(d['meta_description']);
     if s<>'' then
@@ -524,6 +548,7 @@ begin
      begin
       d1:=JSON(GetFromSection(d['thumbnail']));
       v:=d1['carmotMysterioImages'];
+      if VarIsNull(v) then v:=d1['mysterioImages'];
       if VarIsArray(v) then
        begin
         d1:=JSON(v[VarArrayHighBound(v,1)]);
@@ -536,7 +561,7 @@ begin
         HTMLEncode(s)+'" alt="'+HTMLEncode(VarToStr(d['caption']))+//'alt_text'?
         '" /><br />'#13#10+content;
 
-    //d['tags']?
+    //d['tags']? sections? categoryLabel?
 
     Handler.RegisterPost(title,content);
    end;

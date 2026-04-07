@@ -115,6 +115,8 @@ begin
         on EJSONDecodeException do
           ;//ignore "data past end"
       end;
+      if DebugSaveData then
+        SaveUTF16('xmls\0000.json',jdoc.AsString);
       jd0:=JSONEnum(jdoc);
       while jd0.Next do
         if false then //jd0.Key='site-service-hierarchy' then
@@ -168,7 +170,9 @@ begin
                   jw0:=nil;
                   if itemurl='' then
                    begin
-                    itemurl:=VarToStr(JSON(JSON(jn0['taxonomy'])['primary_section'])['_id']);
+                    jn1:=JSON(jn0['taxonomy']);
+                    if jn1=nil then itemurl:='' else
+                      itemurl:=VarToStr(JSON(jn1['primary_section'])['_id']);
                     title:=#$D83D#$DD17#$2009;
                    end;
                   if itemurl<>'' then itemurl:=FURLPrefix+itemurl;
@@ -188,7 +192,7 @@ begin
                 end;
                end;
 
-              if not((itemid='') and (itemurl='')) and
+              if (itemurl<>'') and
                 Handler.CheckNewPost(itemid,itemurl,pubDate) then
                begin
 
