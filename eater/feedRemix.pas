@@ -8,6 +8,9 @@ type
   TRemixContentProcessor=class(TFeedProcessor)
   private
     FURLPrefix:string;
+
+    procedure ProcessContent(Handler: IFeedHandler; const Content: Variant);
+
   public
     function Determine(Store:IFeedStore;const FeedURL:WideString;
       var FeedData:WideString;const FeedDataType:WideString):boolean; override;
@@ -37,7 +40,7 @@ begin
          begin
           inc(r);Result[r]:=Data[i];
          end;
-        '"',''''://Start string
+        '"'{,''''}://Start string
          begin
           s:=Data[i];
           inc(r);Result[r]:='"';
@@ -93,7 +96,7 @@ begin
       end
     else
       case Data[i] of
-        '"','''':
+        '"'{,''''}:
           if Data[i]=s then
            begin
             s:=#0;
@@ -132,9 +135,86 @@ function TRemixContentProcessor.Determine(Store: IFeedStore;
   const FeedURL: WideString; var FeedData: WideString;
   const FeedDataType: WideString): boolean;
 begin
-  FURLPrefix:=FeedURL+'article/';//from data?
+  FURLPrefix:=FeedURL;
   Result:=Store.CheckLastLoadResultPrefix('Remix') and
     FindPrefixAndCrop(FeedData,'window\.__remixContext = ','');
+end;
+
+procedure TRemixContentProcessor.ProcessContent(Handler: IFeedHandler;
+  const Content: Variant);
+var
+  i,iPost,iAuthor:integer;
+  d,d1:IJSONDocument;
+  vPosts,vAuthors:Variant;
+  itemid,itemurl,author:string;
+  pubDate:TDateTime;
+  title,body:WideString;
+begin
+  if VarIsNull(Content) then
+    //ignore
+  else
+  if VarIsArray(Content) then
+   begin
+    for i:=VarArrayLowBound(Content,1) to VarArrayHighBound(Content,1) do
+     begin
+      d:=JSON(Content[i]);
+      ProcessContent(Handler,d['content']);
+
+      //if d['type']='post'?
+      d:=JSON(d['attrs']);
+      if d<>nil then d:=JSON(d['data']);
+      if d<>nil then
+       begin
+        vPosts:=d['posts'];
+        if not(VarIsNull(vPosts)) then
+        for iPost:=VarArrayLowBound(vPosts,1) to VarArrayHighBound(vPosts,1) do
+         begin
+          d:=JSON(vPosts[iPost]);
+
+          itemid:=d['id'];
+          itemurl:=FURLPrefix
+            +'p/'//from data?
+            +d['slug'];
+          pubDate:=ConvDate1(d['scheduled_at']);//override_scheduled_at?
+          if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+           begin
+            title:=SanitizeTitle(d['web_title']);
+            body:=HTMLEncode(d['web_subtitle']);
+
+            vAuthors:=d['authors'];
+            if VarIsArray(vAuthors) then
+             begin
+              author:='';
+              for iAuthor:=VarArrayLowBound(vAuthors,1) to VarArrayHighBound(vAuthors,1) do
+               begin
+                d1:=JSON(vAuthors[iAuthor]);
+                author:=author+d1['name']+#13#10;
+               end;
+              if author<>'' then body:=
+                '<div class="postcreator" style="padding:0.2em;float:right;color:silver;">'+
+                HTMLEncode(author)+'</div>'#13#10+body;
+             end;
+
+            if not(VarIsNull(d['image_url'])) then body:=body
+              +'<p><img class="postthumb" referrerpolicy="no-referrer" src="'
+              +HTMLEncodeQ(d['image_url'])
+              +'" /></p>';
+
+            //d['content_tags']
+
+            Handler.RegisterPost(title,body);
+           end;
+         end;
+
+       end;
+     end;
+   end
+  else
+  //if VarType(Content)=varUnknown then
+   begin
+    d:=JSON(Content);
+    ProcessContent(Handler,d['content']);
+   end;
 end;
 
 procedure TRemixContentProcessor.ProcessFeed(Handler: IFeedHandler;
@@ -156,6 +236,9 @@ begin
       ;//ignore "data past end"
   end;
 
+  if DebugSaveData then
+    SaveUTF16('xmls\0000.json',jdoc.AsString);
+
   //Handler.UpdateFeedName( routeData.'routes/index'.content.tagline?
 
   //routeData.'routes/index'.content.coverStory?
@@ -168,7 +251,9 @@ begin
     jarts.LoadItem(art_i,j1);
 
     itemid:=j1['_id'];
-    itemurl:=FURLPrefix+JSON(j1['slug'])['current'];
+    itemurl:=FURLPrefix
+      +'article/'//from data?
+      +JSON(j1['slug'])['current'];
     try
       pubDate:=ConvDate1(VarToStr(j1['publishedAt']));
     except
@@ -199,6 +284,22 @@ begin
       Handler.RegisterPost(title,content);
      end;
    end;
+
+  j1:=JSON(jdoc['state']);
+  if j1<>nil then j1:=JSON(j1['loaderData']);
+  if j1<>nil then
+   begin
+    j2:=JSON(j1['root']);
+    if j2<>nil then j2:=JSON(j2['publication']);
+    if j2<>nil then Handler.UpdateFeedName(j2['name']);//+' '+j2['description']?
+
+    j1:=JSON(j1['routes/index']);
+    if j1<>nil then j1:=JSON(j1['page']);
+    if j1<>nil then j1:=JSON(j1['viewable_page_version']);
+    if j1<>nil then ProcessContent(Handler,j1['content']);
+
+   end;
+
   Handler.ReportSuccess('Remix');
 end;
 

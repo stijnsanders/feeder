@@ -1099,6 +1099,12 @@ begin
   if FHasReplaces then
     PerformReplaces(title,content);
 
+  if Length(title)>1000 then //varchar(1000)
+   begin
+    content:='<h3>'+Title+'</h3>'#13#10+content;//HTMLEncode?
+    title:=Copy(title,1,995)+'...';
+   end;
+
   //if feedtagprefix<>'' then
   tsql:='';
   if VarIsArray(FPostTags) then //varArray of varStrSomething?
