@@ -13,6 +13,8 @@ type
     procedure ProcessArticles(Handler:IFeedHandler;const vArticles:Variant);
     procedure ProcessArtData(Handler:IFeedHandler;const vArticles:Variant);
     procedure ProcessArticle1(Handler:IFeedHandler;const vArticle:Variant);
+    procedure ProcessClusterArts(Handler:IFeedHandler;const vArticles:Variant;
+      const BasePath:string);
     procedure ProcessStateQry(Handler:IFeedHandler;const vState:Variant);
     function GetFromSection(const Path:string):Variant;
   public
@@ -217,13 +219,19 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
          end;
        end;
       vx:=d['featuredArticles'];
-      if VarIsArray(vx) then ProcessArticles(Handler,vx);
+      if VarIsArray(vx) then
+        ProcessArticles(Handler,vx);
       vx:=d['subMenuArticles'];
-      if VarIsArray(vx) then ProcessArticles(Handler,vx);
+      if VarIsArray(vx) then
+        ProcessArticles(Handler,vx);
       vx:=d['article'];
-      if not(VarIsNull(vx)) then ProcessArticle1(Handler,vx);
+      if not(VarIsNull(vx)) then
+        ProcessArticle1(Handler,vx);
       ProcessArtData(Handler,d['topStories']);
       ProcessArtData(Handler,d['editorials']);
+      vx:=d['storiesByFilter'];
+      if not(VarIsNull(vx)) then
+        ProcessClusterArts(Handler,vx,d['basePath']);//d['topic']);
      end;
   end;
 
@@ -313,7 +321,7 @@ begin
   Handler.ReportSuccess('NextPush');
 end;
 
-procedure TNextPushFeedProcessor.ProcessStateQry(Handler:IFeedHandler;const vState:Variant);
+procedure TNextPushFeedProcessor.ProcessStateQry(Handler: IFeedHandler; const vState: Variant);
 var
   d,d1:IJSONDocument;
   vQueries,vPages,vPosts,vAtt:Variant;
@@ -396,8 +404,7 @@ begin
   end;
 end;
 
-procedure TNextPushFeedProcessor.ProcessArtData(Handler: IFeedHandler;
-  const vArticles: Variant);
+procedure TNextPushFeedProcessor.ProcessArtData(Handler: IFeedHandler; const vArticles: Variant);
 var
   vi:integer;
   d,d1:IJSONDocument;
@@ -441,8 +448,7 @@ begin
      end;
 end;
 
-procedure TNextPushFeedProcessor.ProcessArticles(Handler:IFeedHandler;
-  const vArticles:Variant);
+procedure TNextPushFeedProcessor.ProcessArticles(Handler:IFeedHandler; const vArticles:Variant);
 var
   iArticle:integer;
   d:IJSONDocument;
@@ -486,8 +492,7 @@ begin
    end;
 end;
 
-procedure TNextPushFeedProcessor.ProcessArticle1(Handler: IFeedHandler;
-  const vArticle: Variant);
+procedure TNextPushFeedProcessor.ProcessArticle1(Handler: IFeedHandler; const vArticle: Variant);
 var
   d,d1:IJSONDocument;
   itemid,itemurl,title,content,s:WideString;
@@ -615,6 +620,58 @@ begin
       //TODO d['thumbnail'])
       //parse string like '$107:props:children:props:children:0:props:children:props:thumbnail'
 
+end;
+
+procedure TNextPushFeedProcessor.ProcessClusterArts(Handler: IFeedHandler;
+  const vArticles: Variant; const BasePath: string);
+var
+  e:IJSONEnumerator;
+  d,d1:IJSONDocument;
+  vItems:Variant;
+  iItem:integer;
+  itemid,itemurl,title,content:WideString;
+  pubDate:TDateTime;
+begin
+  if (BasePath<>'') and (BasePath[1]='/')
+    and (FFeedURL<>'') and (FFeedURL[Length(FFeedURL)]='/') then
+    SetLength(FFeedURL,Length(FFeedURL)-1);
+  e:=JSONEnum(vArticles);
+  while e.Next do
+   begin
+    //assert e.Key='top'?
+    d:=JSON(e.Value);
+    vItems:=d['posts'];
+    if VarIsNull(vItems) then vItems:=d['items'];
+    if not(VarIsNull(vItems)) then
+      for iItem:=VarArrayLowBound(vItems,1) to VarArrayHighBound(vItems,1) do
+       begin
+        d:=JSON(vItems[iItem]);
+        itemid:=d['clusterId'];
+        itemurl:=FFeedURL+BasePath+'/'+d['clusterUrlId'];
+        pubDate:=ConvDate1(d['createdAt']);
+        if Handler.CheckNewPost(itemid,itemurl,pubDate) then
+         begin
+          d1:=JSON(d['summary']);
+          if d1=nil then
+           begin
+            title:=SanitizeTitle(d['title']);
+            content:=HTMLEncode(d['tldr']);
+           end
+          else
+           begin
+            title:=SanitizeTitle(d1['title']);
+            content:=HTMLEncode(d1['description']);
+           end;
+
+          if not(VarIsNull(d['thumbnailUrl'])) then
+            content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
+              HTMLEncode(d['thumbnailUrl'])+'" alt="'+
+              HTMLEncode(VarToStr(d1['thumbnailAlt']))+'" /><br />'#13#10+content;
+
+          Handler.RegisterPost(title,content);
+         end;
+       end;
+   end;
 end;
 
 

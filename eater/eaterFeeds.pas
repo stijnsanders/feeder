@@ -1291,7 +1291,7 @@ begin
         else
           r:=200;//?
 
-        if r=301 then
+        if (r=301) or (r=308) then
          begin
           redir:=true;
           for j:=1 to rh.Count-1 do

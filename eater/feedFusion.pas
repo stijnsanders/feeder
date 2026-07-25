@@ -178,7 +178,12 @@ begin
                   if itemurl<>'' then itemurl:=FURLPrefix+itemurl;
                  end
                 else
-                  itemurl:=FURLPrefix+jn0['canonical_url'];
+                 begin
+                  itemurl:=jn0['canonical_url'];
+                  //if not StartsWith(itemurl,FURLPrefix) then
+                  if not StartsWith(itemurl,'http') then
+                    itemurl:=FURLPrefix+itemurl;
+                 end;
                 try
                   p1:=VarToStr(jn0['display_date']);
                   if p1='' then p1:=VarToStr(jn0['publish_date']);
