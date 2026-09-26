@@ -231,7 +231,9 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
       ProcessArtData(Handler,d['editorials']);
       vx:=d['storiesByFilter'];
       if not(VarIsNull(vx)) then
-        ProcessClusterArts(Handler,vx,d['basePath']);//d['topic']);
+        ProcessClusterArts(Handler,vx,d['basePath'])//d['topic']);
+      else if d['expandableClusterPosts']=true then
+        ProcessClusterArts(Handler,d,d['basePath']);
      end;
   end;
 
@@ -639,7 +641,10 @@ begin
   while e.Next do
    begin
     //assert e.Key='top'?
-    d:=JSON(e.Value);
+    if TVarData(e.v0^).VType=varUnknown then
+      d:=JSON(e.Value)
+    else
+      d:=JSON;
     vItems:=d['posts'];
     if VarIsNull(vItems) then vItems:=d['items'];
     if not(VarIsNull(vItems)) then
@@ -660,13 +665,17 @@ begin
           else
            begin
             title:=SanitizeTitle(d1['title']);
-            content:=HTMLEncode(d1['description']);
+            content:='<p>'+HTMLEncode(d1['description'])+'</p>'#13#10;
            end;
 
           if not(VarIsNull(d['thumbnailUrl'])) then
             content:='<img class="postthumb" referrerpolicy="no-referrer" src="'+
               HTMLEncode(d['thumbnailUrl'])+'" alt="'+
               HTMLEncode(VarToStr(d1['thumbnailAlt']))+'" /><br />'#13#10+content;
+
+          d1:=JSON(d['sentiment']);
+          if d1<>nil then
+            content:=content+'<p>'+HTMLEncode(d1['summary'])+'</p>'#13#10;
 
           Handler.RegisterPost(title,content);
          end;
