@@ -238,29 +238,33 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
   end;
 
 var
-  re1:RegExp;
-  mc:MatchCollection;
+  re1,re2:RegExp;
+  mc1,mc2:MatchCollection;
   m:Match;
-  mi,wi,vi:integer;
+  mi,mj,wi,vi:integer;
   d,d1,d2:IJSONDocument;
   dParsed:boolean;
-  w:WideString;
+  w,w1,w2:WideString;
   v:Variant;
 begin
   inherited;
   re1:=CoRegExp.Create;
   re1.Pattern:='<script>self\.__next_f\.push\((.+?)\)</script>';
   re1.Global:=true;
-  mc:=re1.Execute(FeedData) as MatchCollection;
+  mc1:=re1.Execute(FeedData) as MatchCollection;
+
+  re2:=CoRegExp.Create;
+  re2.Pattern:='([0-9a-z]+):(\["\$",.+?\])\n';
+  re2.Global:=true;
 
   FTagName:='';
   FTagHref:='';
   FSections:=JSON;
 
   d:=JSON;
-  for mi:=0 to mc.Count-1 do
+  for mi:=0 to mc1.Count-1 do
    begin
-    m:=mc.Item[mi] as Match;
+    m:=mc1.Item[mi] as Match;
     d.Parse('{"_":'+(m.SubMatches as SubMatches).Item[0]+'}');
     //assert d['_'][0]=1
     w:=d['_'][1];
@@ -268,32 +272,42 @@ begin
     if DebugSaveData then
       SaveUTF16('xmls\0000.json',w);
 
-    wi:=1;
-    while (wi<8) and (wi<Length(w)) and (w[wi]<>':') do inc(wi);
-    if (Copy(w,wi,7)=':[["$",') or (Copy(w,wi,9)=':[[false,') then //?
+    mc2:=re2.Execute(w) as MatchCollection;
+    if mc2.Count=0 then
      begin
-      dParsed:=false;
-      try
-        d.Parse('{"_"'+Copy(w,wi,Length(w)-wi+1)+'}');
-        dParsed:=true;
-      except
-        on EJSONDecodeException do ;//ignore
-      end;
-      if dParsed then
+
+      wi:=1;
+      while (wi<8) and (wi<Length(w)) and (w[wi]<>':') do inc(wi);
+      if (Copy(w,wi,7)=':[["$",') or (Copy(w,wi,9)=':[[false,') then //?
        begin
-        FSection:=d;
-        FSections[Copy(w,1,wi-1)]:=d['_'];
-        v:=d['_'];
-        for vi:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
-          if VarIsArray(v[vi]) then ProcessQuad(v[vi]);
+        dParsed:=false;
+        try
+          d.Parse('{"_"'+Copy(w,wi,Length(w)-wi+1)+'}');
+          dParsed:=true;
+        except
+          on EJSONDecodeException do ;//ignore
+        end;
+        if dParsed then
+         begin
+          FSection:=d;
+          FSections[Copy(w,1,wi-1)]:=d['_'];
+          v:=d['_'];
+          for vi:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+            if VarIsArray(v[vi]) then ProcessQuad(v[vi]);
+         end;
        end;
+
      end
     else
-    if Copy(w,wi,6)=':["$",' then
+
+    for mj:=0 to mc2.Count-1 do
      begin
+      m:=mc2.Item[mj] as Match;
+      w1:=(m.SubMatches as SubMatches).Item[0];
+      w2:=(m.SubMatches as SubMatches).Item[1];
       dParsed:=false;
       try
-        d.Parse('{"_"'+Copy(w,wi,Length(w)-wi+1)+'}');
+        d.Parse('{"_":'+w2+'}');
         dParsed:=true;
       except
         on EJSONDecodeException do ;//ignore
@@ -301,7 +315,7 @@ begin
       if dParsed then
        begin
         FSection:=d;
-        FSections[Copy(w,1,wi-1)]:=d['_'];
+        FSections[w1]:=d['_'];
         ProcessQuad(d['_']);
         d1:=JSON(JSON(d['_'][3])['data']);
         if d1<>nil then
