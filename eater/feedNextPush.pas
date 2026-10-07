@@ -510,7 +510,7 @@ end;
 
 procedure TNextPushFeedProcessor.ProcessArticle1(Handler: IFeedHandler; const vArticle: Variant);
 var
-  d,d1:IJSONDocument;
+  d,d0,d1:IJSONDocument;
   itemid,itemurl,title,content,s:WideString;
   pubDate:TDateTime;
   v:Variant;
@@ -519,11 +519,14 @@ begin
     Exit;
 
   d:=JSON(vArticle);
+  d0:=JSON(d['contentAttributes']);
   itemid:=VarToStr(d['id']);
   if itemid='' then itemid:=VarToStr(d['uuid']);
   itemurl:=VarToStr(d['url']);//FFeedURL+d['slug'];
   if (itemurl='') and not(VarIsNull(d['canonicalUrl'])) then
     itemurl:=JSON(d['canonicalUrl'])['url'];
+  if (itemurl='') and (d0<>nil) and not(VarIsNull(d0['clickthroughUrl'])) then
+    itemurl:=VarToStr(d0['clickthroughUrl']);
   title:=SanitizeTitle(VarToStr(d['title']));
   if (itemurl='') and not(VarIsNull(d['contentAttributes'])) then
    begin
@@ -546,13 +549,19 @@ begin
     if title='' then title:=SanitizeTitle(d['title']);
     content:=HTMLEncode(VarToStr(d['excerpt']));
     if content='' then content:=HTMLEncode(VarToStr(d['summary']));
+    if (content='') and (d0<>nil) and not(VarIsNull(d0['summary'])) then
+      content:=HTMLEncode(VarToStr(d0['summary']));
 
     s:=VarToStr(d['meta_description']);
     if s<>'' then
       content:='<div class="postdesc" style="margin-left:1.5em;color:grey;">'
         +HTMLEncode(s)+'</div>'#13#10+content;
 
+    //d1['authors']? //d1['sections? tags?
+
     d1:=JSON(d['author']);
+    if (d1=nil) and (d0<>nil) and VarIsArray(d0['authors']) then
+      d1:=JSON(d0['authors'][0]);
     if d1<>nil then
      begin
       s:=VarToStr(d1['name']);
@@ -575,6 +584,12 @@ begin
         d1:=JSON(v[VarArrayHighBound(v,1)]);
         s:=d1['url'];
        end;
+     end;
+    if (s='') and (d0<>nil) and VarIsStr(d0['thumbnail']) then
+     begin
+      d1:=JSON(GetFromSection(d0['thumbnail']));
+      //d1['resized'][0]?
+      s:=d1['url'];
      end;
     if s<>'' then
       content:=
