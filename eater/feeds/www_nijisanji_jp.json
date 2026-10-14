@@ -1,4 +1,5 @@
 {
+"list":"newsList",
 "urlPrefix":"https://www.nijisanji.jp/en/news/",
 "pubDate":"publishedAtForUser",
 "id":"id",

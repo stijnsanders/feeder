@@ -53,7 +53,7 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
 
   procedure ProcessQuad(const v:Variant);
   var
-    d,d1:IJSONDocument;
+    d,d1,d2:IJSONDocument;
     vx,vy,vz:Variant;
     vi,vj,vk,vn:integer;
 
@@ -169,8 +169,36 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
         FTagAlt:=VarToStr(d['alt']);
        end
       else
+      if not(VarIsNull(d['ntk'])) then
+        ProcessQuad(d['ntk'])
+      else
+      if VarIsArray(d['items']) then
+       begin
+        vx:=d['items'];
+        for vi:=VarArrayLowBound(vx,1) to VarArrayHighBound(vx,1) do
+          ProcessArticle1(Handler,vx[vi]);
+       end
+      else
+      if VarIsArray(d['streamItems']) then
+       begin
+        vx:=d['streamItems'];
+        for vi:=VarArrayLowBound(vx,1) to VarArrayHighBound(vx,1) do
+          ProcessArticle1(Handler,vx[vi]);
+       end
+      else
       if not(VarIsNull(d['state'])) then
         ProcessStateQry(Handler,d['state']);
+
+      d1:=JSON(JSON(v[3])['data']);
+      if d1<>nil then
+       begin
+        d2:=JSON(d1['topArticles']);
+        if d2<>nil then ProcessArticles(Handler,d2['articles']);
+        d2:=JSON(d1['allArticles']);
+        if d2<>nil then ProcessArticles(Handler,d2['articles']);
+        d2:=JSON(d1['topHeadlines']);
+        if d2<>nil then ProcessArticles(Handler,JSON(d2['data'])['articles']);
+       end;
 
       //else?
       vx:=d['event'];
@@ -234,7 +262,17 @@ procedure TNextPushFeedProcessor.ProcessFeed(Handler: IFeedHandler;
         ProcessClusterArts(Handler,vx,d['basePath'])//d['topic']);
       else if d['expandableClusterPosts']=true then
         ProcessClusterArts(Handler,d,d['basePath']);
-     end;
+      d1:=JSON(d['initialStreamData']);
+      if d1<>nil then
+       begin
+        vx:=d1['stream'];
+        for vi:=VarArrayLowBound(vx,1) to VarArrayHighBound(vx,1) do
+          ProcessArticle1(Handler,vx[vi]);
+       end;
+     end
+    else
+    if (vn=3) and VarIsStr(v[3]) and (v[3]='$undefined') and VarIsArray(v[2]) then
+      ProcessQuad(v[2]);//items
   end;
 
 var
@@ -242,7 +280,7 @@ var
   mc1,mc2:MatchCollection;
   m:Match;
   mi,mj,wi,vi:integer;
-  d,d1,d2:IJSONDocument;
+  d:IJSONDocument;
   dParsed:boolean;
   w,w1,w2:WideString;
   v:Variant;
@@ -254,7 +292,7 @@ begin
   mc1:=re1.Execute(FeedData) as MatchCollection;
 
   re2:=CoRegExp.Create;
-  re2.Pattern:='([0-9a-z]+):(\["\$",.+?\])\n';
+  re2.Pattern:='([0-9a-z]+):(\[(\[\[)?"\$",.+?\])\n';
   re2.Global:=true;
 
   FTagName:='';
@@ -312,22 +350,21 @@ begin
       except
         on EJSONDecodeException do ;//ignore
       end;
+      if DebugSaveData then
+        SaveUTF16('xmls\0001.json',w2);
       if dParsed then
        begin
         FSection:=d;
         FSections[w1]:=d['_'];
-        ProcessQuad(d['_']);
-        d1:=JSON(JSON(d['_'][3])['data']);
-        if d1<>nil then
+        if Copy(w2,1,6)='[[["$"' then
          begin
-          d2:=JSON(d1['topArticles']);
-          if d2<>nil then ProcessArticles(Handler,d2['articles']);
-          d2:=JSON(d1['allArticles']);
-          if d2<>nil then ProcessArticles(Handler,d2['articles']);
-          d2:=JSON(d1['topHeadlines']);
-          if d2<>nil then ProcessArticles(Handler,JSON(d2['data'])['articles']);
-         end;
-        end;
+          v:=d['_'];
+          for vi:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+            if VarIsArray(v[vi]) then ProcessQuad(v[vi]);
+         end
+        else
+          ProcessQuad(d['_']);
+       end;
      end;
 
    end;
@@ -511,7 +548,7 @@ end;
 procedure TNextPushFeedProcessor.ProcessArticle1(Handler: IFeedHandler; const vArticle: Variant);
 var
   d,d0,d1:IJSONDocument;
-  itemid,itemurl,title,content,s:WideString;
+  itemid,itemurl,title,content,s,t:WideString;
   pubDate:TDateTime;
   v:Variant;
 begin
@@ -521,6 +558,7 @@ begin
   d:=JSON(vArticle);
   d0:=JSON(d['contentAttributes']);
   itemid:=VarToStr(d['id']);
+  if itemid='' then itemid:=VarToStr(d['aid']);
   if itemid='' then itemid:=VarToStr(d['uuid']);
   itemurl:=VarToStr(d['url']);//FFeedURL+d['slug'];
   if (itemurl='') and not(VarIsNull(d['canonicalUrl'])) then
@@ -539,6 +577,9 @@ begin
     else
     if not(VarIsNull(d['displayTime'])) then
       pubDate:=ConvDate1(d['displayTime'])
+    else
+    if not(VarIsNull(d['pubDate'])) then
+      pubDate:=ConvDate1(d['pubDate'])
     else
       pubDate:=UtcNow;
   except
@@ -574,6 +615,7 @@ begin
     d1:=JSON(d['thumbnails_without_watermark']);
     if d1=nil then d1:=JSON(d['thumbnails']);
     if d1<>nil then s:=d1['origin'] else s:=VarToStr(d['image']);
+    t:=VarToStr(d['caption']);//'alt_text'?
     if (s='') and VarIsStr(d['thumbnail']) then
      begin
       d1:=JSON(GetFromSection(d['thumbnail']));
@@ -585,16 +627,24 @@ begin
         s:=d1['url'];
        end;
      end;
+    if (s='') and (VarType(d['thumbnail'])=varUnknown) then
+     begin
+      d1:=JSON(d['thumbnail']);
+      s:=VarToStr(d1['originalUrl']);
+      t:=VarToStr(d1['caption']);
+      if t='' then t:=VarToStr(d1['altText']);
+      //resolutions?
+     end;
     if (s='') and (d0<>nil) and VarIsStr(d0['thumbnail']) then
      begin
       d1:=JSON(GetFromSection(d0['thumbnail']));
       //d1['resized'][0]?
-      s:=d1['url'];
+      s:=VarToStr(d1['url']);
      end;
     if s<>'' then
       content:=
         '<img class="postthumb" referrerpolicy="no-referrer" src="'+
-        HTMLEncode(s)+'" alt="'+HTMLEncode(VarToStr(d['caption']))+//'alt_text'?
+        HTMLEncode(s)+'" alt="'+HTMLEncode(t)+
         '" /><br />'#13#10+content;
 
     //d['tags']? sections? categoryLabel?
