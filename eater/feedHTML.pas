@@ -277,9 +277,10 @@ begin
            end
           else
           if p['parse']='sloppy' then
-           begin
-            d:=ConvDate5(s);
-           end
+            d:=ConvDate5(s)
+          else
+          if p['parse']='timestamp' then
+            d:=StrToInt64(s)/MSecsPerDay+UnixDateDelta//UTC?
           else
             raise Exception.Create('Unknown PubDate Parse "'+VarToStr(p['parse'])+'"');
 
@@ -352,10 +353,14 @@ begin
                 //s:=HTMLDecode(s);
                 s:=StringReplace(s,'&amp;','&',[rfReplaceAll]);
 
+              if VarIsNull(p['alt']) then
+                s1:=''
+              else
+                s1:=' alt="'+HTMLEncode(sm[p['alt']-1])+'"';
+
               content:='<img class="postthumb" referrerpolicy="no-referrer'+
                 '" src="'+HTMLEncodeQ(s)+
-                //'" alt="'+???
-                '" /><br />'#13#10+content;
+                '"'+s1+' /><br />'#13#10+content;
              end;
            end;
 

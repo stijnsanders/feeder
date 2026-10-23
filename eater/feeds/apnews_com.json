@@ -1,14 +1,12 @@
 {
-	"p":"href=\"([^\"]+?/article/[^\"]+?)\"",
-	"fetchItems":1,
-	"feedname":{"p":"<meta property=\"og:title\" content=\"([^\"]+?)\">","n":1},
-	"infoJson":"<script type=\"application/ld\\+json\" id=\"link-ld-json\"[^>]*?>",
-	"clip":"<div class=\"RichTextStoryBody RichTextBody\">",
-	"content":{
-		"p":"<(p|h2)>.+?</\\1>",
-		"n":0,
-		"all":true
-	},
-	"separator":"\r\n\r\n",
-	"skipStale":8
+"feedname":{"p":"<meta property=\"og:title\" content=\"([^\"]+?)\">","n":1},
+	
+"p":"<div class=\"PagePromo\"[^>]+?data-posted-date-timestamp=\"(\\d+?)\".+?<img class=\"Image\".+?alt=\"([^\"]+?)\".+?src=\"([^\"]+?)\".+?<a.+?href=\"([^\"]+?)\".*?><span.*?>(.+?)</span></a>",
+"m":false,
+"i":false,
+	
+"url":{"n":4,"prefix":false},
+"title":{"n":5},
+"pubDate":{"n":1,"parse":"timestamp"},
+"postThumb":{"n":3,"prefix":false,"alt":2}
 }

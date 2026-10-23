@@ -566,10 +566,9 @@ begin
   if (itemurl='') and (d0<>nil) and not(VarIsNull(d0['clickthroughUrl'])) then
     itemurl:=VarToStr(d0['clickthroughUrl']);
   title:=SanitizeTitle(VarToStr(d['title']));
-  if (itemurl='') and not(VarIsNull(d['contentAttributes'])) then
+  if (itemurl='') and (d0<>nil) then
    begin
-    d:=JSON(d['contentAttributes']);
-    itemurl:=VarToStr(d['canonicalUrl']);
+    itemurl:=VarToStr(d0['canonicalUrl']);
    end;
   try
     if not(VarIsNull(d['published_at'])) then
@@ -603,6 +602,8 @@ begin
     d1:=JSON(d['author']);
     if (d1=nil) and (d0<>nil) and VarIsArray(d0['authors']) then
       d1:=JSON(d0['authors'][0]);
+    if (d1=nil) and (d0<>nil) and not(VarIsNull(d0['provider'])) then
+      d1:=JSON(d0['provider']);
     if d1<>nil then
      begin
       s:=VarToStr(d1['name']);

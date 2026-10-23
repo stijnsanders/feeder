@@ -1,0 +1,14 @@
+{
+"feedname":{"p":"<meta property=\"og:title\" content=\"([^\"]+?)\">","n":1},
+	
+"p":"<a href=\"([^\"]+?)\" class=\"news_li\">.*?<img src=\"([^\"]+?)\".+?<p class=\"date\">(.+?)</p>.*?<h2.*?>(.+?)</h2>.*?<p.*?>(.+?)</p>",
+"m":false,
+"i":false,
+	
+"urlPrefix":"https://hololivepro.com",
+"url":{"n":1},
+"title":{"n":4},
+"pubDate":{"n":3,"parse":"1","bias":-10},
+"content":{"n":5},
+"postThumb":{"n":2,"prefix":false}
+}
